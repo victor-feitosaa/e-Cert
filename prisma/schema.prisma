@@ -1,54 +1,48 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  
+  url      = env("DATABASE_URL")
 }
 
 model User {
   id        String   @id @default(uuid())
-  email     String   @unique
   name      String?
+  email     String   @unique
+  password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  //relations
-  events   Event[] @relation("EventCreator")
-  subEvents subEvent[]
+  events    Event[]    @relation("EventCreator")
+  subEvents SubEvent[]
 }
 
 model Event {
-  id          String       @id @default(uuid())
-  userId      String
+  id          String   @id @default(uuid())
   title       String
   description String
   date        DateTime
-  createdBy   String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @default(now())
-  
-  //relations
-  creator User @relation("EventCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy String
+  creator   User       @relation("EventCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  subEvents SubEvent[]
 }
 
-model subEvent {
-  id          String       @id @default(uuid())
-  userId      String
-  eventId     String
+model SubEvent {
+  id          String   @id @default(uuid())
   title       String
   description String
   date        DateTime
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @default(now())
-  
-  //relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId  String
+  eventId String
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
