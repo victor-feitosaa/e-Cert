@@ -16,7 +16,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   events    Event[]    @relation("EventCreator")
-  subEvents SubEvent[]
+  subEvents SubEvent[] 
 }
 
 model Event {
@@ -39,6 +39,7 @@ model SubEvent {
   date        DateTime
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  createdBy   String
 
   userId  String
   eventId String
