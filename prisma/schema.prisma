@@ -26,6 +26,8 @@ model Event {
   date        DateTime
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  location    String?
+  isPublic    Boolean  @default(true)
 
   createdBy String
   creator   User       @relation("EventCreator", fields: [createdBy], references: [id], onDelete: Cascade)
@@ -39,7 +41,6 @@ model SubEvent {
   date        DateTime
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  createdBy   String
 
   userId  String
   eventId String
