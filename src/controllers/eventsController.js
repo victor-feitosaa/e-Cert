@@ -78,8 +78,8 @@ export const createEvent = async (req, res) => {
       });
     }
 
-    // 4. CRIAR EVENTO - AGORA COM ID VÁLIDO!
-    console.log('📝 Criando evento para usuário:', req.user.id);
+    // 4. CRIAR EVENTO 
+    console.log(' Criando evento para usuário:', req.user.id);
     
     const event = await prisma.event.create({
       data: {
@@ -88,7 +88,7 @@ export const createEvent = async (req, res) => {
         date: eventDate,
         location: location?.trim() || null,
         isPublic: isPublic === undefined ? true : Boolean(isPublic),
-        createdBy: req.user.id  // ← AGORA TEM VALOR!
+        createdBy: req.user.id  
       },
       include: {
         creator: {

@@ -24,8 +24,8 @@ export const protect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('✅ Token decodificado:', decoded); // DEBUG
     
-    // 3. PEGAR O ID CORRETAMENTE - ISSO É CRÍTICO!
-    // Olha como seu token foi gerado: { userId: ... } ou { id: ... }?
+    // 3. PEGAR O ID CORRETAMENTE 
+    // como token foi gerado: { userId: ... } ou { id: ... }?
     const userId = decoded.userId || decoded.id; // ← ACEITA AMBOS
     
     if (!userId) {
@@ -35,10 +35,10 @@ export const protect = async (req, res, next) => {
       });
     }
 
-    // 4. Buscar usuário no banco - AGORA COM ID VÁLIDO!
+    // 4. Buscar usuário no banco 
     const user = await prisma.user.findUnique({
       where: { 
-        id: userId  // ← AGORA NÃO É MAIS UNDEFINED!
+        id: userId  
       },
       select: {
         id: true,
