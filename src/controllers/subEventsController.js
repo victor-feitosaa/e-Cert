@@ -2,68 +2,77 @@ import { prisma } from '../config/db.js'
 
 export const createSubEvent = async (req,res) => {
 
-    const { title, description, date, eventId, userId} = req.body;
-
-    const event = await prisma.event.findUnique({
-        where: {id: eventId} 
-    })
-
-    if (!event) {
-        return res.status(404).json({
-            status: 'fail',
-            message: 'Evento não encontrado'
-        })
-    }
-
-        if (!userId) {
-        return res.status(404).json({
-            status: 'fail',
-            message: 'Evento não encontrado'
-        })
-    }
-
-    if (!title?.trim()) {
-        return res.status(404).json({
-            status: 'fail',
-            message: 'Titulo é obrigatorio'
-
-        })
-    }
-
-    if (!description?.trim()) {
-        return res.status(404).json({
-            status: 'fail',
-            message: 'A descrição é obrigatoria'
-        })
-    }
-
-    if (!date) {
-        return res.status(404).json({
-            status: 'fail',
-            message: 'A data é obrigatoria'
-        })
-    }
-
-    const subEvent = await prisma.subEvent.create({
-        data:
-            {
-                title,
-                description,
-                date,
-                eventId: event.id,
-                userId
-            },
-
+    try {
         
-    });
+        const { title, description, date, eventId, userId} = req.body;
+    
+        const event = await prisma.event.findUnique({
+            where: {id: eventId} 
+        })
+    
+        if (!event) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'Evento não encontrado'
+            })
+        }
+    
+            if (!userId) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'Evento não encontrado'
+            })
+        }
+    
+        if (!title?.trim()) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'Titulo é obrigatorio'
+    
+            })
+        }
+    
+        if (!description?.trim()) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'A descrição é obrigatoria'
+            })
+        }
+    
+        if (!date) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'A data é obrigatoria'
+            })
+        }
+    
+        const subEvent = await prisma.subEvent.create({
+            data:
+                {
+                    title,
+                    description,
+                    date,
+                    eventId: event.id,
+                    userId
+                },
+    
+            
+        });
+    
+        res.status(201).json({
+            status: 'sucess',
+            data: {subEvent}
+        });
 
-    res.status(201).json({
-        status: 'sucess',
-        data: {subEvent}
-    });
 
 
-
+    } catch (error) {
+        console.error('Erro ao criar sub evento:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Erro ao criar sub evento'
+        });
+    }
 
 }
 
