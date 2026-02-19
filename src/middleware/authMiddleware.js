@@ -11,7 +11,9 @@ export const protect = async (req, res, next) => {
       token = req.cookies.jwt;
     } else if (req.headers.authorization?.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];
-    }
+    } 
+
+    console.log(req.header.authorization);
 
     if (!token) {
       return res.status(401).json({
@@ -22,7 +24,7 @@ export const protect = async (req, res, next) => {
 
     // 2. Verificar e decodificar token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('✅ Token decodificado:', decoded); // DEBUG
+    console.log('Token decodificado:', decoded); // DEBUG
     
     // 3. PEGAR O ID CORRETAMENTE 
     // como token foi gerado: { userId: ... } ou { id: ... }?
