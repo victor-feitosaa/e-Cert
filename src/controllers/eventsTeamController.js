@@ -4,10 +4,12 @@ export const createTeam = async (req, res) => {
 
     try {
         
-        const {name,  role, job, userId, eventId} = req.body;
+        const {name,  role, job, userId} = req.body;
+
+        const {id} = req.params;
     
         const event = await prisma.event.findUnique({
-            where : {id: eventId}
+            where : {id}
         });
     
         if (!event) {
@@ -67,6 +69,55 @@ export const createTeam = async (req, res) => {
         });
     }
 
+}
 
+export const getMyTeam = async (req, res) => {
+    try {
+        const {id} = req.params;
+
+        const team = await prisma.eventTeam.findMany({
+            where: { eventId: id },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name:true,
+                        email:true,
+                    },
+                },
+            },
+        });
+
+        if (!team) {
+            return res.status(404).json({
+                status: "fail",
+                message: "Time não encontrado",
+            });
+        }
+        console.log("olha:", team.userId)
+
+        // if (!req.user || req.user.id !== team.userId) {
+        //     return res.status(403).json({
+        //         status: 'fail',
+        //         message: 'Você não tem permissão para acessar este evento',
+        //     });
+        // }
+
+
+        res.status(200).json({
+            status: 'sucess',
+            data: {
+                team,
+            },
+        });
+        
+    } catch (error) {
+        console.log('Erro ao buscar time: ', error);
+        return res.status(500).json({
+            status: 'fail',
+            message: 'Erro interno ao buscar time',
+        });
+    };
 
 }
+

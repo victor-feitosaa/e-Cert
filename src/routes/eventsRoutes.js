@@ -9,7 +9,7 @@ import {
 } from '../controllers/eventsController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { isEventOwner } from '../middleware/eventMiddleware.js';
-import { createTeam } from '../controllers/eventsTeamController.js';
+import { createTeam, getMyTeam } from '../controllers/eventsTeamController.js';
 
 const router = express.Router();
 
@@ -28,6 +28,7 @@ router.post('/', createEvent);
 router.put('/:id', isEventOwner, updateEvent);
 router.delete('/:id', isEventOwner, deleteEvent);
 
-router.post('/createTeam', isEventOwner, createTeam)
+router.get('/:id/getMyTeam', isEventOwner, getMyTeam);
+router.post('/:id/createTeam', isEventOwner, createTeam)
 
 export default router;

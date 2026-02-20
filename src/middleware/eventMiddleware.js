@@ -2,11 +2,11 @@ import { prisma } from '../config/db.js';
 
 export const isEventOwner = async (req, res, next) => {
   try {
-    const {eventId} = req.body;
+    const { id } = req.params;
     const userId = req.user.id;
 
     const event = await prisma.event.findUnique({
-      where: { id: eventId },
+      where: { id},
       select: { createdBy: true },
     });
 
