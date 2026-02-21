@@ -121,3 +121,75 @@ export const getMyTeam = async (req, res) => {
 
 }
 
+export const updateMember = async (req,res) => {
+
+    try {
+
+        const {memberId} = req.params;
+        const updates = req.body;
+        const userId = req.user.id;
+
+        const existingMember = await prisma.eventTeam.findUnique({
+            where: {id: memberId },
+            select: { userId: true },
+        });
+
+        if(!existingMember) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'Membro não encontrado',
+            });
+        }
+
+        if (existingMember.userId !== userId) {
+            return res.status(403).json({
+                status: 'fail',
+                message: 'Você não tem permissão para atualizar os dados deste membro'
+            });
+        }
+
+        const dataToUpdate = {};
+
+        if(updates.name !== undefined) dataToUpdate.name = updates.name.trim();
+        if (updates.job !== undefined)dataToUpdate.job = updates.job.trim();
+        if (updates.role !== undefined)dataToUpdate.role = updates.role.trim();
+
+        const eventMember = await prisma.eventTeam.update({
+            where: { id: memberId },
+            data: dataToUpdate,
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+
+        res.status(200).json({
+            status: 'sucess',
+            data: {
+                eventMember,
+            },
+        });
+        
+    } catch (error) {
+        console.log("Erro ao atualizar membro do time: ", error);
+
+        
+        if (error.code === 'P2025') {
+            return res.status(404).json({
+                status: 'fail', 
+                message: 'Membro não encontrado',
+            });
+        }
+
+        res.status(500).json({
+            status: 'fail',
+            message: 'Erro interno ao atualizar membro'
+        })
+    }
+
+}

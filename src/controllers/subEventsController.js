@@ -174,7 +174,19 @@ export const updateSubEvent = async (req, res) => {
 
 
     } catch (error) {
+        console.log("Erro ao atualizar sub evento: ", error);
         
+        if (error.code === 'P2025') {
+            return res.status(404).json({
+                status: 'fail', 
+                message: 'Sub-evento não encontrado',
+            });
+        };
+
+        res.status(500).json({
+            status: 'fail',
+            message: 'Erro interno ao atualizar sub-evento'
+        });
     }
 
 }
