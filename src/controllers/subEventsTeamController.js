@@ -1,83 +1,75 @@
-import { prisma } from "../config/db.js"
+import { prisma } from "../config/db.js";
 
-export const createTeam = async (req, res) => {
+export const createSubMember = async (req, res) => {
 
     try {
-        
-        const {name,  role, job} = req.body;
-
+        const {subEventId} = req.params;
         const userId = req.user.id;
+        const {name, role, job} = req.body;
 
-        const {id} = req.params;
-    
-        const event = await prisma.event.findUnique({
-            where : {id}
+        const subEvent = await prisma.subEvent.findUnique({
+            where: { id: subEventId }
         });
-    
-        if (!event) {
-            return res.status(404).json({
+
+        if (!subEvent) {
+            return res.stauts(404).json({
                 status: "fail",
-                message: "Evento não encontrado"
+                message: "Sub-Evento não encontrado"
             });
         };
-    
 
         if (!userId) {
             return res.status(404).json({
-                status: "fail",
-                message: "User não validado"
+                status: 'fail',
+                message: 'User não validado'
             })
         };
-    
+
         if (!name?.trim()) {
             return res.status(404).json({
-                status: "fail",
-                message: "É obrigatório informar um nome"
+                status:'fail',
+                message: 'É obrigatório informar um nome'
             })
-        };
-    
+        }
 
-    
         if (!job?.trim()) {
             return res.status(404).json({
-                status: "fail",
-                message: "É obrigatório informar uma função"
+                status: 'fail',
+                message:'É obrigatório informar uma função'
             })
         };
-    
-        const team = await prisma.eventTeam.create({
+
+        const team = await prisma.subEventTeam.create({
             data: {
                 name,
                 role,
                 job,
-                eventId: event.id,
+                subEventId: subEvent.id,
                 userId
             },
         });
-    
+
         res.status(201).json({
-            status: "sucess",
-            message: "Time criado: ",
+            status: 'sucess',
+            message: "Membro criado: ",
             data: {team}
         });
 
-
     } catch (error) {
-        console.log("Erro ao criar time ", error);
+        console.log("Erro ao criar membro ", error);
         res.status(500).json({
-            status: "fail",
-            message: "Erro ao criar time"
+            status: 'fail',
+            message: "Erro interno ao criar membro"
         });
     }
-
 }
 
 export const getMyTeam = async (req, res) => {
     try {
-        const {id} = req.params;
+        const {subEventId} = req.params;
 
-        const team = await prisma.eventTeam.findMany({
-            where: { eventId: id },
+        const team = await prisma.subEventTeam.findMany({
+            where: { subEventId },
             include: {
                 user: {
                     select: {
@@ -95,15 +87,7 @@ export const getMyTeam = async (req, res) => {
                 message: "Time não encontrado",
             });
         }
-        console.log("olha:", team.userId)
-
-        // if (!req.user || req.user.id !== team.userId) {
-        //     return res.status(403).json({
-        //         status: 'fail',
-        //         message: 'Você não tem permissão para acessar este evento',
-        //     });
-        // }
-
+       
 
         res.status(200).json({
             status: 'sucess',
@@ -122,17 +106,16 @@ export const getMyTeam = async (req, res) => {
 
 }
 
-export const updateMember = async (req,res) => {
-
+export const updateSubMember = async (req, res) => {
     try {
-
+        
         const {memberId} = req.params;
         const updates = req.body;
         const userId = req.user.id;
 
-        const existingMember = await prisma.eventTeam.findUnique({
-            where: {id: memberId },
-            select: { userId: true },
+        const existingMember = await prisma.subEventTeam.findUnique({
+            where: {id: memberId},
+            select: { userId: true},
         });
 
         if(!existingMember) {
@@ -142,20 +125,20 @@ export const updateMember = async (req,res) => {
             });
         }
 
-        if (existingMember.userId !== userId) {
+        if (existingMember.userId !== userId ) {
             return res.status(403).json({
                 status: 'fail',
-                message: 'Você não tem permissão para atualizar os dados deste membro'
+                message: 'Você não tem permissão para atualizar este sub-evento'
             });
         }
 
         const dataToUpdate = {};
 
-        if(updates.name !== undefined) dataToUpdate.name = updates.name.trim();
-        if (updates.job !== undefined)dataToUpdate.job = updates.job.trim();
+        if(updates.name !== undefined)dataToUpdate.name = updates.name.trim();
+        if(updates.job !== undefined)dataToUpdate.job = updates.job.trim();
         if (updates.role !== undefined)dataToUpdate.role = updates.role.trim();
 
-        const eventMember = await prisma.eventTeam.update({
+        const subMember = await prisma.subEventTeam.update({
             where: { id: memberId },
             data: dataToUpdate,
             include: {
@@ -172,15 +155,14 @@ export const updateMember = async (req,res) => {
         res.status(200).json({
             status: 'sucess',
             data: {
-                eventMember,
+                subMember,
             },
         });
-        
-    } catch (error) {
-        console.log("Erro ao atualizar membro do time: ", error);
 
-        
-        if (error.code === 'P2025') {
+    } catch (error) {
+        console.log("Erro ao atualizar membor do time: ", error);
+
+                if (error.code === 'P2025') {
             return res.status(404).json({
                 status: 'fail', 
                 message: 'Membro não encontrado',
@@ -192,18 +174,17 @@ export const updateMember = async (req,res) => {
             message: 'Erro interno ao atualizar membro'
         })
     }
-
 }
 
-export const deleteMember = async (req,res) => {
+export const deleteSubMember = async (req, res) => {
     try {
         
         const {memberId} = req.params;
         const userId = req.user.id;
 
-        const existingMember = await prisma.eventTeam.findUnique ({
-            where: {id: memberId },
-            select: {  userId: true},
+        const existingMember = await prisma.subEventTeam.findUnique({
+            where: {id: memberId},
+            select: { userId: true },
         });
 
         if (!existingMember){
@@ -220,18 +201,17 @@ export const deleteMember = async (req,res) => {
             });
         }
 
-        await prisma.eventTeam.delete({
+        await prisma.subEventTeam.delete({
             where: {id: memberId},
         });
-
+        
         res.status(204).json({
             status: 'sucess',
-            data:null,
-        })
-        
+            data: null,
+        });
 
     } catch (error) {
-            console.error('Erro ao deletar membro: ', error);
+        console.error('Erro ao deletar membro: ', error);
 
         if (error.code === 'P2025') {
             return res.status(404).json({
@@ -244,6 +224,5 @@ export const deleteMember = async (req,res) => {
             status: 'error',
             message: 'Erro interno ao deletar membro',
         });
-    
     }
 }

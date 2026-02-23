@@ -4,7 +4,11 @@ export const createSubEvent = async (req,res) => {
 
     try {
         
-        const { title, description, date, eventId, userId} = req.body;
+        const { title, description, date} = req.body;
+
+        const {eventId} = req.params;
+
+        const userId = req.user.id;
     
         const event = await prisma.event.findUnique({
             where: {id: eventId} 
@@ -20,7 +24,7 @@ export const createSubEvent = async (req,res) => {
             if (!userId) {
             return res.status(404).json({
                 status: 'fail',
-                message: 'Evento não encontrado'
+                message: 'User não encontrado'
             })
         }
     
@@ -86,6 +90,14 @@ export const getSubEvents = async (req, res) => {
         const [subEvents, total ] = await Promise.all([
             prisma.subEvent.findMany({
                 where: {eventId: id},
+                include:{
+                    user:{
+                        select: {    
+                            id: true,
+                            name: true,
+                            email: true,
+                    }}
+                }
             }),
             prisma.subEvent.count({
                 where: {eventId: id},
