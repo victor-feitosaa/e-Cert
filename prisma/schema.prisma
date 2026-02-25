@@ -14,12 +14,15 @@ model User {
   password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  role      Role     @default(USER)
+  systemRole      SystemRole     @default(USER)
 
   events    Event[]    @relation("EventCreator")
-  subEvents SubEvent[] 
+  subEvents    SubEvent[]    @relation("SubEventCreator")
   eventTeam EventTeam[]
   subEventTeam SubEventTeam[]
+  grantedPermissions EventPermission[] @relation("Granter")
+  receveidPermissions EventPermission[] @relation("GrantedUser")
+  
 }
 
 model Event {
@@ -36,7 +39,8 @@ model Event {
   creator   User       @relation("EventCreator", fields: [createdBy], references: [id], onDelete: Cascade)
   subEvents SubEvent[]
   eventTeam EventTeam[]
-
+  eventPermissions EventPermission[]
+  
 }
 
 model SubEvent {
@@ -47,13 +51,55 @@ model SubEvent {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  userId  String
+  createdBy String
   eventId String
 
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creator  User  @relation("SubEventCreator", fields: [createdBy], references: [id], onDelete: Cascade)
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
   subEvent SubEventTeam[]
+
 }
+
+
+//PERMISSIONS
+
+enum SystemRole {
+  ADMIN
+  MODERATOR
+  USER
+}
+
+enum EventPermissionType {
+  MANAGE_EVENT
+  MANAGE_SUBEVENTS
+  MANAGE_ATTENDEES
+  MANAGE_PERMISSIONS
+  VIEW_ANALYTICS
+}
+
+enum EventRole {
+  ORGANIZER
+  MODERATOR
+}
+
+model EventPermission {
+  id  String  @id @default(uuid())
+  userId  String
+  eventId String
+  role  EventRole @default(MODERATOR)
+  permissions EventPermissionType[]
+  grantedBy String
+  grantedAt DateTime  @default(now())
+  expiresAt DateTime?
+
+  user  User  @relation("GrantedUser", fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  granter User  @relation("Granter", fields: [grantedBy], references: [id])
+
+  @@unique([userId, eventId])
+  @@map("event_permissions")
+}
+
 
 //EQUIPES
 
@@ -61,7 +107,7 @@ model EventTeam {
   id    String  @id @default(uuid())
   name  String 
   job   String
-  role  Role?
+  role  SystemRole?
   
   userId  String
   eventId String
@@ -71,13 +117,14 @@ model EventTeam {
 
   user User @relation(fields: [userId], references: [id])
   event Event @relation(fields: [eventId], references: [id])
+
 }
 
 model SubEventTeam {
   id    String  @id @default(uuid())
   name  String 
   job   String
-  role  Role?
+  role  SystemRole?
   
   userId  String
   subEventId String
@@ -87,12 +134,9 @@ model SubEventTeam {
 
   user User @relation(fields: [userId], references: [id])
   subEvent SubEvent @relation(fields: [subEventId], references: [id])
+
 }
 
 
-enum Role {
-  ADMIN
-  ORGANIZER
-  MODERATOR
-  USER
-}
+
+
