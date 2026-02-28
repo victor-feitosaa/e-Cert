@@ -1,4 +1,6 @@
 import { prisma } from '../config/db.js';
+import eventPermissionService from '../services/eventPermissionService.js';
+import EventPermissionService  from "../services/eventPermissionService.js"
 
 // Helper para validação de datas
 const validateEventDates = (eventData) => {
@@ -100,9 +102,12 @@ export const createEvent = async (req, res) => {
         }
       }
     });
-
     console.log('✅ Evento criado:', event.id);
 
+    //transformar automaticamente em organizer do evento
+    await eventPermissionService.assignOrganizerRole(req.user.id, event.id);
+
+    
     res.status(201).json({
       status: 'success',
       data: { event }

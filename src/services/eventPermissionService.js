@@ -1,4 +1,5 @@
-import { EventPermissionType, EventRole } from "../config/db.js"
+import { EventPermissionType, EventRole } from "@prisma/client"
+import { prisma } from "../config/db.js"
 
 class EventPermissionService {
 
@@ -97,3 +98,5 @@ class EventPermissionService {
 
 
 }
+
+export default new EventPermissionService();
