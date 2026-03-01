@@ -15,6 +15,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   systemRole      SystemRole     @default(USER)
+  status  Status  @default(ACTIVE)
 
   events    Event[]    @relation("EventCreator")
   subEvents    SubEvent[]    @relation("SubEventCreator")
@@ -63,31 +64,29 @@ model SubEvent {
 
 //PERMISSIONS
 
+enum Status {
+  ACTIVE
+  INATIVE
+  PARCIAL
+}
+
 enum SystemRole {
   ADMIN
   MODERATOR
   USER
 }
 
-enum EventPermissionType {
-  MANAGE_EVENT
-  MANAGE_SUBEVENTS
-  MANAGE_ATTENDEES
-  MANAGE_PERMISSIONS
-  VIEW_ANALYTICS
-}
-
 enum EventRole {
   ORGANIZER
   MODERATOR
+  ATTENDEE
 }
 
 model EventPermission {
   id  String  @id @default(uuid())
   userId  String
   eventId String
-  role  EventRole @default(MODERATOR)
-  permissions EventPermissionType[]
+  role  EventRole 
   grantedBy String
   grantedAt DateTime  @default(now())
   expiresAt DateTime?

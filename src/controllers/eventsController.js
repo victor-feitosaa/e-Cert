@@ -1,6 +1,6 @@
 import { prisma } from '../config/db.js';
 import eventPermissionService from '../services/eventPermissionService.js';
-import EventPermissionService  from "../services/eventPermissionService.js"
+
 
 // Helper para validação de datas
 const validateEventDates = (eventData) => {
@@ -213,6 +213,7 @@ export const getEvents = async (req, res) => {
 export const getEventById = async (req, res) => {
   try {
     const { id } = req.params;
+    
 
     const event = await prisma.event.findUnique({
       where: { id },
@@ -277,6 +278,8 @@ export const updateEvent = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
     const userId = req.user.id;
+
+
 
     // 1. Verificar se evento existe e se usuário é o criador
     const existingEvent = await prisma.event.findUnique({

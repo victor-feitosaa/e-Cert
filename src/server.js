@@ -7,6 +7,7 @@ import { connectDB, disconnectDB } from './config/db.js';
 import eventsRoutes from './routes/eventsRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import subEventsRoutes from './routes/subEventsRoutes.js';
+import testeRoutes from "./routes/testeRoutes.js"
 
 config();
 connectDB();
@@ -22,6 +23,7 @@ app.use(cookieParser());
 app.use("/events", eventsRoutes);
 app.use("/auth", authRoutes);
 app.use("/subevents", subEventsRoutes);
+app.use("/testes", testeRoutes)
 
 const PORT = 5001;
 app.listen(PORT, () => {
