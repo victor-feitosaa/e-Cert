@@ -1,6 +1,7 @@
 import { prisma } from "../config/db.js"
 import bcrypt from "bcryptjs";
 import { generateToken } from "../utils/generateToken.js";
+import UserRepository from "../repository/UserRepository.js";
 
 
 const register = async (req, res) => {
@@ -34,14 +35,7 @@ const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     //Criar User
-    const user = await prisma.user.create({
-        data: {
-            name,
-            email,
-            password: hashedPassword,
-        },
-    });
-
+    const user = await UserRepository.create(name, email, password);
     //gerar token JWT
     const token = generateToken(user.id, res)
 
