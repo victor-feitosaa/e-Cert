@@ -35,7 +35,7 @@ const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     //Criar User
-    const user = await UserRepository.create(name, email, password);
+    const user = await UserRepository.create(name, email, hashedPassword);
     //gerar token JWT
     const token = generateToken(user.id, res)
 

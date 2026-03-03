@@ -1,4 +1,6 @@
 import { prisma } from '../config/db.js'
+import eventService from '../services/eventService.js';
+import subEventService from "../services/subEventService.js"
 
 export const createSubEvent = async (req,res) => {
 
@@ -10,9 +12,8 @@ export const createSubEvent = async (req,res) => {
 
         const userId = req.user.id;
     
-        const event = await prisma.event.findUnique({
-            where: {id: eventId} 
-        })
+        const event = await eventService.getById(eventId);
+        
     
         if (!event) {
             return res.status(404).json({
@@ -50,19 +51,8 @@ export const createSubEvent = async (req,res) => {
             })
         }
     
-        const subEvent = await prisma.subEvent.create({
-            data:
-                {
-                    title,
-                    description,
-                    date,
-                    eventId: event.id,
-                    userId
-                },
-    
-            
-        });
-    
+        const subEvent = await subEventService.create(title, description, date, eventId, userId )
+        
         res.status(201).json({
             status: 'sucess',
             data: {subEvent}

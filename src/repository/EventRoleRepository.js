@@ -1,6 +1,6 @@
 import { prisma } from '../config/db.js'
 
-class EventPermissionRepository {
+class EventRoleRepository {
 
     async findUserByEvent(userId, eventId) {
         return prisma.eventPermission.findUnique({
@@ -48,4 +48,4 @@ class EventPermissionRepository {
 
 }
 
-export default new EventPermissionRepository();
+export default new EventRoleRepository();

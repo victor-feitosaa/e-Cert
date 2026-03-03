@@ -1,5 +1,6 @@
 import { prisma } from '../config/db.js';
-import eventPermissionService from '../services/eventPermissionService.js';
+import EventRoleService from '../services/EventRoleService.js';
+import eventService from '../services/eventService.js';
 
 
 // Helper para validação de datas
@@ -22,16 +23,8 @@ const validateEventDates = (eventData) => {
   return errors;
 };
 
-// @desc    Criar novo evento
-// @route   POST /api/events
-// @access  Private
-// controllers/eventsController.js
 export const createEvent = async (req, res) => {
   try {
-    // DEBUG - Ver o que chegou
-    console.log('👤 req.user:', req.user);
-    console.log('📦 req.body:', req.body);
-
     // 1. VERIFICAÇÃO SUPER EXPLÍCITA
     if (!req.user) {
       return res.status(401).json({
@@ -81,31 +74,11 @@ export const createEvent = async (req, res) => {
     }
 
     // 4. CRIAR EVENTO 
-    console.log(' Criando evento para usuário:', req.user.id);
-    
-    const event = await prisma.event.create({
-      data: {
-        title: title.trim(),
-        description: description.trim(),
-        date: eventDate,
-        location: location?.trim() || null,
-        isPublic: isPublic === undefined ? true : Boolean(isPublic),
-        createdBy: req.user.id  
-      },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
-    });
-    console.log('✅ Evento criado:', event.id);
+  
+    const event = await eventService.create(title, description, eventDate, location, isPublic, req.user.id) 
 
     //transformar automaticamente em organizer do evento
-    await eventPermissionService.assignOrganizerRole(req.user.id, event.id);
+    await EventRoleService.assignOrganizerRole(req.user.id, event.id);
 
     
     res.status(201).json({
@@ -140,51 +113,41 @@ export const createEvent = async (req, res) => {
   }
 };
 
-// @desc    Buscar todos os eventos (públicos)
-// @route   GET /api/events
-// @access  Public
 export const getEvents = async (req, res) => {
   try {
-    const { page = 1, limit = 10, upcoming = 'true' } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+  
+    const [events, total] = await eventService.getUpcomingAndCount(req.query);
+
+    const { page = 1, limit = 10 } = req.query;
+    const totalPages = Math.ceil(total / parseInt(limit));
+
+    res.json({
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages
+      },
+      events,
+    });
+
+  } catch (error) {
+    console.error('Erro ao buscar eventos:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Erro interno ao buscar eventos',
+    });
+  }
+};
+
+export const getMyEvents = async (req, res) => {
+  try {
+
+    const id = req.user.id;
+    const { page = 1, limit = 10 } = req.query;
+
+    const [events, total] = await eventService.getLoggedUserEvents(req.query, id)
     
-    const whereClause = {
-      isPublic: true,
-      ...(upcoming === 'true' && {
-        date: {
-          gte: new Date(),
-        },
-      }),
-    };
-
-    const [events, total] = await Promise.all([
-      prisma.event.findMany({
-        where: whereClause,
-        include: {
-          creator: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          _count: {
-            select: {
-              subEvents: true,
-            },
-          },
-        },
-        orderBy: {
-          date: 'asc',
-        },
-        skip,
-        take: parseInt(limit),
-      }),
-      prisma.event.count({
-        where: whereClause,
-      }),
-    ]);
-
     res.status(200).json({
       status: 'success',
       results: events.length,
@@ -199,46 +162,19 @@ export const getEvents = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Erro ao buscar eventos:', error);
+    console.error('Erro ao buscar eventos do usuário:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Erro interno ao buscar eventos',
+      message: 'Erro interno ao buscar seus eventos',
     });
   }
 };
 
-// @desc    Buscar evento específico
-// @route   GET /api/events/:id
-// @access  Public
 export const getEventById = async (req, res) => {
   try {
     const { id } = req.params;
-    
 
-    const event = await prisma.event.findUnique({
-      where: { id },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        subEvents: {
-          orderBy: {
-            date: 'asc',
-          },
-          select: {
-            id: true,
-            title: true,
-            description: true,
-            date: true,
-            createdAt: true,
-          },
-        },
-      },
-    });
+    const event = await eventService.getById(id);
 
     if (!event) {
       return res.status(404).json({
@@ -270,22 +206,14 @@ export const getEventById = async (req, res) => {
   }
 };
 
-// @desc    Atualizar evento
-// @route   PUT /api/events/:id
-// @access  Private (apenas criador)
 export const updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
     const userId = req.user.id;
 
-
-
     // 1. Verificar se evento existe e se usuário é o criador
-    const existingEvent = await prisma.event.findUnique({
-      where: { id },
-      select: { createdBy: true },
-    });
+    const existingEvent = await eventService.getById(id);
 
     if (!existingEvent) {
       return res.status(404).json({
@@ -327,19 +255,7 @@ export const updateEvent = async (req, res) => {
     }
 
     // 3. Atualizar evento
-    const event = await prisma.event.update({
-      where: { id },
-      data: dataToUpdate,
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
+    const event = await eventService.update(dataToUpdate, id)
 
     res.status(200).json({
       status: 'success',
@@ -364,19 +280,13 @@ export const updateEvent = async (req, res) => {
   }
 };
 
-// @desc    Deletar evento
-// @route   DELETE /api/events/:id
-// @access  Private (apenas criador)
 export const deleteEvent = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
     // Verificar se evento existe e se usuário é o criador
-    const existingEvent = await prisma.event.findUnique({
-      where: { id },
-      select: { createdBy: true },
-    });
+    const existingEvent = await eventService.getById(id);
 
     if (!existingEvent) {
       return res.status(404).json({
@@ -393,9 +303,7 @@ export const deleteEvent = async (req, res) => {
     }
 
     // Deletar evento (cascade vai deletar subevents automaticamente)
-    await prisma.event.delete({
-      where: { id },
-    });
+    await eventService.delete(id);
 
     res.status(204).json({
       status: 'success',
@@ -414,58 +322,6 @@ export const deleteEvent = async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: 'Erro interno ao deletar evento',
-    });
-  }
-};
-
-// @desc    Buscar eventos do usuário logado
-// @route   GET /api/events/my
-// @access  Private
-export const getMyEvents = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { page = 1, limit = 10 } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    const [events, total] = await Promise.all([
-      prisma.event.findMany({
-        where: { createdBy: userId },
-        include: {
-          _count: {
-            select: {
-              subEvents: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        skip,
-        take: parseInt(limit),
-      }),
-      prisma.event.count({
-        where: { createdBy: userId },
-      }),
-    ]);
-
-    res.status(200).json({
-      status: 'success',
-      results: events.length,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / parseInt(limit)),
-      },
-      data: {
-        events,
-      },
-    });
-  } catch (error) {
-    console.error('Erro ao buscar eventos do usuário:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Erro interno ao buscar seus eventos',
     });
   }
 };

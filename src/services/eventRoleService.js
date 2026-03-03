@@ -1,18 +1,18 @@
-import EventPermissionRepository from "../repository/EventPermissionRepository.js";
+import EventRoleRepository from "../repository/EventRoleRepository.js";
 import UserRepository from "../repository/UserRepository.js";
 import emailService from "./emailService.js";
 
 
-class EventPermissionService {
+class EventRoleService {
 
     async assignOrganizerRole(userId, eventId) {
-        const existing = await EventPermissionRepository.findUserByEvent(userId, eventId);
+        const existing = await EventRoleRepository.findUserByEvent(userId, eventId);
 
         if (existing) {
             return existing;
         }
 
-        return await EventPermissionRepository.create(userId, eventId, 'ORGANIZER');
+        return await EventRoleRepository.create(userId, eventId, 'ORGANIZER');
     };
 
     async isOrganizer(userId, eventId) {
@@ -24,7 +24,7 @@ class EventPermissionService {
     }
 
     async hasRole(userId, eventId, role) {
-        return !!await EventPermissionRepository.findUserByEventAndRole(userId, eventId, role);
+        return !!await EventRoleRepository.findUserByEventAndRole(userId, eventId, role);
     }
 
     async inviteModerator(eventId, email, granter) {
@@ -43,10 +43,10 @@ class EventPermissionService {
 
         }
 
-        const response = await EventPermissionRepository.create(user.id, eventId, 'MODERATOR', granter)
+        const response = await EventRoleRepository.create(user.id, eventId, 'MODERATOR', granter)
 
         await emailService.sendEmail(email, `Convite para moderador', 'Você foi convidado para ser moderador do evento ${response.event.title} !`)
     }
 }
 
-export default new EventPermissionService();
+export default new EventRoleService();
