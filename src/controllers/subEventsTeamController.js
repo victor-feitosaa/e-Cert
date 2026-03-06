@@ -1,4 +1,6 @@
 import { prisma } from "../config/db.js";
+import subEventMemberService from "../services/subEventMemberService.js";
+import subEventService from "../services/subEventService.js";
 
 export const createSubMember = async (req, res) => {
 
@@ -7,9 +9,7 @@ export const createSubMember = async (req, res) => {
         const userId = req.user.id;
         const {name, role, job} = req.body;
 
-        const subEvent = await prisma.subEvent.findUnique({
-            where: { id: subEventId }
-        });
+        const subEvent = await subEventService.findById(subEventId);
 
         if (!subEvent) {
             return res.stauts(404).json({
@@ -39,20 +39,12 @@ export const createSubMember = async (req, res) => {
             })
         };
 
-        const team = await prisma.subEventTeam.create({
-            data: {
-                name,
-                role,
-                job,
-                subEventId: subEvent.id,
-                userId
-            },
-        });
+        const member = await subEventMemberService.create(name, role, job, subEventId, userId);
 
         res.status(201).json({
             status: 'sucess',
             message: "Membro criado: ",
-            data: {team}
+            data: {member}
         });
 
     } catch (error) {
@@ -68,18 +60,7 @@ export const getMyTeam = async (req, res) => {
     try {
         const {subEventId} = req.params;
 
-        const team = await prisma.subEventTeam.findMany({
-            where: { subEventId },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name:true,
-                        email:true,
-                    },
-                },
-            },
-        });
+        const team = await subEventMemberService.getMembersBysubEvent(subEventId);
 
         if (!team) {
             return res.status(404).json({
@@ -113,10 +94,7 @@ export const updateSubMember = async (req, res) => {
         const updates = req.body;
         const userId = req.user.id;
 
-        const existingMember = await prisma.subEventTeam.findUnique({
-            where: {id: memberId},
-            select: { userId: true},
-        });
+        const existingMember = await subEventMemberService.getMemberById(memberId);
 
         if(!existingMember) {
             return res.status(404).json({
@@ -138,19 +116,7 @@ export const updateSubMember = async (req, res) => {
         if(updates.job !== undefined)dataToUpdate.job = updates.job.trim();
         if (updates.role !== undefined)dataToUpdate.role = updates.role.trim();
 
-        const subMember = await prisma.subEventTeam.update({
-            where: { id: memberId },
-            data: dataToUpdate,
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
-        });
+        const subMember = await subEventMemberService.update(memberId, dataToUpdate);
 
         res.status(200).json({
             status: 'sucess',
@@ -182,10 +148,7 @@ export const deleteSubMember = async (req, res) => {
         const {memberId} = req.params;
         const userId = req.user.id;
 
-        const existingMember = await prisma.subEventTeam.findUnique({
-            where: {id: memberId},
-            select: { userId: true },
-        });
+        const existingMember = await subEventMemberService.getMemberById(memberId);
 
         if (!existingMember){
             return res.status(404).json({
@@ -201,9 +164,7 @@ export const deleteSubMember = async (req, res) => {
             });
         }
 
-        await prisma.subEventTeam.delete({
-            where: {id: memberId},
-        });
+        await subEventMemberService.delete(memberId);
         
         res.status(204).json({
             status: 'sucess',

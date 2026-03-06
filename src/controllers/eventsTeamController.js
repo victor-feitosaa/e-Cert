@@ -1,6 +1,8 @@
 import { prisma } from "../config/db.js"
+import eventMemberService from "../services/eventMemberService.js";
+import eventService from "../services/eventService.js";
 
-export const createTeam = async (req, res) => {
+export const createTeamMember = async (req, res) => {
 
     try {
         
@@ -10,9 +12,7 @@ export const createTeam = async (req, res) => {
 
         const {id} = req.params;
     
-        const event = await prisma.event.findUnique({
-            where : {id}
-        });
+        const event = await eventService.getById(id);
     
         if (!event) {
             return res.status(404).json({
@@ -36,8 +36,6 @@ export const createTeam = async (req, res) => {
             })
         };
     
-
-    
         if (!job?.trim()) {
             return res.status(404).json({
                 status: "fail",
@@ -45,28 +43,20 @@ export const createTeam = async (req, res) => {
             })
         };
     
-        const team = await prisma.eventTeam.create({
-            data: {
-                name,
-                role,
-                job,
-                eventId: event.id,
-                userId
-            },
-        });
+        const team = await eventMemberService.create(name, role, job, event.id, userId);
     
         res.status(201).json({
             status: "sucess",
-            message: "Time criado: ",
+            message: "Membro adicionado ao time: ",
             data: {team}
         });
 
 
     } catch (error) {
-        console.log("Erro ao criar time ", error);
+        console.log("Erro ao criar mwmbro ", error);
         res.status(500).json({
             status: "fail",
-            message: "Erro ao criar time"
+            message: "Erro ao criar membro"
         });
     }
 
@@ -76,18 +66,7 @@ export const getMyTeam = async (req, res) => {
     try {
         const {id} = req.params;
 
-        const team = await prisma.eventTeam.findMany({
-            where: { eventId: id },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name:true,
-                        email:true,
-                    },
-                },
-            },
-        });
+        const team = await eventMemberService.getMembersByEvent(id);
 
         if (!team) {
             return res.status(404).json({
@@ -95,16 +74,7 @@ export const getMyTeam = async (req, res) => {
                 message: "Time não encontrado",
             });
         }
-        console.log("olha:", team.userId)
-
-        // if (!req.user || req.user.id !== team.userId) {
-        //     return res.status(403).json({
-        //         status: 'fail',
-        //         message: 'Você não tem permissão para acessar este evento',
-        //     });
-        // }
-
-
+        
         res.status(200).json({
             status: 'sucess',
             data: {
@@ -130,10 +100,7 @@ export const updateMember = async (req,res) => {
         const updates = req.body;
         const userId = req.user.id;
 
-        const existingMember = await prisma.eventTeam.findUnique({
-            where: {id: memberId },
-            select: { userId: true },
-        });
+        const existingMember = await eventMemberService.getMemberById(memberId);
 
         if(!existingMember) {
             return res.status(404).json({
@@ -155,19 +122,7 @@ export const updateMember = async (req,res) => {
         if (updates.job !== undefined)dataToUpdate.job = updates.job.trim();
         if (updates.role !== undefined)dataToUpdate.role = updates.role.trim();
 
-        const eventMember = await prisma.eventTeam.update({
-            where: { id: memberId },
-            data: dataToUpdate,
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
-        });
+        const eventMember = await eventMemberService.update(memberId, dataToUpdate);
 
         res.status(200).json({
             status: 'sucess',
@@ -201,10 +156,7 @@ export const deleteMember = async (req,res) => {
         const {memberId} = req.params;
         const userId = req.user.id;
 
-        const existingMember = await prisma.eventTeam.findUnique ({
-            where: {id: memberId },
-            select: {  userId: true},
-        });
+        const existingMember = await eventMemberService.getMemberById(memberId)
 
         if (!existingMember){
             return res.status(404).json({
@@ -220,15 +172,12 @@ export const deleteMember = async (req,res) => {
             });
         }
 
-        await prisma.eventTeam.delete({
-            where: {id: memberId},
-        });
+        await eventMemberService.delete(memberId);
 
-        res.status(204).json({
+        res.status(200).json({
             status: 'sucess',
-            data:null,
+            message: 'Membro deletado.'
         })
-        
 
     } catch (error) {
             console.error('Erro ao deletar membro: ', error);

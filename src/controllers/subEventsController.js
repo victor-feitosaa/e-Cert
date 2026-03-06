@@ -1,4 +1,5 @@
 import { prisma } from '../config/db.js'
+import SubEventRepository from '../repository/SubEventRepository.js';
 import eventService from '../services/eventService.js';
 import subEventService from "../services/subEventService.js"
 
@@ -14,7 +15,8 @@ export const createSubEvent = async (req,res) => {
     
         const event = await eventService.getById(eventId);
         
-    
+        
+
         if (!event) {
             return res.status(404).json({
                 status: 'fail',
@@ -77,22 +79,7 @@ export const getSubEvents = async (req, res) => {
         const {id} = req.params;
 
 
-        const [subEvents, total ] = await Promise.all([
-            prisma.subEvent.findMany({
-                where: {eventId: id},
-                include:{
-                    user:{
-                        select: {    
-                            id: true,
-                            name: true,
-                            email: true,
-                    }}
-                }
-            }),
-            prisma.subEvent.count({
-                where: {eventId: id},
-            }),
-        ]);
+        const [subEvents, total ] = await subEventService.getAllSubEventsOfEvent(id);
 
         res.status(200).json({
             status: 'sucess',
@@ -119,10 +106,7 @@ export const updateSubEvent = async (req, res) => {
         const updates = req.body;
         const userId = req.user.id;
 
-        const existingSubEvent = await prisma.subEvent.findUnique({
-            where: { id },
-            select: { userId: true },
-        });
+        const existingSubEvent = await SubEventRepository.findById(id);
 
         if (!existingSubEvent) {
             return res.status(404).json({
@@ -131,7 +115,7 @@ export const updateSubEvent = async (req, res) => {
             });
         }
 
-        if (existingSubEvent.userId !== userId) {
+        if (existingSubEvent.createdBy !== userId) {
             return res.status(403).json({
                 status: 'fail',
                 message: 'Você não tem permissão para atualizar este sub-evento'
@@ -153,19 +137,7 @@ export const updateSubEvent = async (req, res) => {
             dataToUpdate.date = newDate;
         }
 
-        const subEvent = await prisma.subEvent.update({
-            where: { id },
-            data: dataToUpdate,
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
-        });
+        const subEvent = await subEventService.update(dataToUpdate, id);
 
         res.status(200).json({
             status: 'sucess',
@@ -200,10 +172,7 @@ export const deleteSubEvent = async (req, res) => {
         const {id} = req.params;
         const userId = req.user.id;
 
-        const existingSubEvent = await prisma.subEvent.findUnique({
-            where: { id },
-            select: { userId: true},
-        });
+        const existingSubEvent = await subEventService.findById(id);
 
         if (!existingSubEvent) {
             return res.status(404).json({
@@ -212,16 +181,14 @@ export const deleteSubEvent = async (req, res) => {
             });
         }
 
-        if (existingSubEvent.userId !== userId) {
+        if (existingSubEvent.createdBy !== userId) {
             return res.status(403).json({
                 status: 'fail',
                 message: 'Você não tem permissão para deletar este sub-evento'
             });
         }
 
-        await prisma.subEvent.delete({
-            where: { id },
-        });
+        await subEventService.delete(id);
 
         res.status(204).json({
             status: 'sucess',
