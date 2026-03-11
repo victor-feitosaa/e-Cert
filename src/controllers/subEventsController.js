@@ -9,11 +9,11 @@ export const createSubEvent = async (req,res) => {
         
         const { title, description, date} = req.body;
 
-        const {eventId} = req.params;
+        const {id} = req.params;
 
         const userId = req.user.id;
     
-        const event = await eventService.getById(eventId);
+        const event = await eventService.getById(id);
         
         
 
@@ -53,7 +53,7 @@ export const createSubEvent = async (req,res) => {
             })
         }
     
-        const subEvent = await subEventService.create(title, description, date, eventId, userId )
+        const subEvent = await subEventService.create(title, description, date, id, userId )
         
         res.status(201).json({
             status: 'sucess',

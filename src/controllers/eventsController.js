@@ -184,7 +184,7 @@ export const getEventById = async (req, res) => {
     }
 
     // Se não for público e usuário não for o criador
-    if (!event.isPublic && (!req.user || req.user.id !== event.createdBy)) {
+    if (!event.isPublic) {
       return res.status(403).json({
         status: 'fail',
         message: 'Você não tem permissão para acessar este evento',
@@ -222,12 +222,6 @@ export const updateEvent = async (req, res) => {
       });
     }
 
-    if (existingEvent.createdBy !== userId) {
-      return res.status(403).json({
-        status: 'fail',
-        message: 'Você não tem permissão para atualizar este evento',
-      });
-    }
 
     // 2. Preparar dados para atualização
     const dataToUpdate = {};
@@ -325,3 +319,39 @@ export const deleteEvent = async (req, res) => {
     });
   }
 };
+
+
+export const inviteModerator = async (req, res) => {
+
+  try {
+    
+    const {id} = req.params;
+    const userId = req.user.id;
+    const {email} = req.params
+
+    const existingEvent = await eventService.getById(id);
+
+    if(!existingEvent){
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Evento não encontrado'
+      })
+    }
+
+    await EventRoleService.inviteModerator(id, email, userId);
+
+    res.status(200).json({
+      status: 'sucess',
+      message: `Convite de moderador enviado á ${email} para o evento ${existingEvent.title}`
+    })
+
+
+  } catch (error) {
+    console.log("Erro ao convidar moderador ", error);
+    res.status(500).json({
+      status: 'fail',
+      message: 'Erro ao convidar moderador '
+    })
+  }
+
+}

@@ -10,6 +10,8 @@ export const isEventOwner = async (req, res, next) => {
       select: { createdBy: true },
     });
 
+    
+
     if (!event) {
       return res.status(404).json({
         status: 'fail',

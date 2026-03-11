@@ -1,4 +1,4 @@
-import { prisma } from '../config/db.js'
+import { prisma } from "../config/db.js"
 
 class UserRepository {
 
@@ -19,6 +19,18 @@ class UserRepository {
                 status
             }
         });
+    }
+
+    async update(name, email, password, status) {
+        return prisma.user.update({
+            where: {email},
+            data: {
+                name,
+                email,
+                password,
+                status
+            }
+        })
     }
 
 

@@ -6,11 +6,13 @@ import {
   updateEvent,
   deleteEvent,
   getMyEvents,
+  inviteModerator,
 } from '../controllers/eventsController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { isEventOwner } from '../middleware/eventMiddleware.js';
 import { createTeamMember, deleteMember, getMyTeam, updateMember } from '../controllers/eventsTeamController.js';
 import { convidarMod } from '../controllers/testController.js';
+import { hasRole } from '../middleware/roleMiddleware.js';
 
 const router = express.Router();
 
@@ -26,8 +28,11 @@ router.get('/my/events', getMyEvents);
 router.post('/', createEvent);
 
 // Rotas que requerem ser dono do evento
-router.put('/:id', isEventOwner, updateEvent);
+router.put('/:id', hasRole, updateEvent);
 router.delete('/:id', isEventOwner, deleteEvent);
+
+// Convidar Moderador
+router.post('/:id/invite/:email', isEventOwner, inviteModerator);
 
 router.get('/:id/getMyTeam', isEventOwner, getMyTeam);
 router.post('/:id/createMember', isEventOwner, createTeamMember);
