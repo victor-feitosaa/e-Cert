@@ -1,7 +1,6 @@
 import { prisma } from "../config/db.js"
 import bcrypt from "bcryptjs";
 import { generateToken } from "../utils/generateToken.js";
-import UserRepository from "../repository/UserRepository.js";
 import userService from "../services/userService.js";
 
 
@@ -20,8 +19,6 @@ const register = async (req, res) => {
                 error: "Email e senha são obrigatórios",
             });
         }
-
-        console.log("AQUI CONTROLLER")
 
         const user = await userService.createAccount(name, email, password);
 
@@ -46,19 +43,6 @@ const register = async (req, res) => {
             error: "erro interno"
         })
     }
-
-
-    // res.status(201).json({
-    //     status: "sucess",
-    //     data: {
-    //         user: {
-    //             id: user.id,
-    //             name: name,
-    //             email: email,
-    //         },
-    //         token,
-    //     },
-    // });
 };
 
 
