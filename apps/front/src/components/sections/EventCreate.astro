@@ -1,0 +1,24 @@
+---
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import CreateEvent from "../Create_Event"
+
+---
+<section class="min-h-screen bg-primary text-accent">
+
+    <CreateEvent client:load onBack={() => setPage("teste")}/>
+
+</section>

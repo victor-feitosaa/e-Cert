@@ -3,6 +3,8 @@ import cookieParser from 'cookie-parser';
 import { config } from "dotenv"
 import { connectDB, disconnectDB } from './config/db.js';
 
+import cors from 'cors';      
+
 //import routes
 import eventsRoutes from './routes/eventsRoutes.js';
 import authRoutes from './routes/authRoutes.js';
@@ -13,6 +15,14 @@ config();
 connectDB();
 
 const app = express();
+
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:4321",
+  credentials: true,  // necessário pelo credentials: "include" nos cookies JWT
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
 
 //body parsing middleware
 app.use(express.json());

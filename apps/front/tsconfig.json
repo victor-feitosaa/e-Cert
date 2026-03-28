@@ -12,7 +12,7 @@
     "jsxImportSource": "react",
     "paths": {
       "@/*": [
-        "src/*"
+        "./src/*"
       ]
     }
   }

@@ -1,22 +1,46 @@
+export const prerender = false
 import type { APIRoute } from "astro"
 
 export const POST: APIRoute = async ({ request }) => {
-  const body = await request.json()
+  // Safe body parsing
+  let body: unknown
+  try {
+    const text = await request.text()
+    if (!text) {
+      return new Response(JSON.stringify({ error: "Request body is empty" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+    body = JSON.parse(text)
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    })
+  }
 
-  const res = await fetch("http://localhost:5001/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  })
+  // Forward to backend
+  let res: Response
+  try {
+    res = await fetch("http://localhost:5001/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+  } catch {
+    return new Response(JSON.stringify({ error: "Could not reach auth service" }), {
+      status: 502,
+      headers: { "Content-Type": "application/json" },
+    })
+  }
 
   const json = await res.json()
 
-  // repassa o Set-Cookie da sua API pro browser
   return new Response(JSON.stringify(json), {
     status: res.status,
     headers: {
       "Content-Type": "application/json",
-      // forward do cookie jwt que sua API setou
       ...(res.headers.get("set-cookie")
         ? { "set-cookie": res.headers.get("set-cookie")! }
         : {}),
