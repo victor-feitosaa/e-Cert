@@ -26,14 +26,14 @@ export function LoginForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader>
-          <CardTitle>Login to your account</CardTitle>
+          <CardTitle>Login na sua conta</CardTitle>
           <CardDescription>
-            Enter your email below to login to your account
+            Digite seu email abaixo para logar
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form>
-            <FieldGroup>
+            <FieldGroup >
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
                 <Input
@@ -45,23 +45,32 @@ export function LoginForm({
               </Field>
               <Field>
                 <div className="flex items-center">
-                  <FieldLabel htmlFor="password">Password</FieldLabel>
+                  <FieldLabel htmlFor="password">Senha</FieldLabel>
                   <a
                     href="#"
                     className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                   >
-                    Forgot your password?
+                    Esqueceu a senha?
                   </a>
                 </div>
                 <Input id="password" type="password" required />
               </Field>
               <Field>
-                <Button type="submit">Login</Button>
-                <Button variant="outline" type="button">
-                  Login with Google
-                </Button>
-                <FieldDescription className="text-center">
-                  Don&apos;t have an account? <a href="#">Sign up</a>
+
+            <a
+                href="/"
+                className="bg-red-500 font-bold text-white bg-linear-to-br from-[#8b5cf6] to-[#9333ea]
+                        border-none px-6 py-3 rounded-lg
+                        inline-flex items-center justify-center gap-2
+                        shadow-[0_4px_8px_rgba(124,58,237,0.4)]
+                        transition-transform duration-200
+                        hover:-translate-y-0.5 hover:shadow-[0_1px_20px_rgba(124,58,237,0.55)]
+                        cursor-pointer no-underline"
+            >
+                Login
+            </a>
+                <FieldDescription className="text-center py-5">
+                  Não possui uma conta? <a href="#">Cadastre-se</a>
                 </FieldDescription>
               </Field>
             </FieldGroup>
