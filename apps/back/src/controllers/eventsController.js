@@ -142,11 +142,11 @@ export const getEvents = async (req, res) => {
 
 export const getMyEvents = async (req, res) => {
   try {
-
     const id = req.user.id;
     const { page = 1, limit = 10 } = req.query;
 
-    const [events, total] = await eventService.getLoggedUserEvents(req.query, id)
+    const [events, total] = await eventService.getLoggedUserEvents(req.query, id);
+   
     
     res.status(200).json({
       status: 'success',

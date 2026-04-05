@@ -29,6 +29,18 @@ class UserService {
         throw new Error("Já existe um usuário com este email");
     }
 
+    async GetUserData (id){
+
+        const userExists = await UserRepository.findById(id);
+
+        if (!userExists) {
+            console.log("USER NÃO ENCONTRADO");
+            throw new Error("Usuário não encontrado");
+            
+        }
+        return userExists;
+    }
+
 }
 
 export default new UserService();

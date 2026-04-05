@@ -27,12 +27,11 @@ class EventService {
 
 
     async getLoggedUserEvents(queryParams, id) {
-
-        const { page = 1, limit = 10} = queryParams;
+        const { page = 1, limit = 10 } = queryParams;
         const skip = (parseInt(page) - 1) * parseInt(limit);
-
-        return await EventRepository.getLoggedUserEvents(id, skip, parseInt(limit))
-
+        
+        
+        return await EventRepository.getLoggedUserEvents(id, skip, parseInt(limit));
     }
 
     async getById(id) {

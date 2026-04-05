@@ -9,6 +9,7 @@ import cors from 'cors';
 import eventsRoutes from './routes/eventsRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import subEventsRoutes from './routes/subEventsRoutes.js';
+import userRoutes from "./routes/userRoutes.js"
 import testeRoutes from "./routes/testeRoutes.js"
 
 config();
@@ -33,7 +34,8 @@ app.use(cookieParser());
 app.use("/events", eventsRoutes);
 app.use("/auth", authRoutes);
 app.use("/subevents", subEventsRoutes);
-app.use("/testes", testeRoutes)
+app.use("/user", userRoutes);
+app.use("/testes", testeRoutes);
 
 const PORT = 5001;
 app.listen(PORT, () => {

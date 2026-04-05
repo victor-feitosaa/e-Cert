@@ -10,6 +10,14 @@ class UserRepository {
         })
     }
 
+    async findById(id) {
+        return prisma.user.findUnique({
+            where: {
+                id,
+            }
+        })
+    }
+
     async create(name, email, password, status) {
         return prisma.user.create({
             data: {

@@ -85,28 +85,27 @@ class EventRepository {
         });
     }
 
-    async getLoggedUserEvents (id, skip, limit) {
-
-        return Promise.all([prisma.event.findMany({
-            where: { createdBy: id },
-            include: {
-                _count: {
-                    select: {
-                        subEvents: true,
+    async getLoggedUserEvents(id, skip, limit) {
+        return await Promise.all([
+            prisma.event.findMany({
+                where: { createdBy: id },
+                include: {
+                    _count: {
+                        select: {
+                            subEvents: true,
+                        },
                     },
                 },
-            },
-            orderBy: {
-                createdAt: 'desc',
-            },
-            skip,
-            take: parseInt(limit),
-        }),
-        prisma.event.count({
-            where: { createdBy: id },
-        }),
-    ]);
-
+                orderBy: {
+                    createdAt: 'desc',
+                },
+                skip,
+                take: parseInt(limit),
+            }),
+            prisma.event.count({
+                where: { createdBy: id },
+            }),
+        ]);
     }
 
     async update (dataToUpdate, id) {

@@ -1,13 +1,11 @@
-import { convidarMod, GetUserData } from "../controllers/testController.js";
 import express from 'express'
 import { protect } from "../middleware/authMiddleware.js";
+import { GetUserData } from '../controllers/userController.js';
 
 const router = express.Router();
-//TESTES
-router.get('/testeGet', convidarMod)
 
 router.use(protect)
 
-router.get("/testeuserdata", GetUserData)
+router.get("/", GetUserData)
 
 export default router;
