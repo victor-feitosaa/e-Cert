@@ -16,6 +16,10 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { loginSchema, type LoginInput , registerSchema, type RegisterInput} from "../../../shared/src/schemas/auth/auth"
+
 /* ── tipos de modo ── */
 type AuthMode = "login" | "register";
 
@@ -23,7 +27,7 @@ export function AuthForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const [mode, setMode] = useState<AuthMode>("login");n
+  const [mode, setMode] = useState<AuthMode>("login");
   const [animating, setAnimating] = useState(false);
 
   /* Troca de modo com micro-animação */
@@ -32,9 +36,45 @@ export function AuthForm({
     setAnimating(true);
     setTimeout(() => {
       setMode(next);
+      reset();
       setAnimating(false);
     }, 220);
   };
+
+
+const isLogin = mode === "login";
+
+const { register, handleSubmit, setError, reset, formState: { errors, isSubmitting } } = useForm<LoginInput | RegisterInput>({
+  resolver: zodResolver(isLogin ? loginSchema : registerSchema)
+});
+
+  async function onSubmit(data: RegisterInput) {
+    try {
+      const url = isLogin ? "/api/auth/login" : "/api/auth/register"
+
+      const payload = isLogin ? { email: data.email, password: data.password} : data;
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json"},
+        body: JSON.stringify(payload),
+        credentials: "include" //token jwt nos cookies
+      })
+
+      const json = await res.json()
+      console.log(`Resposta da API: ${json}`)
+
+      if (!res.ok) {
+        setError("root", {message: json.error ?? "Erro ao fazer login"})
+        return
+      }
+
+      window.location.href = isLogin ? "/userDashboard" : "/login"
+
+    } catch (error) {
+      setError("root", { message: "Erro de conexão. Tente novamente." })
+    }
+  }
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -127,7 +167,7 @@ export function AuthForm({
 
           <CardContent>
 
-            <form>
+            <form onSubmit={handleSubmit(onSubmit)}>
               <FieldGroup>
                 {/* Nome — só no cadastro */}
                 {mode === "register" && (
@@ -148,7 +188,13 @@ export function AuthForm({
                       placeholder="Seu nome"
                       required
                       style={inputStyle}
+                      {...register("name")}
                     />
+                    {errors.name && (
+                      <FieldDescription className="text-destructive">
+                        {errors.name.message}
+                      </FieldDescription>
+                    )}
                   </Field>
                 )}
 
@@ -165,7 +211,11 @@ export function AuthForm({
                     placeholder="voce@exemplo.com.br"
                     required
                     style={inputStyle}
+                    {...register("email")}
                   />
+                  {errors.email && (
+                    <FieldDescription className="text-destructive">{errors.email.message}</FieldDescription>
+                  )}
                 </Field>
 
                 <Field>
@@ -196,7 +246,13 @@ export function AuthForm({
                     placeholder="••••••••"
                     required
                     style={inputStyle}
+                    {...register("password")}
                   />
+                  {errors.password && (
+                    <FieldDescription className="text-destructive">
+                      {errors.password.message}
+                    </FieldDescription>
+                  )}
                 </Field>
 
                 {/* Confirmar senha — só no cadastro */}
@@ -218,14 +274,26 @@ export function AuthForm({
                       placeholder="••••••••"
                       required
                       style={inputStyle}
-                    />
+                      {...register("confirmPassword")}
+                  />
+                  {errors.confirmPassword && (
+                    <FieldDescription className="text-destructive">
+                      {errors.confirmPassword.message}
+                    </FieldDescription>
+                  )}
                   </Field>
                 )}
 
                 <Field>
+                  {errors.root && (
+                    <FieldDescription className="text-destructive">
+                      {errors.root.message}
+                    </FieldDescription>
+                  )}
                   {/* CTA button */}
-                  <a
-                    href="/"
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -244,26 +312,10 @@ export function AuthForm({
                       textDecoration: "none",
                       boxShadow: "0 4px 20px rgba(124,58,237,0.4)",
                       transition: "transform 0.2s, box-shadow 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLAnchorElement).style.transform =
-                        "translateY(-2px)";
-                      (
-                        e.currentTarget as HTMLAnchorElement
-                      ).style.boxShadow =
-                        "0 8px 30px rgba(124,58,237,0.55)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLAnchorElement).style.transform =
-                        "";
-                      (
-                        e.currentTarget as HTMLAnchorElement
-                      ).style.boxShadow =
-                        "0 4px 20px rgba(124,58,237,0.4)";
-                    }}
+                    }}                 
                   >
-                    {mode === "login" ? "Entrar na plataforma" : "Criar conta grátis"}
-                  </a>
+                    {isSubmitting ? "Aguarde..." : mode === "login" ? "Entrar na plataforma" : "Criar conta grátis"}
+                  </button>
 
                   <FieldDescription
                     style={{
