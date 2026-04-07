@@ -13,7 +13,7 @@ function pct(r, c) {
   return Math.round((r / c) * 100);
 }
 
-export default function EventCard({ event }) {
+export default function EventCard({ event}) {
   const date = event.date
     ? new Date(event.date).toLocaleDateString("pt-BR", {
         day: "2-digit",
@@ -36,8 +36,10 @@ export default function EventCard({ event }) {
       )
     : null;
 
+
+
   return (
-    <div className="group flex items-center gap-3 px-4 py-3 rounded-lg border border-white/5 hover:bg-white/[0.02] hover:border-purple-500/20 transition-all cursor-pointer">
+    <div onClick={() => window.location.href = `/eventPageAdm?id=${event.id}`} className="group flex items-center gap-3 px-4 py-3 rounded-lg border border-white/5 hover:bg-white/[0.02] hover:border-purple-500/20 transition-all cursor-pointer">
       
       {/* Barra colorida de categoria */}
       <div
