@@ -1,8 +1,44 @@
 ---
 import EventAnalytics from "@/components/sections/EventAnalytics.astro"
 import Layout from "../layouts/Layout.astro"
+
+
+export const prerender = false; 
+
+
+const id = Astro.url.searchParams.get("id");
+
+if (!id) {
+  return Astro.redirect("/userDashboard");
+}
+
+const cookieHeader = Astro.request.headers.get("cookie") ?? "";
+
+let event = null;
+
+try {
+  const res = await fetch(`http://localhost:5001/events/${id}`, {
+    method: "GET",
+    headers: { ...(cookieHeader ? { Cookie: cookieHeader } : {}) },
+  });
+
+  if (res.ok) {
+    const data = await res.json();
+    event = data.data?.event ?? data;
+  }
+} catch (err) {
+  console.error("Erro ao buscar evento:", err);
+}
+
+if (!event) {
+  return Astro.redirect("/dashboard");
+}
 ---
 
 <Layout>
-    <EventAnalytics  />
+
+
+    <EventAnalytics event={event} />
+
+
 </Layout>

@@ -1,38 +1,35 @@
 ---
-export const prerender = false;
+import DotGrid from "@/components/DotGrid";
 
-const id = Astro.url.searchParams.get("id");
-
-console.log("Event ID from query:", id);
-
-if (!id) {
-  return Astro.redirect("/dashboard");
-}
-
-const cookieHeader = Astro.request.headers.get("cookie") || "";
-const baseUrl = "http://localhost:5001";
-
-const res = await fetch(`${baseUrl}/events/${id}`, {
-  method: "GET",
-  headers: {
-    ...(cookieHeader ? { Cookie: cookieHeader } : {}),
-  },
-});
-
-const eventData = res.ok ? await res.json() : null;
-
-console.log("Fetched event data:", eventData);
-
-if (!eventData) {
-  return Astro.redirect("/dashboard");
-}
-
-const event = eventData.data?.event ?? eventData;
+const {event} = Astro.props;
+console.log(event);
 ---
+<section>
+  <div class="dark bg-background min-h-screen w-full overflow-hidden relative">
 
-<section class="min-h-screen bg-background p-8">
-  <h1>{event.name}</h1>
-  <p>{event.description}</p>
-  <p>Date: {new Date(event.date).toLocaleDateString()}</p>
-  <p>Location: {event.location}</p>
+
+    <div class="absolute inset-0 w-full h-full z-0 opacity-40">
+      <DotGrid
+        client:load
+        dotSize={3}
+        gap={28}
+        baseColor="#3d3860"
+        activeColor="#7c3aed"
+        proximity={0}
+        speedTrigger={80}
+        shockRadius={0}
+      />
+    </div>
+
+
+
+    <div class="relative z-10 flex flex-col text-accent-foreground p-8">
+      <div id="tags" class="flex gap-2 mb-4">
+          
+      </div>
+      <h1 class="text-3xl font-bold text-primary">{event.title}</h1>
+
+    </div>
+
+
 </section>

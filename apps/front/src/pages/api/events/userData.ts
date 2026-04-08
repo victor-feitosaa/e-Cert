@@ -1,7 +1,6 @@
 export const prerender = false;
 import type { APIRoute } from "astro";
 
-// This API route is used to fetch user data for the MyEvents page. It forwards the request to the backend and returns the response.
 export const GET: APIRoute = async ({request}) => {
 
     try {  

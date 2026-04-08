@@ -2,13 +2,10 @@ import EventCard from "../EventCard";
 
 export default function MyEvents({ userData , eventsData}) {
   
-  // const onEventClick = (eventId) => {
-  //   console.log("Event clicked:", eventId);
-    
-  //   window.location.href = `/eventPageAdm?id=${eventId}`;
-  // };
 
   const events = eventsData?.data?.events ?? [];
+
+   console.log("Primeiro evento:", JSON.stringify(events[0], null, 2));
 
   return (
     <div className="min-h-screen">
@@ -29,6 +26,7 @@ export default function MyEvents({ userData , eventsData}) {
           ) : (
             events.map((event) => (
               <EventCard 
+                
                 key={event.id} 
                 event={event}
               />

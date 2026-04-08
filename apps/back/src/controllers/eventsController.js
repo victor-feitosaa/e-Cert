@@ -183,8 +183,12 @@ export const getEventById = async (req, res) => {
       });
     }
 
+    const isOwner = req.user?.id === event.createdBy;
+
+    // Se for o criador, pode acessar
+
     // Se não for público e usuário não for o criador
-    if (!event.isPublic) {
+    if (!event.isPublic && !isOwner) {
       return res.status(403).json({
         status: 'fail',
         message: 'Você não tem permissão para acessar este evento',

@@ -6,29 +6,23 @@ import DotGrid from "@/components/DotGrid"
 export const prerender = false;
 
 const cookieHeader = Astro.request.headers.get("cookie") || "";
-
 const baseUrl = "http://localhost:5001"
 
 const res = await fetch(`${baseUrl}/user/`, {
   method: "GET",
-  headers: {
-    ...(cookieHeader ? { "Cookie": cookieHeader } : {})
-  },
+  headers: { ...(cookieHeader ? { "Cookie": cookieHeader } : {}) },
 });
-
 const userData = res.ok ? await res.json() : null;
 
-console.log(userData);
 const resEvents = await fetch(`${baseUrl}/events/my/events`, {
   method: "GET",
-  headers: {
-    ...(cookieHeader ? {"Cookie": cookieHeader} : {})
-  }
-})
-
+  headers: { ...(cookieHeader ? { "Cookie": cookieHeader } : {}) },
+});
 const eventsData = resEvents.ok ? await resEvents.json() : null;
 
-console.log(eventsData);
+// serializa para string
+const userDataStr = JSON.stringify(userData);
+const eventsDataStr = JSON.stringify(eventsData);
 ---
 
 <Layout>
@@ -48,7 +42,11 @@ console.log(eventsData);
     </div>
 
     <div class="relative z-10">
-      <Dashboard userData={userData} eventsData={eventsData} client:load />
+      <Dashboard 
+        client:load 
+        userDataStr={userDataStr} 
+        eventsDataStr={eventsDataStr} 
+      />
     </div>
 
   </section>
