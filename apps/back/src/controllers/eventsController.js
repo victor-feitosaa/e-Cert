@@ -173,40 +173,26 @@ export const getMyEvents = async (req, res) => {
 export const getEventById = async (req, res) => {
   try {
     const { id } = req.params;
-
     const event = await eventService.getById(id);
 
     if (!event) {
-      return res.status(404).json({
-        status: 'fail',
-        message: 'Evento não encontrado',
-      });
+      return res.status(404).json({ status: 'fail', message: 'Evento não encontrado' });
     }
 
-    const isOwner = req.user?.id === event.createdBy;
+    if (!event.isPublic) {
+      // verifica se é criador OU tem permissão
+      const isOwner = req.user?.id === event.createdBy;
+      const hasPerm = await EventRoleService.isOrganizer(req.user?.id, id)
+                   || await EventRoleService.isModerator(req.user?.id, id);
 
-    // Se for o criador, pode acessar
-
-    // Se não for público e usuário não for o criador
-    if (!event.isPublic && !isOwner) {
-      return res.status(403).json({
-        status: 'fail',
-        message: 'Você não tem permissão para acessar este evento',
-      });
+      if (!isOwner && !hasPerm) {
+        return res.status(403).json({ status: 'fail', message: 'Sem permissão' });
+      }
     }
 
-    res.status(200).json({
-      status: 'success',
-      data: {
-        event,
-      },
-    });
+    res.status(200).json({ status: 'success', data: { event } });
   } catch (error) {
-    console.error('Erro ao buscar evento:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Erro interno ao buscar evento',
-    });
+    res.status(500).json({ status: 'error', message: 'Erro interno' });
   }
 };
 

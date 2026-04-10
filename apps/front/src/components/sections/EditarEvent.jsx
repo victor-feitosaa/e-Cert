@@ -1,103 +1,225 @@
-import { CalendarDays, ClipboardList, Cog } from "lucide-react";
+// EditarEvent.jsx
+import { useState, useEffect } from "react";
+import { CalendarDays, ClipboardList, Cog, Globe, Lock, AlertTriangle, Save } from "lucide-react";
 
+const API = "http://localhost:5001";
 
+export default function EditarEvent({ eventId, onEventUpdated }) {
+    const [loading, setLoading] = useState(true);
+    const [form,    setForm]    = useState(null);
+    const [saving,  setSaving]  = useState(false);
+    const [success, setSuccess] = useState(false);
+    const [error,   setError]   = useState("");
 
-export default function EditarEvent({eventData}){
+    function formatDateForInput(isoString) {
+        if (!isoString) return "";
+        return new Date(isoString).toISOString().split("T")[0]; // yyyy-mm-dd
+    }
 
+    function formatTimeForInput(isoString) {
+        if (!isoString) return "";
+        const d = new Date(isoString);
+        return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+    }
 
-function parseEventDateTime(isoString) {
-  const date = new Date(isoString);
+    const fetchEventData = async () => {
+        try {
+            setLoading(true);
+            setError("");
 
-  const formattedDate = date.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    timeZone: "America/Sao_Paulo",
-  });
+            const res = await fetch(`${API}/events/${eventId}`, {
+                credentials: "include",
+            });
 
-  const formattedTime = date.toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Sao_Paulo",
-  });
+            if (!res.ok) throw new Error("Erro ao carregar evento");
 
-  return { date: formattedDate, time: formattedTime };
-}
+            const response = await res.json();
+            const ev = response.data?.event || response.event || response.data;
+            if (!ev) throw new Error("Dados do evento não encontrados");
 
-const { date, time } = parseEventDateTime(eventData.date);
+            setForm({
+                title:       ev.title       || "",
+                description: ev.description || "",
+                location:    ev.location    || "",
+                date:        formatDateForInput(ev.date),
+                time:        formatTimeForInput(ev.date),
+                isPublic:    ev.isPublic    ?? true,
+            });
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (eventId) fetchEventData();
+    }, [eventId]);
+
+    const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+    const togglePublic = (val) => setForm(f => ({ ...f, isPublic: Boolean(val) }));
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        setError("");
+        setSuccess(false);
+
+        const payload = {
+            title:       form.title,
+            description: form.description,
+            location:    form.location,
+            date:        `${form.date}T${form.time}:00`,
+            isPublic:    Boolean(form.isPublic),
+        };
+
+        try {
+            const res = await fetch(`${API}/events/${eventId}`, {
+                method:      "PUT",
+                headers:     { "Content-Type": "application/json" },
+                credentials: "include",
+                body:        JSON.stringify(payload),
+            });
+
+            // Lê o body UMA única vez
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data?.message || `Erro ${res.status}`);
+            }
+
+            const updatedEvent = data.data?.event || data.event || data.data;
+
+            setSuccess(true);
+
+            // Repassa o evento atualizado pro pai — ele troca a tab automaticamente
+            if (onEventUpdated && updatedEvent) {
+                onEventUpdated(updatedEvent);
+            }
+
+            setTimeout(() => setSuccess(false), 3000);
+        } catch (err) {
+            setError(err.message || "Falha ao salvar. Tente novamente.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-64 gap-3">
+                <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                <span className="text-sm text-muted-foreground">Carregando evento...</span>
+            </div>
+        );
+    }
+
+    if (error && !form) {
+        return (
+            <div className="bg-red-400/10 border border-red-400/20 rounded-md p-6 text-center">
+                <AlertTriangle className="mx-auto mb-3 text-red-400" size={24} />
+                <p className="text-sm text-red-400 mb-4">{error}</p>
+                <button onClick={fetchEventData} className="px-4 py-2 bg-primary rounded-md text-white text-sm hover:opacity-90 transition-opacity">
+                    Tentar novamente
+                </button>
+            </div>
+        );
+    }
+
+    if (!form) return null;
 
     return (
-        <section >
-            <form className="flex gap-6" action="">
-                <div className="w-1/2 bg-sidebar border border-border rounded-md">
+        <section>
+            <form onSubmit={handleSubmit} className="flex gap-6">
 
-                    <div className="flex p-4 items-center gap-2">
-                        <ClipboardList size={20} className=" text-primary" />
+                {/* ── ESQUERDA ── */}
+                <div className="w-1/2 bg-sidebar border border-border rounded-md">
+                    <div className="flex p-4 items-center gap-2 border-b border-border">
+                        <ClipboardList size={20} className="text-primary" />
                         <h3 className="font-extrabold">Informações principais</h3>
                     </div>
-                    
-                        
-                        <div>
-                            <fieldset className="flex flex-col gap-1 p-4 ">
-                                <label htmlFor="title" className="text-sm font-bold">Nome do evento</label>
-                                <input type="text " className="p-4 border rounded-md text-sm border-border" value={eventData.title}  />
-                            </fieldset>      
-                            
-                            <fieldset className="flex flex-col gap-1 p-4 ">
-                                <label htmlFor="title" className="text-sm font-bold">Descrição</label>
-                                <textarea type="text " className="p-4 resize-none h-40 border rounded-md text-sm border-border" value={eventData.description}  />
-                            </fieldset>      
 
-                            <fieldset className="flex flex-col gap-1 p-4 ">
-                                <label htmlFor="title" className="text-sm font-bold">Local</label>
-                                <input type="text " className="p-4 border rounded-md text-sm border-border" value={eventData.location}  />
-                            </fieldset>      
+                    <fieldset className="flex flex-col gap-1 p-4">
+                        <label className="text-sm font-bold">Nome do evento</label>
+                        <input type="text" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.title} onChange={set("title")} required />
+                    </fieldset>
 
-                        </div>          
+                    <fieldset className="flex flex-col gap-1 p-4">
+                        <label className="text-sm font-bold">Descrição</label>
+                        <textarea className="p-3 resize-none h-40 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors leading-relaxed" value={form.description} onChange={set("description")} />
+                    </fieldset>
 
-                    
-
+                    <fieldset className="flex flex-col gap-1 p-4">
+                        <label className="text-sm font-bold">Local</label>
+                        <input type="text" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.location} onChange={set("location")} />
+                    </fieldset>
                 </div>
 
+                {/* ── DIREITA ── */}
                 <div className="w-1/2 flex flex-col gap-4">
 
-                    <div className="bg-sidebar border border-border rounded-md w-full h-1/2">
-                        <div className="flex p-4 items-center gap-2">
-                            <CalendarDays  size={20} className=" text-primary"  />
+                    <div className="bg-sidebar border border-border rounded-md">
+                        <div className="flex p-4 items-center gap-2 border-b border-border">
+                            <CalendarDays size={20} className="text-primary" />
                             <h3 className="font-extrabold">Data & Horário</h3>
                         </div>
-
-                        <div className="flex flex-col">
-
-                            <div className="flex justify-between">
-                                <fieldset className="flex flex-col gap-1 p-4 w-1/2">
-                                    <label htmlFor="inital-date">Data de início </label>
-                                    <input type="date"  placeholder="**/**/****" value={date} className="p-4 border rounded-md text-sm  border-border"  />
-                                </fieldset>
-
-                                <fieldset className="flex flex-col gap-1 p-4 w-1/2">
-                                    <label htmlFor="inital-date">Horário </label>
-                                    <input type="time"  placeholder="" value={time} className="p-4 border rounded-md text-sm border-border"  />
-                                </fieldset>
-
-                            </div>
-
+                        <div className="flex">
+                            <fieldset className="flex flex-col gap-1 p-4 w-1/2">
+                                <label className="text-sm font-bold">Data de início</label>
+                                <input type="date" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.date} onChange={set("date")} required />
+                            </fieldset>
+                            <fieldset className="flex flex-col gap-1 p-4 w-1/2">
+                                <label className="text-sm font-bold">Horário</label>
+                                <input type="time" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.time} onChange={set("time")} />
+                            </fieldset>
                         </div>
-
-
-
                     </div>
 
-                    <div className="bg-sidebar border border-border rounded-md w-full h-1/2">
-                        <div className="flex p-4 items-center gap-2">
-                            <Cog  size={20} className=" text-primary"  />
+                    <div className="bg-sidebar border border-border rounded-md flex-1">
+                        <div className="flex p-4 items-center gap-2 border-b border-border">
+                            <Cog size={20} className="text-primary" />
                             <h3 className="font-extrabold">Configurações</h3>
                         </div>
+
+                        <div className="p-4 border-b border-border">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Visibilidade</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button type="button" onClick={() => togglePublic(true)}
+                                    className={`flex flex-col items-start gap-1 px-4 py-3 rounded-lg border text-left transition-all text-sm font-bold cursor-pointer
+                                        ${form.isPublic === true ? "bg-emerald-400/10 border-emerald-400/25 text-emerald-400" : "border-border text-muted-foreground hover:border-primary/30"}`}>
+                                    <div className="flex items-center gap-1.5"><Globe size={12} /> Público</div>
+                                    <span className="text-xs font-normal opacity-60">Visível para todos</span>
+                                </button>
+                                <button type="button" onClick={() => togglePublic(false)}
+                                    className={`flex flex-col items-start gap-1 px-4 py-3 rounded-lg border text-left transition-all text-sm font-bold cursor-pointer
+                                        ${form.isPublic === false ? "bg-amber-400/10 border-amber-400/25 text-amber-400" : "border-border text-muted-foreground hover:border-primary/30"}`}>
+                                    <div className="flex items-center gap-1.5"><Lock size={12} /> Privado</div>
+                                    <span className="text-xs font-normal opacity-60">Somente convidados</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-4">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Zona de risco</p>
+                            <button type="button" className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-red-400 bg-red-400/10 border border-red-400/20 hover:bg-red-400/20 transition-colors cursor-pointer">
+                                <AlertTriangle size={13} /> Cancelar evento
+                            </button>
+                        </div>
                     </div>
 
-                </div>
+                    {error && (
+                        <p className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-md px-4 py-3">⚠ {error}</p>
+                    )}
+                    {success && (
+                        <p className="text-sm text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-md px-4 py-3">✓ Evento atualizado com sucesso!</p>
+                    )}
 
+                    <button type="submit" disabled={saving} className="w-full flex items-center justify-center gap-2 py-3 rounded-md text-sm font-bold text-white bg-primary hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer">
+                        {saving ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Save size={14} />}
+                        {saving ? "Salvando..." : "Salvar alterações"}
+                    </button>
+                </div>
             </form>
         </section>
-    )
+    );
 }

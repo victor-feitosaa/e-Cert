@@ -1,37 +1,13 @@
 ---
 import DotGrid from "@/components/DotGrid";
-import { Globe, Lock, Calendar, Clock, MapPin, User, Plus, Pen } from "lucide-react";
-import AnalyticTabs from "../AnalyticsTabs"; // Importe o componente
+import AnalyticTabs from "../AnalyticsTabs";
 
 const { event } = Astro.props;
-console.log(event);
-
-function parseEventDateTime(isoString) {
-  const date = new Date(isoString);
-
-  const formattedDate = date.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    timeZone: "America/Sao_Paulo",
-  });
-
-  const formattedTime = date.toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Sao_Paulo",
-  });
-
-  return { date: formattedDate, time: formattedTime };
-}
-
-const { date, time } = parseEventDateTime(event.date);
 ---
 
 <section>
-  <div
-    class="dark bg-background min-h-screen w-full overflow-hidden relative p-6"
-  >
+  <div class="dark bg-background min-h-screen w-full overflow-hidden relative p-6">
+
     <div class="absolute inset-0 w-full h-full z-0 opacity-40">
       <DotGrid
         client:load
@@ -45,57 +21,9 @@ const { date, time } = parseEventDateTime(event.date);
       />
     </div>
 
-    <div class="relative z-10 flex flex-col text-accent-foreground p-8">
-      <div class="flex">
-        <div id="title" class="flex flex-col gap-5 mb-4 w-1/2">
-          <span>
-            {event.isPublic ? (
-              <div class="flex items-center justify-center w-31.25 gap-1.5 text-xs font-bold px-3 py-1 rounded-md bg-emerald-400/10 border border-emerald-400/20 text-emerald-400">
-                <Globe size={10} /> Público
-              </div>
-            ) : (
-              <div class="flex items-center justify-center max-w-1/16 gap-1.5 text-xs font-bold px-3 py-1 rounded-md bg-amber-400/10 border border-amber-400/20 text-amber-400">
-                <Lock size={10} /> Privado
-              </div>
-            )}
-          </span>
-
-          <h1 class="text-4xl font-extrabold text-primary">{event.title}</h1>
-
-          <div class="flex gap-2 w-1/2 justify-between items-center text-sm text-accent-foreground">
-            <div class="flex gap-2 justify-center items-center">
-              <Calendar size={12} />
-              <span>{date}</span> |
-              <Clock size={12} />
-              <span>{time}</span>
-            </div>
-
-            <div class="flex gap-2 w-1/2 justify-end items-center">
-              <MapPin size={12} />
-              <span>{event.location}</span>
-            </div>
-          </div>
-
-          <div class="mt-5 flex gap-2 justify-between items-center text-sm">
-            <div class="flex gap-2 justify-end items-center">
-              <User size={12} />
-              <span>
-                Por <span class="text-primary">{event.creator.name}</span>
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex w-1/2 justify-end items-center">
-          <div class="">
-            <!--Futuros buttons -->
-          </div>
-        </div>
-      </div>
-
-      
+    <div class="relative z-10 p-8">
       <AnalyticTabs eventData={event} client:load />
-      
     </div>
+
   </div>
 </section>

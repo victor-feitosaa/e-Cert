@@ -2,43 +2,47 @@
 import EventAnalytics from "@/components/sections/EventAnalytics.astro"
 import Layout from "../layouts/Layout.astro"
 
-
-export const prerender = false; 
-
+export const prerender = false;
 
 const id = Astro.url.searchParams.get("id");
-
-if (!id) {
-  return Astro.redirect("/userDashboard");
-}
+if (!id) return Astro.redirect("/userDashboard");
 
 const cookieHeader = Astro.request.headers.get("cookie") ?? "";
 
 let event = null;
+let fetchError = null;
 
 try {
   const res = await fetch(`http://localhost:5001/events/${id}`, {
-    method: "GET",
     headers: { ...(cookieHeader ? { Cookie: cookieHeader } : {}) },
   });
 
   if (res.ok) {
     const data = await res.json();
     event = data.data?.event ?? data;
+  } else if (res.status === 404) {
+    // evento não existe de fato
+    return Astro.redirect("/userDashboard");
+  } else if (res.status === 403) {
+    // não redireciona — deixa o frontend lidar
+    fetchError = 403;
   }
 } catch (err) {
   console.error("Erro ao buscar evento:", err);
 }
 
-if (!event) {
-  return Astro.redirect("/dashboard");
+// só redireciona se realmente não encontrou (não para 403)
+if (!event && fetchError !== 403) {
+  return Astro.redirect("/userDashboard");
 }
 ---
 
 <Layout>
-
-
+  {event ? (
     <EventAnalytics event={event} />
-
-
+  ) : (
+    <div class="min-h-screen flex items-center justify-center">
+      <p class="text-red-400">Você não tem permissão para acessar este evento.</p>
+    </div>
+  )}
 </Layout>
