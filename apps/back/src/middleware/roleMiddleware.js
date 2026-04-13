@@ -1,13 +1,13 @@
 import { prisma } from '../config/db.js'
-import eventRoleService from '../services/EventRoleService.js';
+import EventRoleService from '../services/eventRoleService.js';
 
 export const hasRole = async (req, res, next) => {
     try {
         const { id } = req.params;
         const userId = req.user.id;
 
-        const organizerPerm = await eventRoleService.isOrganizer(userId, id);
-        const moderatorPerm = await eventRoleService.isModerator(userId, id);
+        const organizerPerm = await EventRoleService.isOrganizer(userId, id);
+        const moderatorPerm = await EventRoleService.isModerator(userId, id);
 
         // fallback: se não tem permissão registrada, verifica se é o criador do evento
         if (!organizerPerm && !moderatorPerm) {
