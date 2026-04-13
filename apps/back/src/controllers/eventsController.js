@@ -1,5 +1,5 @@
 import { prisma } from '../config/db.js';
-import EventRoleService from '../services/EventRoleService.js';
+import EventRoleService from '../services/eventRoleService.js';
 import eventService from '../services/eventService.js';
 
 
