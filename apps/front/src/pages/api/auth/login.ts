@@ -23,7 +23,8 @@ export const POST: APIRoute = async ({ request }) => {
   // Forward to backend
   let res: Response
   try {
-    res = await fetch("http://localhost:5001/auth/login", {
+    
+    res = await fetch(import.meta.env.API_URL || "http://localhost:5001/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

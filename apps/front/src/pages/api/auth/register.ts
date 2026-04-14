@@ -23,7 +23,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   let res: Response
   try {
-    res = await fetch("http://localhost:5001/auth/register", {
+    res = await fetch(import.meta.env.API_URL || "http://localhost:5001/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
