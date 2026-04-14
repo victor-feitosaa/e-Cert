@@ -1,19 +1,21 @@
 // EditarEvent.jsx
+// EditarEvent.jsx
 import { useState, useEffect } from "react";
 import { CalendarDays, ClipboardList, Cog, Globe, Lock, AlertTriangle, Save } from "lucide-react";
 
-const API = `${import.meta.env.API_URL ?? "http://localhost:5001"}`;
+// NÃO PRECISA MAIS DE API_URL!
+// const API = `${import.meta.env.VITE_API_URL ?? "http://localhost:5001"}`;
 
 export default function EditarEvent({ eventId, onEventUpdated }) {
     const [loading, setLoading] = useState(true);
-    const [form,    setForm]    = useState(null);
-    const [saving,  setSaving]  = useState(false);
+    const [form, setForm] = useState(null);
+    const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState(false);
-    const [error,   setError]   = useState("");
+    const [error, setError] = useState("");
 
     function formatDateForInput(isoString) {
         if (!isoString) return "";
-        return new Date(isoString).toISOString().split("T")[0]; // yyyy-mm-dd
+        return new Date(isoString).toISOString().split("T")[0];
     }
 
     function formatTimeForInput(isoString) {
@@ -27,25 +29,31 @@ export default function EditarEvent({ eventId, onEventUpdated }) {
             setLoading(true);
             setError("");
 
-            const res = await fetch(`${API}/events/${eventId}`, {
-                credentials: "include",
+            // ✅ AGORA USA O PROXY (igual ao login)
+            const res = await fetch(`/api/events/${eventId}`, {
+                method: "GET",
+                credentials: "include",  // Importante para enviar o cookie
             });
 
-            if (!res.ok) throw new Error("Erro ao carregar evento");
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || "Erro ao carregar evento");
+            }
 
             const response = await res.json();
             const ev = response.data?.event || response.event || response.data;
             if (!ev) throw new Error("Dados do evento não encontrados");
 
             setForm({
-                title:       ev.title       || "",
+                title: ev.title || "",
                 description: ev.description || "",
-                location:    ev.location    || "",
-                date:        formatDateForInput(ev.date),
-                time:        formatTimeForInput(ev.date),
-                isPublic:    ev.isPublic    ?? true,
+                location: ev.location || "",
+                date: formatDateForInput(ev.date),
+                time: formatTimeForInput(ev.date),
+                isPublic: ev.isPublic ?? true,
             });
         } catch (err) {
+            console.error("Erro fetchEventData:", err);
             setError(err.message);
         } finally {
             setLoading(false);
@@ -66,44 +74,47 @@ export default function EditarEvent({ eventId, onEventUpdated }) {
         setSuccess(false);
 
         const payload = {
-            title:       form.title,
+            title: form.title,
             description: form.description,
-            location:    form.location,
-            date:        `${form.date}T${form.time}:00`,
-            isPublic:    Boolean(form.isPublic),
+            location: form.location,
+            date: `${form.date}T${form.time}:00`,
+            isPublic: Boolean(form.isPublic),
         };
 
         try {
-            const res = await fetch(`${API}/events/${eventId}`, {
-                method:      "PUT",
-                headers:     { "Content-Type": "application/json" },
-                credentials: "include",
-                body:        JSON.stringify(payload),
+            // ✅ AGORA USA O PROXY (igual ao login)
+            const res = await fetch(`/api/events/${eventId}`, {
+                method: "PATCH",  // ou "PUT" dependendo do que seu backend aceita
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",  // Importante para enviar o cookie
+                body: JSON.stringify(payload),
             });
 
-            // Lê o body UMA única vez
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data?.message || `Erro ${res.status}`);
+                throw new Error(data?.error || data?.message || `Erro ${res.status}`);
             }
 
             const updatedEvent = data.data?.event || data.event || data.data;
 
             setSuccess(true);
 
-            // Repassa o evento atualizado pro pai — ele troca a tab automaticamente
             if (onEventUpdated && updatedEvent) {
                 onEventUpdated(updatedEvent);
             }
 
             setTimeout(() => setSuccess(false), 3000);
         } catch (err) {
+            console.error("Erro handleSubmit:", err);
             setError(err.message || "Falha ao salvar. Tente novamente.");
         } finally {
             setSaving(false);
         }
     };
+
+    // ... resto do JSX permanece IGUAL
+
 
     if (loading) {
         return (

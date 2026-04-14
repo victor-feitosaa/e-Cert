@@ -17,7 +17,7 @@ const NAV_ITEMS = [
     { id: "editar",        Icon: Pen,           label: "Editar"        },
 ];
 
-export default function AnalyticTabs({ eventData: initialEventData }) {
+export default function AnalyticTabs({ eventData: initialEventData , apiURL , cookieHeader}) {
     const [activeTab, setActiveTab] = useState("overview");
     const [eventData, setEventData] = useState(initialEventData);
 
@@ -56,6 +56,8 @@ export default function AnalyticTabs({ eventData: initialEventData }) {
                     <EditarEvent
                         eventId={eventId}
                         onEventUpdated={handleEventUpdated}
+                        apiURL={apiURL}
+                        cookieHeader={cookieHeader}
                     />
                 );
             default: return null;

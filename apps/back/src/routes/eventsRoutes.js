@@ -28,7 +28,7 @@ router.get('/my/events', getMyEvents);
 router.post('/', createEvent);
 
 // Rotas que requerem ser dono do evento
-router.put('/:id', hasRole, updateEvent);
+router.patch('/:id', hasRole, updateEvent);
 router.delete('/:id', isEventOwner, deleteEvent);
 
 // Convidar Moderador

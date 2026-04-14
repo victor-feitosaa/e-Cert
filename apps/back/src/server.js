@@ -17,6 +17,8 @@ connectDB();
 
 const app = express();
 
+console.log("FRONTEND_URL: ", process.env.FRONTEND_URL);
+
 app.use(cors({
   origin: process.env.FRONTEND_URL || "http://localhost:4321",
   credentials: true,  // necessário pelo credentials: "include" nos cookies JWT

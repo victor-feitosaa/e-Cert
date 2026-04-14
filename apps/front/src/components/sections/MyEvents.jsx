@@ -29,6 +29,7 @@ export default function MyEvents({ userData , eventsData}) {
                 
                 key={event.id} 
                 event={event}
+                
               />
             ))
           )}

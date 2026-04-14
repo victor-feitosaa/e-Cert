@@ -3,6 +3,12 @@ import DotGrid from "@/components/DotGrid";
 import AnalyticTabs from "../AnalyticsTabs";
 
 const { event } = Astro.props;
+
+const apiURL = import.meta.env.VITE_API_URL ?? "http://localhost:5001";
+
+const cookieHeader = Astro.request.headers.get("cookie") ?? "";
+
+
 ---
 
 <section>
@@ -22,7 +28,7 @@ const { event } = Astro.props;
     </div>
 
     <div class="relative z-10 p-8">
-      <AnalyticTabs eventData={event} client:load />
+      <AnalyticTabs eventData={event} apiURL={apiURL} cookieHeader={cookieHeader} client:load />
     </div>
 
   </div>

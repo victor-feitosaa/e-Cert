@@ -8,6 +8,8 @@ export const prerender = false;
 const cookieHeader = Astro.request.headers.get("cookie") || "";
 const baseUrl = `${import.meta.env.API_URL ?? "http://localhost:5001"}`
 
+
+
 const res = await fetch(`${baseUrl}/user/`, {
   method: "GET",
   headers: { ...(cookieHeader ? { "Cookie": cookieHeader } : {}) },
@@ -46,6 +48,7 @@ const eventsDataStr = JSON.stringify(eventsData);
         client:load 
         userDataStr={userDataStr} 
         eventsDataStr={eventsDataStr} 
+        
       />
     </div>
 
