@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { CalendarDays, ClipboardList, Cog, Globe, Lock, AlertTriangle, Save } from "lucide-react";
 
-const API = "http://localhost:5001";
+const API = `${import.meta.env.API_URL ?? "http://localhost:5001"}`;
 
 export default function EditarEvent({ eventId, onEventUpdated }) {
     const [loading, setLoading] = useState(true);

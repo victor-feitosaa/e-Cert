@@ -75,7 +75,8 @@ export default function CreateEvent({ onBack }) {
     setStatus("loading");
     setErrMsg("");
     try {
-      const res = await fetch("http://localhost:5001/events", {
+      const apiUrl = `${import.meta.env.API_URL ?? "http://localhost:5001"}/events`
+      const res = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

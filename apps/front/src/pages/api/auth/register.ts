@@ -1,6 +1,7 @@
 export const prerender = false
 import type { APIRoute } from "astro"
 
+
 export const POST: APIRoute = async ({ request }) => {
   // Safe body parsing
   let body: unknown
@@ -20,10 +21,11 @@ export const POST: APIRoute = async ({ request }) => {
     })
   }
 
+const apiUrl = `${import.meta.env.API_URL ?? "http://localhost:5001"}/auth/register`
 
   let res: Response
   try {
-    res = await fetch(import.meta.env.API_URL || "http://localhost:5001/auth/register", {
+    res = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
