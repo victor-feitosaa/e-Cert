@@ -2,93 +2,87 @@
 export const prerender = false;
 import type { APIRoute } from "astro";
 
+const API_URL = import.meta.env.API_URL || "http://localhost:5001";
+
 export const GET: APIRoute = async ({ params, request }) => {
   const { id } = params;
-  
-  // Em produção, use a URL completa do seu backend
-  const API_URL = import.meta.env.API_URL || "http://localhost:5001";
   const url = `${API_URL}/events/${id}`;
-  
   console.log("🔵 GET Proxy - URL:", url);
-  
+
   try {
     const response = await fetch(url, {
-      headers: {
-        "Cookie": request.headers.get("cookie") || "",
-      },
+      headers: { "Cookie": request.headers.get("cookie") || "" },
     });
-    
     const data = await response.json();
-    
     return new Response(JSON.stringify(data), {
       status: response.status,
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("🔴 GET Proxy Error:", error);
-    return new Response(JSON.stringify({ 
-      error: "Could not reach event service",
-      details: error.message 
-    }), {
+    return new Response(JSON.stringify({ error: "Could not reach event service", details: error.message }), {
       status: 502,
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
     });
   }
 };
 
-export const PATCH: APIRoute = async ({ params, request }) => {
+export const PUT: APIRoute = async ({ params, request }) => {
   const { id } = params;
-  
-  // Em produção, use a URL completa do seu backend
-  const API_URL = import.meta.env.API_URL || "https://ecert.duckdns.org";
-  const url = `${API_URL}/events/${id}`;
-  
+  const url = `${API_URL}/events/${id}`;  // ← mesma variável, definida no topo
   console.log("🟢 PATCH Proxy - URL:", url);
-  
+
   try {
     const body = await request.json();
-    console.log("📦 Body:", body);
-    
     const response = await fetch(url, {
-      method: "PATCH",
+      method: "PUT",
       headers: {
         "Content-Type": "application/json",
         "Cookie": request.headers.get("cookie") || "",
       },
       body: JSON.stringify(body),
     });
-    
-    console.log("📡 Response status:", response.status);
-    
-    // Tenta parsear como JSON, se falhar retorna o texto
-    let data;
+
     const responseText = await response.text();
-    
     try {
-      data = JSON.parse(responseText);
-    } catch (e) {
+      const data = JSON.parse(responseText);
+      return new Response(JSON.stringify(data), {
+        status: response.status,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch {
       console.error("❌ Resposta não é JSON:", responseText.substring(0, 200));
-      return new Response(JSON.stringify({ 
-        error: "Backend returned invalid response",
-        response: responseText.substring(0, 200)
-      }), {
+      return new Response(JSON.stringify({ error: "Backend returned invalid response" }), {
         status: 502,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       });
     }
-    
-    return new Response(JSON.stringify(data), {
-      status: response.status,
-      headers: { "Content-Type": "application/json" }
-    });
   } catch (error) {
-    console.error("🔴 PATCH Proxy Error:", error);
-    return new Response(JSON.stringify({ 
-      error: "Could not reach event service",
-      details: error.message 
-    }), {
+    return new Response(JSON.stringify({ error: "Could not reach event service", details: error.message }), {
       status: 502,
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
     });
   }
 };
+
+export const DELETE: APIRoute = async ({ params, request }) => {
+  const { id } = params;
+  const url = `${API_URL}/events/${id}`;
+  console.log("🔴 DELETE Proxy - URL:", url);
+
+  try {
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: { "Cookie": request.headers.get("cookie") || "" },
+      credentials: "include",
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: "Could not reach event service", details: error.message }), {
+      status: 502,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  
+  return new Response(null, {
+    status: 204,
+  });
+}

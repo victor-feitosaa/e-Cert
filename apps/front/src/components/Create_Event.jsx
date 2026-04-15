@@ -1,5 +1,9 @@
 import { useState, useCallback } from "react";
-import { Calendar, Clock, MapPin, User, Globe, Lock, ArrowLeft, ArrowRight, Check, AlertCircle } from "lucide-react";
+import {
+  Calendar, Clock, MapPin, ArrowLeft, ArrowRight, Check,
+  AlertCircle, ClipboardList, FileText, CalendarDays,
+  Timer, GraduationCap, Building2, Tag, Hash
+} from "lucide-react";
 import DotGrid from "./DotGrid";
 import Particles from "./Particles";
 
@@ -36,13 +40,11 @@ export default function CreateEvent({ onBack }) {
       setErrors({});
       setStatus("idle");
       setErrMsg("");
-
-      window.location.href = "/userDashboard"; 
+      window.location.href = "/userDashboard";
     } else {
       prev();
     }
   };
-
 
   const set = useCallback((name, value) => {
     setForm(f => ({ ...f, [name]: value }));
@@ -74,9 +76,9 @@ export default function CreateEvent({ onBack }) {
   const handleSubmit = async () => {
     setStatus("loading");
     setErrMsg("");
+
     try {
-      const apiUrl = `${import.meta.env.API_URL ?? "http://localhost:5001"}/events`
-      const res = await fetch(apiUrl, {
+      const res = await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -86,14 +88,26 @@ export default function CreateEvent({ onBack }) {
           date: form.date && form.time ? `${form.date}T${form.time}:00` : null,
           location: form.location,
           isPublic: true,
+          workload: form.workload ? parseInt(form.workload) : undefined,
+          capacity: form.capacity ? parseInt(form.capacity) : undefined,
+          category: form.category,
+          certType: form.certType,
+          issuer: form.issuer,
+          certMessage: form.certMessage,
+          locationUrl: form.locationUrl,
         }),
       });
+
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.message || `Erro ${res.status}`);
+        throw new Error(data?.message || data?.error || `Erro ${res.status}`);
       }
+
+      const data = await res.json();
+      console.log("Evento criado com sucesso:", data);
       setStatus("success");
     } catch (err) {
+      console.error("Erro ao criar evento:", err);
       setStatus("error");
       setErrMsg(err.message || "Falha ao criar evento.");
     }
@@ -144,25 +158,21 @@ export default function CreateEvent({ onBack }) {
   }
 
   return (
-    <div className="dark min-h-screen bg-background ">
-
-    <div className="absolute inset-0 w-full h-full z-0 " >
+    <div className="dark min-h-screen bg-background">
+      <div className="absolute inset-0 w-full h-full z-0">
         <div className="absolute inset-0 w-full h-full">
-            <Particles
-                
-                particleCount={150}
-                particleSpread={8}
-                speed={0.05}
-                particleColors={["#8b5cf6", "#a78bfa", "#6d28d9"]}
-                particleBaseSize={80}
-                alphaParticles={true}
-                disableRotation={false}
-                className="w-full h-full"
-            />
+          <Particles
+            particleCount={150}
+            particleSpread={8}
+            speed={0.05}
+            particleColors={["#8b5cf6", "#a78bfa", "#6d28d9"]}
+            particleBaseSize={80}
+            alphaParticles={true}
+            disableRotation={false}
+            className="w-full h-full"
+          />
         </div>
-
-          
-    </div>
+      </div>
 
       <div className="max-w-2xl mx-auto px-6 py-12 relative z-10">
 
@@ -187,17 +197,15 @@ export default function CreateEvent({ onBack }) {
             return (
               <div key={label} className="flex items-center">
                 <div className="flex flex-col items-center gap-1.5">
-                  <div
-                    className={`
-                      w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all
-                      ${done
-                        ? "bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] text-white"
-                        : active
-                          ? "bg-primary/10 border-2 border-primary text-primary"
-                          : "bg-sidebar border border-border text-accent-foreground/40"
-                      }
-                    `}
-                  >
+                  <div className={`
+                    w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all
+                    ${done
+                      ? "bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] text-white"
+                      : active
+                        ? "bg-primary/10 border-2 border-primary text-primary"
+                        : "bg-sidebar border border-border text-accent-foreground/40"
+                    }
+                  `}>
                     {done ? <Check size={14} /> : i + 1}
                   </div>
                   <span className={`
@@ -217,7 +225,7 @@ export default function CreateEvent({ onBack }) {
 
         {/* Form Card */}
         <div className="bg-sidebar border border-border rounded-xl p-6 md:p-8 animate-in fade-in slide-in-from-bottom-6 duration-400">
-          
+
           {/* Step 0 - Informações */}
           {step === 0 && (
             <div className="space-y-5">
@@ -231,8 +239,8 @@ export default function CreateEvent({ onBack }) {
                   onChange={e => set("name", e.target.value)}
                   placeholder="ex: Tech Summit Brasil 2025"
                   className={`
-                    w-full px-4 py-2.5 rounded-lg text-sm bg-background border 
-                    ${errors.name ? "border-red-400/50" : "border-border"} 
+                    w-full px-4 py-2.5 rounded-lg text-sm bg-background border
+                    ${errors.name ? "border-red-400/50" : "border-border"}
                     focus:border-primary outline-none transition-colors
                   `}
                 />
@@ -250,7 +258,7 @@ export default function CreateEvent({ onBack }) {
                   rows={4}
                   className={`
                     w-full px-4 py-2.5 rounded-lg text-sm bg-background border resize-y
-                    ${errors.description ? "border-red-400/50" : "border-border"} 
+                    ${errors.description ? "border-red-400/50" : "border-border"}
                     focus:border-primary outline-none transition-colors
                   `}
                 />
@@ -265,13 +273,13 @@ export default function CreateEvent({ onBack }) {
                     onChange={e => set("category", e.target.value)}
                     className="w-full px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none cursor-pointer"
                   >
-                    <option value="tecnologia">💻 Tecnologia</option>
-                    <option value="negocios">💼 Negócios</option>
-                    <option value="design">🎨 Design</option>
-                    <option value="educacao">📚 Educação</option>
-                    <option value="saude">🏥 Saúde</option>
-                    <option value="cultura">🎭 Cultura</option>
-                    <option value="outro">📌 Outro</option>
+                    <option value="tecnologia">Tecnologia</option>
+                    <option value="negocios">Negócios</option>
+                    <option value="design">Design</option>
+                    <option value="educacao">Educação</option>
+                    <option value="saude">Saúde</option>
+                    <option value="cultura">Cultura</option>
+                    <option value="outro">Outro</option>
                   </select>
                 </div>
                 <div>
@@ -386,9 +394,9 @@ export default function CreateEvent({ onBack }) {
                     onChange={e => set("certType", e.target.value)}
                     className="w-full px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none cursor-pointer"
                   >
-                    <option value="participante">🎟 Participante</option>
-                    <option value="palestrante">🎤 Palestrante</option>
-                    <option value="organizador">🗂 Organizador</option>
+                    <option value="participante">Participante</option>
+                    <option value="palestrante">Palestrante</option>
+                    <option value="organizador">Organizador</option>
                   </select>
                 </div>
               </div>
@@ -437,7 +445,7 @@ export default function CreateEvent({ onBack }) {
                 <div className="space-y-2">
                   {form.name && (
                     <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
-                      <span className="text-lg">📋</span>
+                      <ClipboardList size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
                       <div>
                         <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Nome</div>
                         <div className="text-sm font-medium">{form.name}</div>
@@ -446,7 +454,7 @@ export default function CreateEvent({ onBack }) {
                   )}
                   {form.description && (
                     <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
-                      <span className="text-lg">📝</span>
+                      <FileText size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
                       <div>
                         <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Descrição</div>
                         <div className="text-sm font-medium">{form.description}</div>
@@ -461,7 +469,7 @@ export default function CreateEvent({ onBack }) {
                 <div className="space-y-2">
                   {form.date && form.time && (
                     <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
-                      <span className="text-lg">📅</span>
+                      <CalendarDays size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
                       <div>
                         <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Início</div>
                         <div className="text-sm font-medium">{form.date} às {form.time}</div>
@@ -470,7 +478,7 @@ export default function CreateEvent({ onBack }) {
                   )}
                   {form.location && (
                     <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
-                      <span className="text-lg">📍</span>
+                      <MapPin size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
                       <div>
                         <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Local</div>
                         <div className="text-sm font-medium">{form.location}</div>
@@ -485,7 +493,7 @@ export default function CreateEvent({ onBack }) {
                 <div className="space-y-2">
                   {form.workload && (
                     <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
-                      <span className="text-lg">⏱</span>
+                      <Timer size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
                       <div>
                         <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Carga horária</div>
                         <div className="text-sm font-medium">{form.workload}h</div>
@@ -494,7 +502,7 @@ export default function CreateEvent({ onBack }) {
                   )}
                   {form.certType && (
                     <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
-                      <span className="text-lg">🎓</span>
+                      <GraduationCap size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
                       <div>
                         <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Tipo</div>
                         <div className="text-sm font-medium">{form.certType}</div>
@@ -503,7 +511,7 @@ export default function CreateEvent({ onBack }) {
                   )}
                   {form.issuer && (
                     <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
-                      <span className="text-lg">🏛</span>
+                      <Building2 size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
                       <div>
                         <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Emissor</div>
                         <div className="text-sm font-medium">{form.issuer}</div>
@@ -528,7 +536,6 @@ export default function CreateEvent({ onBack }) {
           {/* Navigation */}
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
             <button
-              
               onClick={handleBack}
               className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium text-accent-foreground/60 border border-border hover:text-accent-foreground hover:border-primary/30 transition-all"
             >

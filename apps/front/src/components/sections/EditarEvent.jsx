@@ -1,17 +1,14 @@
 // EditarEvent.jsx
-// EditarEvent.jsx
 import { useState, useEffect } from "react";
 import { CalendarDays, ClipboardList, Cog, Globe, Lock, AlertTriangle, Save } from "lucide-react";
 
-// NÃO PRECISA MAIS DE API_URL!
-// const API = `${import.meta.env.VITE_API_URL ?? "http://localhost:5001"}`;
-
-export default function EditarEvent({ eventId, onEventUpdated }) {
+export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted }) {
     const [loading, setLoading] = useState(true);
     const [form, setForm] = useState(null);
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState("");
+    const [deleting, setDeleting] = useState(false);
 
     function formatDateForInput(isoString) {
         if (!isoString) return "";
@@ -29,10 +26,9 @@ export default function EditarEvent({ eventId, onEventUpdated }) {
             setLoading(true);
             setError("");
 
-            // ✅ AGORA USA O PROXY (igual ao login)
             const res = await fetch(`/api/events/${eventId}`, {
                 method: "GET",
-                credentials: "include",  // Importante para enviar o cookie
+                credentials: "include",
             });
 
             if (!res.ok) {
@@ -82,11 +78,10 @@ export default function EditarEvent({ eventId, onEventUpdated }) {
         };
 
         try {
-            // ✅ AGORA USA O PROXY (igual ao login)
             const res = await fetch(`/api/events/${eventId}`, {
-                method: "PATCH",  // ou "PUT" dependendo do que seu backend aceita
+                method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",  // Importante para enviar o cookie
+                credentials: "include",
                 body: JSON.stringify(payload),
             });
 
@@ -113,8 +108,38 @@ export default function EditarEvent({ eventId, onEventUpdated }) {
         }
     };
 
-    // ... resto do JSX permanece IGUAL
+    const handleDelete = async () => {
+        if (!confirm("Tem certeza que deseja cancelar este evento? Esta ação não pode ser desfeita.")) {
+            return;
+        }
 
+        setDeleting(true);
+        setError("");
+
+        try {
+            const res = await fetch(`/api/events/${eventId}`, {
+                method: "DELETE",
+                credentials: "include",
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || errorData.message || "Erro ao cancelar evento");
+            }
+
+            // Se chegou aqui, o delete foi bem sucedido
+            if (onEventDeleted) {
+                onEventDeleted(eventId);
+            } else {
+                // Fallback: redirecionar para o dashboard
+                window.location.href = "/userDashboard";
+            }
+        } catch (err) {
+            console.error("Erro handleDelete:", err);
+            setError(err.message || "Falha ao cancelar evento. Tente novamente.");
+            setDeleting(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -142,7 +167,6 @@ export default function EditarEvent({ eventId, onEventUpdated }) {
     return (
         <section>
             <form onSubmit={handleSubmit} className="flex gap-6">
-
                 {/* ── ESQUERDA ── */}
                 <div className="w-1/2 bg-sidebar border border-border rounded-md">
                     <div className="flex p-4 items-center gap-2 border-b border-border">
@@ -168,7 +192,6 @@ export default function EditarEvent({ eventId, onEventUpdated }) {
 
                 {/* ── DIREITA ── */}
                 <div className="w-1/2 flex flex-col gap-4">
-
                     <div className="bg-sidebar border border-border rounded-md">
                         <div className="flex p-4 items-center gap-2 border-b border-border">
                             <CalendarDays size={20} className="text-primary" />
@@ -212,17 +235,37 @@ export default function EditarEvent({ eventId, onEventUpdated }) {
 
                         <div className="p-4">
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Zona de risco</p>
-                            <button type="button" className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-red-400 bg-red-400/10 border border-red-400/20 hover:bg-red-400/20 transition-colors cursor-pointer">
-                                <AlertTriangle size={13} /> Cancelar evento
+                            <button 
+                                type="button" 
+                                onClick={handleDelete}
+                                disabled={deleting}
+                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-red-400 bg-red-400/10 border border-red-400/20 hover:bg-red-400/20 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {deleting ? (
+                                    <>
+                                        <div className="w-4 h-4 rounded-full border-2 border-red-400/30 border-t-red-400 animate-spin" />
+                                        Cancelando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <AlertTriangle size={13} />
+                                        Cancelar evento
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
 
                     {error && (
-                        <p className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-md px-4 py-3">⚠ {error}</p>
+                        <p className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-md px-4 py-3">
+                            <AlertTriangle size={13} className="inline mr-2" />
+                            {error}
+                        </p>
                     )}
                     {success && (
-                        <p className="text-sm text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-md px-4 py-3">✓ Evento atualizado com sucesso!</p>
+                        <p className="text-sm text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-md px-4 py-3">
+                            ✓ Evento atualizado com sucesso!
+                        </p>
                     )}
 
                     <button type="submit" disabled={saving} className="w-full flex items-center justify-center gap-2 py-3 rounded-md text-sm font-bold text-white bg-primary hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer">
