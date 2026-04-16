@@ -1,0 +1,21 @@
+---
+import Layout from "../layouts/Layout.astro"
+import CreateSubEvent from "@/components/Create_subevent.jsx"
+
+export const prerender = false;
+
+const eventId = Astro.url.searchParams.get('eventId');
+
+console.log("Event ID recebido em createSubevent.astro:", eventId);
+---
+
+<Layout>
+    <div >
+        <CreateSubEvent 
+            client:load
+            eventId={eventId}
+            onBack="/userDashboard"
+            onSubEventCreated={`/eventPageAdm?id=${eventId}`}
+        />
+    </div>
+</Layout>

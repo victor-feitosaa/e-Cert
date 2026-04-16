@@ -46,8 +46,8 @@ export default function AnalyticTabs({ eventData: initialEventData , apiURL , co
 
     const renderContent = () => {
         switch (activeTab) {
-            case "overview":      return <Overview              eventData={eventData} />;
-            case "subeventos":    return <SubeventosView        eventData={eventData} />;
+            case "overview":      return <Overview              eventData={eventData}  />;
+            case "subeventos":    return <SubeventosView        eventData={eventData} eventId={eventId}/>;
             case "participantes": return <Participantes         eventData={eventData} />;
             case "certificados":  return <CertificadosAnalytics eventData={eventData} />;
             case "exportar":      return <Exportar              eventData={eventData} />;
