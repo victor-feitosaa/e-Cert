@@ -10,12 +10,11 @@ console.log("Event ID recebido em createSubevent.astro:", eventId);
 ---
 
 <Layout>
-    <div >
+    <div>
         <CreateSubEvent 
             client:load
             eventId={eventId}
             onBack="/userDashboard"
-            onSubEventCreated={`/eventPageAdm?id=${eventId}`}
         />
     </div>
 </Layout>

@@ -11,7 +11,7 @@ router.use(protect);
 
 router.get('/:id', getSubEvents);
 router.post('/:id', hasRole,  createSubEvent);
-router.put('/:id', hasRole, updateSubEvent);
+router.put('/:id',  updateSubEvent);
 router.delete('/:id', deleteSubEvent);
 
 //members

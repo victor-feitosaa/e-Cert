@@ -115,13 +115,6 @@ export const updateSubEvent = async (req, res) => {
             });
         }
 
-        if (existingSubEvent.createdBy !== userId) {
-            return res.status(403).json({
-                status: 'fail',
-                message: 'Você não tem permissão para atualizar este sub-evento'
-            });
-        }
-
         const dataToUpdate = {};
 
         if(updates.title !== undefined ) dataToUpdate.title = updates.title.trim();

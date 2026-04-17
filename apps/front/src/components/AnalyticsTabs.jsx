@@ -1,3 +1,4 @@
+// AnalyticTabs.jsx
 import { useState, useCallback } from "react";
 import { Calendar, ChartLine, Download, GraduationCap, Pen, Users, Globe, Lock, Clock, MapPin, User } from "lucide-react";
 
@@ -44,13 +45,28 @@ export default function AnalyticTabs({ eventData: initialEventData , apiURL , co
         setActiveTab("overview");
     }, []);
 
+    // Função para atualizar a lista de subeventos
+    const handleSubeventsUpdated = useCallback((updatedSubevents) => {
+        setEventData(prev => ({
+            ...prev,
+            subEvents: updatedSubevents
+        }));
+    }, []);
+
     const renderContent = () => {
         switch (activeTab) {
-            case "overview":      return <Overview              eventData={eventData}  />;
-            case "subeventos":    return <SubeventosView        eventData={eventData} eventId={eventId}/>;
-            case "participantes": return <Participantes         eventData={eventData} />;
+            case "overview":      return <Overview eventData={eventData} />;
+            case "subeventos":    
+                return (
+                    <SubeventosView 
+                        subeventData={eventData.subEvents} 
+                        eventId={eventId}
+                        onSubeventsUpdate={handleSubeventsUpdated}
+                    />
+                );
+            case "participantes": return <Participantes eventData={eventData} />;
             case "certificados":  return <CertificadosAnalytics eventData={eventData} />;
-            case "exportar":      return <Exportar              eventData={eventData} />;
+            case "exportar":      return <Exportar eventData={eventData} />;
             case "editar":
                 return (
                     <EditarEvent
@@ -67,7 +83,7 @@ export default function AnalyticTabs({ eventData: initialEventData , apiURL , co
     return (
         <div className="flex flex-col text-accent-foreground">
 
-            {/* ── HEADER ── */}
+            {/* HEADER */}
             <div className="flex mb-4">
                 <div className="flex flex-col gap-5 mb-4 w-1/2">
 
@@ -111,7 +127,7 @@ export default function AnalyticTabs({ eventData: initialEventData , apiURL , co
                 </div>
             </div>
 
-            {/* ── TABS ── */}
+            {/* TABS */}
             <section className="mt-8 bg-background border border-border-soft py-2 px-4">
                 <div className="border-b border-sidebar mb-6">
                     <div className="flex gap-2">

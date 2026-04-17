@@ -8,7 +8,7 @@ import Particles from "./Particles";
 
 const STEP_LABELS = ["Informações", "Data & Local", "Certificado", "Revisão"];
 
-export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
+export default function CreateSubEvent({ eventId, onBack }) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
     name: "",
@@ -28,17 +28,27 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
   const [status, setStatus] = useState("idle");
   const [errMsg, setErrMsg] = useState("");
 
-  const handleBack = () => {
-    if (step === 0) {
-      // Reset form and go back to event page
-      if (onBack) {
-        onBack();
-      } else {
-        window.location.href = `/event/${eventId}/admin`;
-      }
+  // Volta para a página do evento sinalizando que um sub-evento foi criado
+  const goBack = (created = false) => {
+    const base = typeof onBack === "string"
+      ? onBack
+      : `/eventPageAdm?eventId=${eventId}`;
+
+    if (created) {
+      // Adiciona ?created=1 para que SubeventosView atualize a lista
+      const url = new URL(base, window.location.origin);
+      url.searchParams.set("created", "1");
+      window.location.href = url.toString();
+    } else if (typeof onBack === "function") {
+      onBack();
     } else {
-      prev();
+      window.location.href = base;
     }
+  };
+
+  const handleBack = () => {
+    if (step === 0) goBack(false);
+    else prev();
   };
 
   const set = useCallback((name, value) => {
@@ -80,7 +90,7 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
         body: JSON.stringify({
           title: form.name,
           description: form.description,
-          date: form.date && form.time ? `${form.date}T${form.time}:00` : null,
+          date: form.date && form.time ? `${form.date}T${form.time}:00.000Z` : null,
           location: form.location,
           workload: form.workload ? parseInt(form.workload) : undefined,
           capacity: form.capacity ? parseInt(form.capacity) : undefined,
@@ -97,14 +107,11 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
         throw new Error(data?.message || data?.error || `Erro ${res.status}`);
       }
 
-      const data = await res.json();
-      console.log("SubEvento criado com sucesso:", data);
-      
-      if (onSubEventCreated) {
-        onSubEventCreated(data);
-      }
-      
       setStatus("success");
+
+      // Volta após 1.2s com ?created=1 para atualizar a lista
+      setTimeout(() => goBack(true), 1200);
+
     } catch (err) {
       console.error("Erro ao criar subevento:", err);
       setStatus("error");
@@ -128,16 +135,7 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
           </p>
           <div className="flex gap-3 justify-center">
             <button
-              onClick={() => {
-                if (onSubEventCreated) {
-                  onSubEventCreated(null);
-                }
-                if (onBack) {
-                  onBack();
-                } else {
-                  window.location.href = `/event/${eventId}/admin`;
-                }
-              }}
+              onClick={() => goBack(true)}
               className="px-5 flex cursor-pointer hover:scale-[1.05] justify-center items-center py-2.5 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg transition-all"
             >
               <Check size={16} className="mr-2" />
@@ -263,7 +261,7 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
                   placeholder="Descreva o conteúdo, objetivos e público-alvo desta atividade..."
                   rows={4}
                   className={`
-                    w-full px-4 py-2.5 text-accent-foreground  rounded-lg text-sm bg-background border resize-y
+                    w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-background border resize-y
                     ${errors.description ? "border-red-400/50" : "border-border"}
                     focus:border-primary outline-none transition-colors
                   `}
@@ -283,7 +281,7 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
                       value={form.order}
                       onChange={e => set("order", e.target.value)}
                       placeholder="ex: 1, 2, 3..."
-                      className="w-full  text-accent-foreground pl-9 pr-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                      className="w-full text-accent-foreground pl-9 pr-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
                     />
                   </div>
                   <p className="text-xs text-accent-foreground/40 mt-1">Define a ordem de exibição</p>
@@ -295,7 +293,7 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
                     value={form.capacity}
                     onChange={e => set("capacity", e.target.value)}
                     placeholder="ex: 50"
-                    className="w-full text-accent-foreground  px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                    className="w-full text-accent-foreground px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
                   />
                   <p className="text-xs text-accent-foreground/40 mt-1">Opcional - limite de vagas</p>
                 </div>
@@ -315,8 +313,10 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
                     type="date"
                     value={form.date}
                     onChange={e => set("date", e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                    max="2099-12-31"
                     className={`
-                      w-full px-4  text-accent-foreground py-2.5 rounded-lg text-sm bg-background border
+                      w-full px-4 text-accent-foreground py-2.5 rounded-lg text-sm bg-background border
                       ${errors.date ? "border-red-400/50" : "border-border"}
                       focus:border-primary outline-none
                     `}
@@ -332,7 +332,7 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
                     value={form.time}
                     onChange={e => set("time", e.target.value)}
                     className={`
-                      w-full px-4 text-accent-foreground  py-2.5 rounded-lg text-sm bg-background border
+                      w-full px-4 text-accent-foreground py-2.5 rounded-lg text-sm bg-background border
                       ${errors.time ? "border-red-400/50" : "border-border"}
                       focus:border-primary outline-none
                     `}
@@ -349,9 +349,9 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
                   type="text"
                   value={form.location}
                   onChange={e => set("location", e.target.value)}
-                  placeholder="ex: Sala 101, text-accent-foreground  Auditório Principal, Online via Zoom..."
+                  placeholder="ex: Sala 101, Auditório Principal, Online via Zoom..."
                   className={`
-                    w-full px-4 py-2.5 rounded-lg  text-accent-foreground  text-sm bg-background border
+                    w-full px-4 py-2.5 rounded-lg text-accent-foreground text-sm bg-background border
                     ${errors.location ? "border-red-400/50" : "border-border"}
                     focus:border-primary outline-none
                   `}
@@ -366,7 +366,7 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
                   value={form.locationUrl}
                   onChange={e => set("locationUrl", e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-4  text-accent-foreground py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                  className="w-full px-4 text-accent-foreground py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
                 />
                 <p className="text-xs text-accent-foreground/40 mt-1">Opcional — Google Maps, link do Meet/Zoom</p>
               </div>
@@ -387,7 +387,7 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
                     onChange={e => set("workload", e.target.value)}
                     placeholder="ex: 4"
                     className={`
-                      w-full px-4 py-2.5  text-accent-foreground rounded-lg text-sm bg-background border
+                      w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-background border
                       ${errors.workload ? "border-red-400/50" : "border-border"}
                       focus:border-primary outline-none
                     `}
@@ -399,7 +399,7 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
                   <select
                     value={form.certType}
                     onChange={e => set("certType", e.target.value)}
-                    className="w-full px-4 py-2.5 text-accent-foreground  rounded-lg text-sm bg-background border border-border focus:border-primary outline-none cursor-pointer"
+                    className="w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-background border border-border focus:border-primary outline-none cursor-pointer"
                   >
                     <option value="participante">Participante</option>
                     <option value="palestrante">Palestrante</option>
@@ -418,7 +418,7 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
                   onChange={e => set("issuer", e.target.value)}
                   placeholder="ex: Instituto de Tecnologia Brasil"
                   className={`
-                    w-full px-4 py-2.5 rounded-lg text-accent-foreground  text-sm bg-background border
+                    w-full px-4 py-2.5 rounded-lg text-accent-foreground text-sm bg-background border
                     ${errors.issuer ? "border-red-400/50" : "border-border"}
                     focus:border-primary outline-none
                   `}
@@ -433,7 +433,7 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
                   onChange={e => set("certMessage", e.target.value)}
                   placeholder="Mensagem que aparecerá no certificado..."
                   rows={3}
-                  className="w-full px-4 py-2.5 rounded-lg  text-accent-foreground text-sm bg-background border border-border focus:border-primary outline-none resize-y"
+                  className="w-full px-4 py-2.5 rounded-lg text-accent-foreground text-sm bg-background border border-border focus:border-primary outline-none resize-y"
                 />
                 <p className="text-xs text-accent-foreground/40 mt-1">Opcional</p>
               </div>
@@ -448,8 +448,8 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
               </p>
 
               <div>
-                <div className="text-[11px]  text-accent-foreground font-bold uppercase tracking-wider text-accent-foreground/40 mb-3">Informações</div>
-                <div className="space-y-2 text-accent-foreground ">
+                <div className="text-[11px] text-accent-foreground font-bold uppercase tracking-wider text-accent-foreground/40 mb-3">Informações</div>
+                <div className="space-y-2 text-accent-foreground">
                   {form.name && (
                     <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
                       <ClipboardList size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
@@ -482,7 +482,7 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
 
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-wider text-accent-foreground/40 mb-3">Data & Local</div>
-                <div className="space-y-2 text-accent-foreground ">
+                <div className="space-y-2 text-accent-foreground">
                   {form.date && form.time && (
                     <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
                       <CalendarDays size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
@@ -506,7 +506,7 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
 
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-wider text-accent-foreground/40 mb-3">Certificado</div>
-                <div className="space-y-2 text-accent-foreground ">
+                <div className="space-y-2 text-accent-foreground">
                   {form.workload && (
                     <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
                       <Timer size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
@@ -522,7 +522,7 @@ export default function CreateSubEvent({ eventId, onBack, onSubEventCreated }) {
                       <div>
                         <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Tipo</div>
                         <div className="text-sm font-medium">
-                          {form.certType === "participante" ? "Participante" : 
+                          {form.certType === "participante" ? "Participante" :
                            form.certType === "palestrante" ? "Palestrante" : "Organizador"}
                         </div>
                       </div>
