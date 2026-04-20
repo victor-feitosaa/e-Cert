@@ -52,6 +52,9 @@ model SubEvent {
   title       String
   description String
   date        DateTime
+  date_start  DateTime?
+  date_end    DateTime?
+  location    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

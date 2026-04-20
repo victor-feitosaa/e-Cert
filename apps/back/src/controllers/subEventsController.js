@@ -7,7 +7,7 @@ export const createSubEvent = async (req,res) => {
 
     try {
         
-        const { title, description, date} = req.body;
+        const { title, description, date_start, date_end, location } = req.body;
 
         const {id} = req.params;
 
@@ -46,14 +46,22 @@ export const createSubEvent = async (req,res) => {
             })
         }
     
-        if (!date) {
+        if (!date_start) {
             return res.status(404).json({
                 status: 'fail',
-                message: 'A data é obrigatoria'
+                message: 'A data de início é obrigatória'
             })
         }
+
+        if (!date_end) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'A data de término é obrigatória'
+            })
+        }
+
     
-        const subEvent = await subEventService.create(title, description, date, id, userId )
+        const subEvent = await subEventService.create(title, description, date_start, date_end, location, id, userId )
         
         res.status(201).json({
             status: 'sucess',

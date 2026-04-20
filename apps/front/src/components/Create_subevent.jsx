@@ -13,8 +13,10 @@ export default function CreateSubEvent({ eventId, onBack }) {
   const [form, setForm] = useState({
     name: "",
     description: "",
-    date: "",
-    time: "",
+    date_start: "",
+    date_end: "",
+    time_start: "",
+    time_end: "",
     location: "",
     locationUrl: "",
     workload: "",
@@ -63,8 +65,10 @@ export default function CreateSubEvent({ eventId, onBack }) {
       if (!form.description.trim()) e.description = "Campo obrigatório";
     }
     if (s === 1) {
-      if (!form.date) e.date = "Campo obrigatório";
-      if (!form.time) e.time = "Campo obrigatório";
+      if (!form.date_start) e.date_start = "Campo obrigatório";
+      if (!form.date_end) e.date_end = "Campo obrigatório";
+      if (!form.time_start) e.time_start = "Campo obrigatório";
+      if (!form.time_end) e.time_end = "Campo obrigatório";
       if (!form.location.trim()) e.location = "Campo obrigatório";
     }
     if (s === 2) {
@@ -82,8 +86,6 @@ export default function CreateSubEvent({ eventId, onBack }) {
     setStatus("loading");
     setErrMsg("");
 
-    console.log(`EVENT ID POST: ${eventId}`)
-
     try {
       const res = await fetch(`/api/events/${eventId}/subevents`, {
         method: "POST",
@@ -92,7 +94,8 @@ export default function CreateSubEvent({ eventId, onBack }) {
         body: JSON.stringify({
           title: form.name,
           description: form.description,
-          date: form.date && form.time ? `${form.date}T${form.time}:00.000Z` : null,
+          date_start: form.date_start && form.time_start ? `${form.date_start}T${form.time_start}:00.000Z` : null,
+          date_end: form.date_end && form.time_end ? `${form.date_end}T${form.time_end}:00.000Z` : null,
           location: form.location,
           workload: form.workload ? parseInt(form.workload) : undefined,
           capacity: form.capacity ? parseInt(form.capacity) : undefined,
@@ -146,7 +149,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
             <button
               onClick={() => {
                 setForm({
-                  name: "", description: "", date: "", time: "", location: "",
+                  name: "", description: "", date_start: "", time_start: "", date_end: "", time_end: "", location: "",
                   locationUrl: "", workload: "", certType: "participante",
                   issuer: "", certMessage: "", capacity: "", order: "",
                 });
@@ -263,7 +266,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                   placeholder="Descreva o conteúdo, objetivos e público-alvo desta atividade..."
                   rows={4}
                   className={`
-                    w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-background border resize-y
+                    w-full resize-none px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-background border 
                     ${errors.description ? "border-red-400/50" : "border-border"}
                     focus:border-primary outline-none transition-colors
                   `}
@@ -271,23 +274,8 @@ export default function CreateSubEvent({ eventId, onBack }) {
                 {errors.description && <p className="text-xs text-red-400 mt-1">{errors.description}</p>}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                    Ordem / Sequência
-                  </label>
-                  <div className="relative">
-                    <Hash size={14} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-accent-foreground/40" />
-                    <input
-                      type="number"
-                      value={form.order}
-                      onChange={e => set("order", e.target.value)}
-                      placeholder="ex: 1, 2, 3..."
-                      className="w-full text-accent-foreground pl-9 pr-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
-                    />
-                  </div>
-                  <p className="text-xs text-accent-foreground/40 mt-1">Define a ordem de exibição</p>
-                </div>
+              <div className="grid  gap-4">
+
                 <div>
                   <label className="block text-sm font-bold text-accent-foreground mb-1.5">Capacidade</label>
                   <input
@@ -307,23 +295,23 @@ export default function CreateSubEvent({ eventId, onBack }) {
           {step === 1 && (
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div id="date_start">
                   <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                    Data <span className="text-primary">*</span>
+                    Data de ínicio <span className="text-primary">*</span>
                   </label>
                   <input
                     type="date"
-                    value={form.date}
-                    onChange={e => set("date", e.target.value)}
+                    value={form.date_start}
+                    onChange={e => set("date_start", e.target.value)}
                     min={new Date().toISOString().split("T")[0]}
                     max="2099-12-31"
                     className={`
                       w-full px-4 text-accent-foreground py-2.5 rounded-lg text-sm bg-background border
-                      ${errors.date ? "border-red-400/50" : "border-border"}
+                      ${errors.date_start ? "border-red-400/50" : "border-border"}
                       focus:border-primary outline-none
                     `}
                   />
-                  {errors.date && <p className="text-xs text-red-400 mt-1">{errors.date}</p>}
+                  {errors.date_start && <p className="text-xs text-red-400 mt-1">{errors.date_start}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-accent-foreground mb-1.5">
@@ -331,15 +319,51 @@ export default function CreateSubEvent({ eventId, onBack }) {
                   </label>
                   <input
                     type="time"
-                    value={form.time}
-                    onChange={e => set("time", e.target.value)}
+                    value={form.time_start}
+                    onChange={e => set("time_start", e.target.value)}
                     className={`
                       w-full px-4 text-accent-foreground py-2.5 rounded-lg text-sm bg-background border
-                      ${errors.time ? "border-red-400/50" : "border-border"}
+                      ${errors.time_start ? "border-red-400/50" : "border-border"}
                       focus:border-primary outline-none
                     `}
                   />
-                  {errors.time && <p className="text-xs text-red-400 mt-1">{errors.time}</p>}
+                  {errors.time_start && <p className="text-xs text-red-400 mt-1">{errors.time_start}</p>}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div id="date_end">
+                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">
+                    Data de término <span className="text-primary">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={form.date_end}
+                    onChange={e => set("date_end", e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                    max="2099-12-31"
+                    className={`
+                      w-full px-4 text-accent-foreground py-2.5 rounded-lg text-sm bg-background border
+                      ${errors.date_end ? "border-red-400/50" : "border-border"}
+                      focus:border-primary outline-none
+                    `}
+                  />
+                  {errors.date_end && <p className="text-xs text-red-400 mt-1">{errors.date_end}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">
+                    Horário <span className="text-primary">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    value={form.time_end}
+                    onChange={e => set("time_end", e.target.value)}
+                    className={`
+                      w-full px-4 text-accent-foreground py-2.5 rounded-lg text-sm bg-background border
+                      ${errors.time_end ? "border-red-400/50" : "border-border"}
+                      focus:border-primary outline-none
+                    `}
+                  />
+                  {errors.time_end && <p className="text-xs text-red-400 mt-1">{errors.time_end}</p>}
                 </div>
               </div>
 
@@ -375,7 +399,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
             </div>
           )}
 
-          {/* Step 2 - Certificado */}
+          {/* Step 2 - Equipe */}
           {step === 2 && (
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
@@ -470,27 +494,38 @@ export default function CreateSubEvent({ eventId, onBack }) {
                       </div>
                     </div>
                   )}
-                  {form.order && (
+                  {form.capacity && (
                     <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
-                      <Hash size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
+                      <Tag size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
                       <div>
-                        <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Ordem</div>
-                        <div className="text-sm font-medium">{form.order}</div>
+                        <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Capacidade</div>
+                        <div className="text-sm font-medium">{form.capacity}</div>
                       </div>
                     </div>
                   )}
+
                 </div>
               </div>
 
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-wider text-accent-foreground/40 mb-3">Data & Local</div>
                 <div className="space-y-2 text-accent-foreground">
-                  {form.date && form.time && (
+                  {form.date_start && form.time_start && (
                     <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
                       <CalendarDays size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
                       <div>
                         <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Início</div>
-                        <div className="text-sm font-medium">{form.date} às {form.time}</div>
+                        {/* para o formato de dia/mes/ano */}
+                        <div className="text-sm font-medium">{form.date_start} às {form.time_start}</div>
+                      </div>
+                    </div>
+                  )}
+                  {form.date_end && form.time_end && (
+                    <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
+                      <CalendarDays size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Término</div>
+                        <div className="text-sm font-medium">{form.date_end} às {form.time_end}</div>
                       </div>
                     </div>
                   )}

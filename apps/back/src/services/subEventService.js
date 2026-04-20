@@ -2,8 +2,11 @@ import  SubEventRepository  from "../repository/SubEventRepository.js"
 
 class SubEventService {
     
-    async create (title, description, date, eventId, creator) {
-        return await SubEventRepository.create(title, description, date, eventId, creator);
+    async create (title, description, date_start, date_end, location, eventId, creator) {
+
+        const date = date_start ? new Date(date_start) : null;
+
+        return await SubEventRepository.create(title, description, date, date_start, date_end, location, eventId, creator);
     }
 
     async update (dataToUpdate, id) {
