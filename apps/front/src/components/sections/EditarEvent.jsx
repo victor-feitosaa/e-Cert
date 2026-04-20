@@ -12,7 +12,12 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
 
     function formatDateForInput(isoString) {
         if (!isoString) return "";
-        return new Date(isoString).toISOString().split("T")[0];
+        const date = new Date(isoString);
+        const day = date.getDate().toString().padStart(2, "0");
+        const month = `${date.getMonth() + 1}`.padStart(2, "0");
+        const year = date.getFullYear();
+        console.log(`${year}/${month}/${day}`)
+        return `${year}-${month}-${day}`;
     }
 
     function formatTimeForInput(isoString) {
@@ -40,12 +45,17 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
             const ev = response.data?.event || response.event || response.data;
             if (!ev) throw new Error("Dados do evento não encontrados");
 
+            console.log(ev);
             setForm({
                 title: ev.title || "",
                 description: ev.description || "",
                 location: ev.location || "",
-                date: formatDateForInput(ev.date),
-                time: formatTimeForInput(ev.date),
+                date_start: formatDateForInput(ev.date_start),
+                date_end: formatDateForInput(ev.date_end),
+                category: ev.category,
+                capacity: ev.capacity,
+                time_start: formatTimeForInput(ev.date_start),
+                time_end: formatTimeForInput(ev.date_end),
                 isPublic: ev.isPublic ?? true,
             });
         } catch (err) {
@@ -73,7 +83,10 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
             title: form.title,
             description: form.description,
             location: form.location,
-            date: `${form.date}T${form.time}:00`,
+            category: form.category,
+            capacity: form.capacity,
+            date_start: `${form.date_start}T${form.time_start}:00`,
+            date_end: `${form.date_end}T${form.time_end}:00`,
             isPublic: Boolean(form.isPublic),
         };
 
@@ -188,6 +201,30 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                         <label className="text-sm font-bold">Local</label>
                         <input type="text" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.location} onChange={set("location")} />
                     </fieldset>
+
+                    <fieldset className="flex flex-col gap-1 p-4">
+                        <label className="text-sm font-bold">Catégoria</label>
+                        <select
+                            value={form.category}
+                            onChange={e => set("category", e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none cursor-pointer"
+                        >
+                            <option value="tecnologia">Tecnologia</option>
+                            <option value="negocios">Negócios</option>
+                            <option value="design">Design</option>
+                            <option value="educacao">Educação</option>
+                            <option value="saude">Saúde</option>
+                            <option value="cultura">Cultura</option>
+                            <option value="outro">Outro</option>
+                        </select>
+
+
+                    </fieldset>
+
+                    <fieldset className="flex flex-col gap-1 p-4">
+                        <label className="text-sm font-bold">Capacidade</label>
+                        <input type="number" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.capacity} onChange={set("capacity")} />
+                    </fieldset>
                 </div>
 
                 {/* ── DIREITA ── */}
@@ -200,11 +237,21 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                         <div className="flex">
                             <fieldset className="flex flex-col gap-1 p-4 w-1/2">
                                 <label className="text-sm font-bold">Data de início</label>
-                                <input type="date" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.date} onChange={set("date")} required />
+                                <input type="date" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.date_start} onChange={set("date_start")} required />
                             </fieldset>
                             <fieldset className="flex flex-col gap-1 p-4 w-1/2">
                                 <label className="text-sm font-bold">Horário</label>
-                                <input type="time" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.time} onChange={set("time")} />
+                                <input type="time" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.time_start} onChange={set("time_start")} />
+                            </fieldset>
+                        </div>
+                        <div className="flex">
+                            <fieldset className="flex flex-col gap-1 p-4 w-1/2">
+                                <label className="text-sm font-bold">Data de Término</label>
+                                <input type="date" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.date_end} onChange={set("date_end")} required />
+                            </fieldset>
+                            <fieldset className="flex flex-col gap-1 p-4 w-1/2">
+                                <label className="text-sm font-bold">Horário</label>
+                                <input type="time" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.time_end} onChange={set("time_end")} />
                             </fieldset>
                         </div>
                     </div>

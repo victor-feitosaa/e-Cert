@@ -5,32 +5,60 @@ import type { APIRoute } from "astro";
 const API_URL = import.meta.env.API_URL || "http://localhost:5001";
 
 export const GET: APIRoute = async ({ params, request }) => {
-  const { id } = params;
+  const { eventId, id } = params;
   const url = `${API_URL}/subevents/${id}`;
-  console.log("🔵 GET Proxy - URL:", url);
-
+  console.log("🔵 GET subevent:", url);
   try {
     const response = await fetch(url, {
       headers: { "Cookie": request.headers.get("cookie") || "" },
     });
-    const data = await response.json();
-    return new Response(JSON.stringify(data), {
+    const text = await response.text();
+    console.log(`↩ ${response.status}:`, text.slice(0, 200));
+    return new Response(text, {
       status: response.status,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: "Could not reach event service", details: error.message }), {
-      status: 502,
+    console.error("❌ GET error:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 502, headers: { "Content-Type": "application/json" },
+    });
+  }
+};
+
+export const PATCH: APIRoute = async ({ params, request }) => {
+  const { eventId, id } = params;
+  const url = `${API_URL}/subevents/${id}`;
+  console.log("🟡 PATCH subevent:", url);
+  try {
+    const body = await request.json();
+    console.log("→ body:", JSON.stringify(body).slice(0, 300));
+    const response = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Cookie": request.headers.get("cookie") || "",
+      },
+      body: JSON.stringify(body),
+    });
+    const text = await response.text();
+    console.log(`↩ ${response.status}:`, text.slice(0, 200));
+    return new Response(text, {
+      status: response.status,
       headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("❌ PATCH error:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 502, headers: { "Content-Type": "application/json" },
     });
   }
 };
 
 export const PUT: APIRoute = async ({ params, request }) => {
-  const { id } = params;
-  const url = `${API_URL}/subevents/${id}`;  
-  console.log("🟢 PATCH Proxy - URL:", url);
-
+  const { eventId, id } = params;
+  const url = `${API_URL}/subevents/${id}`;
+  console.log("🟢 PUT subevent:", url);
   try {
     const body = await request.json();
     const response = await fetch(url, {
@@ -41,48 +69,40 @@ export const PUT: APIRoute = async ({ params, request }) => {
       },
       body: JSON.stringify(body),
     });
-
-    const responseText = await response.text();
-    try {
-      const data = JSON.parse(responseText);
-      return new Response(JSON.stringify(data), {
-        status: response.status,
-        headers: { "Content-Type": "application/json" },
-      });
-    } catch {
-      console.error("❌ Resposta não é JSON:", responseText.substring(0, 200));
-      return new Response(JSON.stringify({ error: "Backend returned invalid response" }), {
-        status: 502,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-  } catch (error) {
-    return new Response(JSON.stringify({ error: "Could not reach event service", details: error.message }), {
-      status: 502,
+    const text = await response.text();
+    console.log(`↩ ${response.status}:`, text.slice(0, 200));
+    return new Response(text, {
+      status: response.status,
       headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("❌ PUT error:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 502, headers: { "Content-Type": "application/json" },
     });
   }
 };
 
 export const DELETE: APIRoute = async ({ params, request }) => {
-  const { id } = params;
+  const { eventId, id } = params;
   const url = `${API_URL}/subevents/${id}`;
-  console.log("🔴 DELETE Proxy - URL:", url);
-
+  console.log("🔴 DELETE subevent:", url);
   try {
     const response = await fetch(url, {
       method: "DELETE",
       headers: { "Cookie": request.headers.get("cookie") || "" },
-      credentials: "include",
     });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: "Could not reach event service", details: error.message }), {
-      status: 502,
+    console.log(`↩ ${response.status}`);
+    if (response.status === 204) return new Response(null, { status: 204 });
+    const text = await response.text();
+    return new Response(text || "{}", {
+      status: response.status,
       headers: { "Content-Type": "application/json" },
     });
+  } catch (error) {
+    console.error("❌ DELETE error:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 502, headers: { "Content-Type": "application/json" },
+    });
   }
-  
-  return new Response(null, {
-    status: 204,
-  });
-}
+};

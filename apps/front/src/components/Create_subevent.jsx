@@ -82,10 +82,12 @@ export default function CreateSubEvent({ eventId, onBack }) {
     setStatus("loading");
     setErrMsg("");
 
+    console.log(`EVENT ID POST: ${eventId}`)
+
     try {
       const res = await fetch(`/api/events/${eventId}/subevents`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json"},
         credentials: "include",
         body: JSON.stringify({
           title: form.name,

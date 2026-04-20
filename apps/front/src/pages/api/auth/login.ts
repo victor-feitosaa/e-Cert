@@ -22,6 +22,8 @@ export const POST: APIRoute = async ({ request }) => {
     })
   }
 
+
+  
 const apiUrl = `${import.meta.env.API_URL ?? "http://localhost:5001"}/auth/login`
 
   // Forward to backend

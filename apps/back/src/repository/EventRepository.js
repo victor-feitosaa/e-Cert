@@ -2,13 +2,20 @@ import { prisma } from "../config/db.js";
 
 class EventRepository {
 
-    async create (title, description, date, location, isPublic, creator) {
+    async create (data) {
+
+        const {title, description, date, date_start, date_end, banner, category, capacity, location, isPublic, creator} = data;
 
         return prisma.event.create({
             data: {
                 title: title.trim(),
                 description: description.trim(),
                 date: date,
+                date_start: date_start,
+                date_end: date_end,
+                banner: banner,
+                category: category,
+                capacity: capacity,
                 location: location?.trim() || null,
                 isPublic: isPublic === undefined ? true : Boolean(isPublic),
                 createdBy: creator 
@@ -109,6 +116,9 @@ class EventRepository {
     }
 
     async update (dataToUpdate, id) {
+
+        dataToUpdate.capacity = parseInt(dataToUpdate.capacity);
+
         return prisma.event.update({
             where: {id},
             data: dataToUpdate,

@@ -1,19 +1,33 @@
 import { useState, useEffect } from "react";
 import { Plus, Calendar, MapPin, Clock, Users, Edit2, Trash2, X, AlertTriangle } from "lucide-react";
 
-const BASE_URL = "http://localhost:5001";
+// datetime-local exige "YYYY-MM-DDTHH:MM" no horário LOCAL, não UTC
+const toLocalInput = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
 
-/* ─── MODAL EDIÇÃO / CRIAÇÃO ─── */
+// Normaliza qualquer formato de resposta da API para array
+const toArray = (data) => {
+  if (Array.isArray(data))                      return data;
+  if (Array.isArray(data?.data?.subevents))     return data.data.subevents;
+  if (Array.isArray(data?.subevents))           return data.subevents;
+  if (Array.isArray(data?.data))                return data.data;
+  return [];
+};
+
+/* ─── MODAL EDIÇÃO ─── */
 function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
-  const isNew = !subevento?.id;
   const [form, setForm] = useState({
     title:        subevento?.title        || "",
     description:  subevento?.description  || "",
-    date:         subevento?.date         ? new Date(subevento.date).toISOString().slice(0,16) : "",
-    endDate:      subevento?.endDate      ? new Date(subevento.endDate).toISOString().slice(0,16) : "",
+    date:         toLocalInput(subevento?.date),
+    endDate:      toLocalInput(subevento?.endDate),
     location:     subevento?.location     || "",
     maxAttendees: subevento?.maxAttendees ? String(subevento.maxAttendees) : "",
-    workload:     subevento?.workload     || "",
+    workload:     subevento?.workload     ? String(subevento.workload)     : "",
     speaker:      subevento?.speaker      || "",
   });
   const [errors, setErrors] = useState({});
@@ -32,25 +46,17 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
     return Object.keys(e).length === 0;
   };
 
-  const handleSave = () => { 
-    if (validate()) onSave(form); 
-  };
-
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center p-6 overflow-y-auto">
       <div className="bg-[#111827] border border-purple-500/20 rounded-2xl p-8 w-full max-w-lg shadow-2xl mt-10">
 
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-bold text-white">
-            {isNew ? "Criar sub-evento" : "Editar sub-evento"}
-          </h2>
+          <h2 className="text-lg font-bold text-white">Editar sub-evento</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
             <X size={18} />
           </button>
         </div>
 
-        {/* Fields */}
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-gray-300 mb-1.5">
@@ -147,7 +153,6 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
           </div>
         </div>
 
-        {/* API error */}
         {apiError && (
           <div className="mt-4 flex items-start gap-2.5 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
             <AlertTriangle size={14} className="text-red-400 mt-0.5 shrink-0" />
@@ -155,7 +160,6 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex justify-end gap-2.5 mt-6 pt-5 border-t border-white/5">
           <button
             onClick={onClose}
@@ -164,7 +168,7 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
             Cancelar
           </button>
           <button
-            onClick={handleSave}
+            onClick={() => { if (validate()) onSave(form); }}
             disabled={loading}
             className="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-gradient-to-br from-[#7c3aed] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
@@ -176,7 +180,7 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
   );
 }
 
-/* ─── MODAL CONFIRMAÇÃO DE EXCLUSÃO ─── */
+/* ─── MODAL DELETE ─── */
 function DeleteModal({ subevento, onConfirm, onCancel, loading }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6">
@@ -190,16 +194,11 @@ function DeleteModal({ subevento, onConfirm, onCancel, loading }) {
             <p className="text-xs text-gray-500">Essa ação não pode ser desfeita</p>
           </div>
         </div>
-
         <p className="text-sm text-gray-400 leading-relaxed mb-6 p-3 bg-white/[0.02] border border-white/5 rounded-lg">
           Você está prestes a excluir <strong className="text-white">{subevento?.title}</strong>. Todos os dados serão removidos permanentemente.
         </p>
-
         <div className="flex justify-end gap-2.5">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 text-sm font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all"
-          >
+          <button onClick={onCancel} className="px-4 py-2 text-sm font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
             Cancelar
           </button>
           <button
@@ -226,49 +225,31 @@ function SubeventoCard({ subevento, onEdit, onDelete }) {
 
   return (
     <div className="bg-[#111827] border border-purple-500/10 rounded-xl overflow-hidden hover:border-purple-500/30 hover:-translate-y-1 hover:shadow-[0_16px_48px_rgba(0,0,0,0.4)] transition-all duration-200 group">
-
       <div className="h-0.5 bg-gradient-to-r from-purple-600/60 via-purple-400/30 to-transparent" />
-
       <div className="p-5">
-        {/* Title + actions */}
         <div className="flex items-start justify-between gap-3 mb-3">
-          <h3 className="font-bold text-white text-base leading-snug line-clamp-2">
-            {subevento.title}
-          </h3>
+          <h3 className="font-bold text-white text-base leading-snug line-clamp-2">{subevento.title}</h3>
           <div className="flex gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={() => onEdit(subevento)}
-              className="p-1.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 transition-colors"
-            >
+            <button onClick={() => onEdit(subevento)} className="p-1.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 transition-colors">
               <Edit2 size={13} />
             </button>
-            <button
-              onClick={() => onDelete(subevento)}
-              className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
-            >
+            <button onClick={() => onDelete(subevento)} className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors">
               <Trash2 size={13} />
             </button>
           </div>
         </div>
 
-        {/* Description */}
         {subevento.description && (
-          <p className="text-sm text-gray-500 leading-relaxed line-clamp-2 mb-4">
-            {subevento.description}
-          </p>
+          <p className="text-sm text-gray-500 leading-relaxed line-clamp-2 mb-4">{subevento.description}</p>
         )}
 
-        {/* Meta */}
         <div className="space-y-2">
           {subevento.date && (
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <Calendar size={12} className="text-gray-600 shrink-0" />
               <span>{fmtDate(subevento.date)}</span>
               {fmtTime(subevento.date) && (
-                <>
-                  <Clock size={12} className="text-gray-600 shrink-0 ml-1" />
-                  <span>{fmtTime(subevento.date)}</span>
-                </>
+                <><Clock size={12} className="text-gray-600 shrink-0 ml-1" /><span>{fmtTime(subevento.date)}</span></>
               )}
             </div>
           )}
@@ -286,7 +267,6 @@ function SubeventoCard({ subevento, onEdit, onDelete }) {
           )}
         </div>
 
-        {/* Badges */}
         <div className="flex flex-wrap gap-2 mt-4">
           {subevento.workload && (
             <span className="text-xs font-bold px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
@@ -306,38 +286,35 @@ function SubeventoCard({ subevento, onEdit, onDelete }) {
 
 /* ─── MAIN ─── */
 export default function SubeventosView({ subeventData: initialData = [], eventId, onSubeventsUpdate }) {
-  const [subeventos, setSubeventos] = useState(initialData);
+  const [subeventos, setSubeventos] = useState(Array.isArray(initialData) ? initialData : []);
   const [modalOpen, setModalOpen]   = useState(false);
   const [editing, setEditing]       = useState(null);
   const [deleting, setDeleting]     = useState(null);
   const [saving, setSaving]         = useState(false);
   const [delLoading, setDelLoading] = useState(false);
   const [apiError, setApiError]     = useState("");
-  const [isLoading, setIsLoading]   = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(false);
 
-  // Função para buscar subeventos do servidor
+  // Busca lista via proxy Astro
   const fetchSubevents = async () => {
-    setIsLoading(true);
+    setFetchLoading(true);
     try {
-      const res = await fetch(`/api/events/${eventId}/subevents`, { 
-        credentials: "include" 
+      const res = await fetch(`/api/events/${eventId}/subevents`, {
+        credentials: "include",
       });
+      if (!res.ok) throw new Error(`Erro ${res.status}`);
       const data = await res.json();
-      const list = data?.data?.subevents ?? data?.subevents ?? data ?? [];
+      const list = toArray(data);
       setSubeventos(list);
-      
-      // Notificar o pai
-      if (onSubeventsUpdate) {
-        onSubeventsUpdate(list);
-      }
+      onSubeventsUpdate?.(list);
     } catch (err) {
       console.error("Erro ao buscar subeventos:", err);
     } finally {
-      setIsLoading(false);
+      setFetchLoading(false);
     }
   };
 
-  // Recarregar quando voltar da criação
+  // Detecta retorno da página de criação (?created=1)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("created") === "1") {
@@ -348,7 +325,6 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
     }
   }, [eventId]);
 
-  // Redireciona para a página de criação dedicada
   const openCreate = () => {
     window.location.href = `/createSubevent?eventId=${eventId}`;
   };
@@ -359,23 +335,19 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
   const handleSave = async (form) => {
     setSaving(true);
     setApiError("");
-    
-    const formatDateTime = (dateTimeStr) => {
-      if (!dateTimeStr) return null;
-      return `${dateTimeStr}:00.000Z`;
-    };
-    
+
+    const toISO = (localStr) => localStr ? new Date(localStr).toISOString() : null;
     const payload = {
       title:        form.title,
       description:  form.description  || null,
-      date:         formatDateTime(form.date),
-      endDate:      formatDateTime(form.endDate),
+      date:         toISO(form.date),
+      endDate:      toISO(form.endDate),
       location:     form.location,
       maxAttendees: form.maxAttendees ? Number(form.maxAttendees) : null,
       workload:     form.workload     ? Number(form.workload)     : null,
       speaker:      form.speaker      || null,
     };
-    
+
     try {
       const res = await fetch(`/api/events/${eventId}/subevents/${editing.id}`, {
         method: "PUT",
@@ -383,18 +355,22 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      
-      if (!res.ok) { 
-        const d = await res.json().catch(()=>{}); 
-        throw new Error(d?.message || `Erro ${res.status}`); 
+
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d?.message || `Erro ${res.status}`);
       }
-      
-      // ✅ Buscar os dados novamente após salvar
-      await fetchSubevents();
+
+      // Atualização otimista: aplica as mudanças localmente sem esperar refetch
+      const updated = {
+        ...editing,
+        ...payload,
+        // mantém campos calculados que o backend pode retornar
+      };
+      setSubeventos(prev => prev.map(s => s.id === editing.id ? updated : s));
       closeModal();
-      
+
     } catch (err) {
-      console.error("Erro ao salvar:", err);
       setApiError(err.message || "Falha ao salvar. Tente novamente.");
     } finally {
       setSaving(false);
@@ -406,16 +382,13 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
     setDelLoading(true);
     try {
       const res = await fetch(`/api/events/${eventId}/subevents/${deleting.id}`, {
-        method: "DELETE", 
+        method: "DELETE",
         credentials: "include",
       });
-      
       if (!res.ok) throw new Error(`Erro ${res.status}`);
-      
-      // ✅ Buscar os dados novamente após excluir
-      await fetchSubevents();
+      // Remove localmente sem refetch
+      setSubeventos(prev => prev.filter(s => s.id !== deleting.id));
       setDeleting(null);
-      
     } catch (err) {
       console.error("Erro ao excluir sub-evento:", err);
     } finally {
@@ -423,13 +396,10 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
     }
   };
 
-  // Se estiver carregando, mostra loading
-  if (isLoading && subeventos.length === 0) {
+  if (fetchLoading && subeventos.length === 0) {
     return (
       <section className="min-h-screen p-4">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-white mb-1">Sub-eventos</h1>
-        </div>
+        <h1 className="text-2xl font-bold text-white mb-6">Sub-eventos</h1>
         <div className="flex justify-center items-center py-20">
           <div className="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
         </div>
@@ -440,7 +410,6 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
   return (
     <section className="min-h-screen p-4">
 
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Sub-eventos</h1>
@@ -459,7 +428,6 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
         </button>
       </div>
 
-      {/* Empty state */}
       {subeventos.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 border border-dashed border-gray-700 rounded-xl text-center">
           <Calendar size={32} className="text-gray-600 mb-4" />
@@ -482,8 +450,6 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
               onDelete={setDeleting}
             />
           ))}
-
-          {/* Add card */}
           <button
             onClick={openCreate}
             className="flex flex-col items-center justify-center gap-2 p-8 border border-dashed border-gray-700 rounded-xl text-sm font-semibold text-gray-600 hover:text-purple-400 hover:border-purple-500/40 hover:bg-purple-500/[0.03] transition-all min-h-[140px]"
@@ -494,7 +460,6 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
         </div>
       )}
 
-      {/* Modals */}
       {modalOpen && (
         <SubeventoModal
           subevento={editing}

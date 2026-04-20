@@ -2,36 +2,40 @@
 export const prerender = false;
 import type { APIRoute } from "astro";
 
-export const POST: APIRoute = async ({ params, request }) => {
-  const { eventId } = params;
-  
-    console.log("Event ID:", eventId);
+const API_URL = import.meta.env.API_URL || "http://localhost:5001";
 
-  let body;
+export const GET: APIRoute = async ({params, request}) => {
+  const {eventId} = params;
+  const url = `${API_URL}/subevents`;
+  console.log("🔵 GET subevents list:", url);
   try {
-    const text = await request.text();
-    if (!text) {
-      return new Response(JSON.stringify({ error: "Request body is empty" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    body = JSON.parse(text);
-  } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
+    const response = await fetch(url, {
+      headers: {"Cookie": request.headers.get("cookie") || ""},
+    });
+    const text = await response.text();
+    console.log(`↩ ${response.status}:`, text.slice(0, 200));
+    return new Response(text, {
+      status: response.status,
+      headers: {"Content-Type": "application/json"},
+    });
+  } catch (error) {
+    console.error("❌ GET list error:", error);
+    return new Response(JSON.stringify({error: error.message}), {
+      status: 502, headers: {"Content-Type": "application/json"},
     });
   }
+};
 
-  const baseUrl = import.meta.env.API_URL || "https://ecert.duckdns.org";
-  const apiUrl = `${baseUrl}/subEvents/${eventId}`;
-  
-  console.log("🟢 POST SubEvent Proxy - URL:", apiUrl);
-  console.log("📦 Body:", body);
+export const POST: APIRoute = async ({ params, request }) => {
 
+  console.log("ID EVENTO", params.eventId)
+
+  const url = `http://localhost:5001/subevents/${params.eventId}`;
+  console.log("🟢 POST subevent:", url);
   try {
-    const response = await fetch(apiUrl, {
+    const body = await request.json();
+    console.log("→ body:", JSON.stringify(body).slice(0, 300));
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -40,37 +44,18 @@ export const POST: APIRoute = async ({ params, request }) => {
       credentials: "include",
       body: JSON.stringify(body),
     });
-
-    console.log("📡 Response status:", response.status);
-
-    const responseText = await response.text();
-    let data;
-    
-    try {
-      data = JSON.parse(responseText);
-    } catch (e) {
-      console.error("❌ Resposta não é JSON:", responseText.substring(0, 200));
-      return new Response(JSON.stringify({ 
-        error: "Backend returned invalid response",
-        details: responseText.substring(0, 200)
-      }), {
-        status: 502,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
-
-    return new Response(JSON.stringify(data), {
+    const text = await response.text();
+    console.log(`↩ ${response.status}:`, text.slice(0, 200));
+    return new Response(text, {
       status: response.status,
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("🔴 POST SubEvent Proxy Error:", error);
-    return new Response(JSON.stringify({ 
-      error: "Could not reach event service",
-      details: error.message 
-    }), {
-      status: 502,
-      headers: { "Content-Type": "application/json" }
+    console.error("❌ POST error:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 502, headers: { "Content-Type": "application/json" },
     });
   }
 };
+
+

@@ -2,9 +2,8 @@ import EventRepository from "../repository/EventRepository.js";
 
 class EventService {
 
-    async create (title, description, date, location, isPublic, creator) {
-
-        return await EventRepository.create(title, description, date, location, isPublic, creator)
+    async create (data) {
+        return await EventRepository.create(data)
 
     }
 

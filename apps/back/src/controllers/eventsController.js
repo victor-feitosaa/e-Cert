@@ -40,7 +40,9 @@ export const createEvent = async (req, res) => {
       });
     }
 
-    const { title, description, date, location, isPublic } = req.body;
+
+    console.log("USER AQUI", req.user.id);
+    const { title, description, date_start, date_end, banner, category, capacity, location, isPublic } = req.body;
 
     // 2. VALIDAÇÕES
     if (!title?.trim()) {
@@ -57,25 +59,53 @@ export const createEvent = async (req, res) => {
       });
     }
 
-    if (!date) {
-      return res.status(400).json({
-        status: 'fail',
-        message: 'Data é obrigatória'
-      });
-    }
 
     // 3. Validar data
-    const eventDate = new Date(date);
-    if (isNaN(eventDate.getTime())) {
+    const eventDateStart = new Date(date_start);
+    if (isNaN(eventDateStart.getTime())) {
       return res.status(400).json({
         status: 'fail',
         message: 'Data inválida. Use formato YYYY-MM-DD'
       });
     }
 
+    const eventDateEnd = new Date(date_end);
+    if (eventDateEnd < eventDateStart) {
+      return res.status(400).json({
+        status: 'fail',
+        message: "Data inválida. Data de fim não pode ser retroativa."
+      })
+    }
+
+    if (!category) {
+      return res.status(400).json({
+        status: 'fail',
+        message: "Categória é obrigatória"
+      })
+    }
+
+    if (!capacity) {
+      return res.status(400).json({
+        status: 'fail',
+        message: "Capacidade é obrigatoria"
+      })
+    }
+
     // 4. CRIAR EVENTO 
   
-    const event = await eventService.create(title, description, eventDate, location, isPublic, req.user.id) 
+    const event = await eventService.create({
+      title,
+      description,
+      date: eventDateStart.toISOString(),
+      date_start: eventDateStart.toISOString(),
+      date_end: eventDateEnd.toISOString(),
+      banner,
+      category,
+      capacity,
+      location,
+      isPublic,
+      creator: req.user.id
+    })
 
     //transformar automaticamente em organizer do evento
     await EventRoleService.assignOrganizerRole(req.user.id, event.id);
@@ -215,28 +245,40 @@ export const updateEvent = async (req, res) => {
 
     // 2. Preparar dados para atualização
     const dataToUpdate = {};
-    
+
+
+
     if (updates.title !== undefined) dataToUpdate.title = updates.title.trim();
     if (updates.description !== undefined) dataToUpdate.description = updates.description.trim();
     if (updates.location !== undefined) dataToUpdate.location = updates.location.trim();
+    if (updates.category !== undefined) dataToUpdate.category = updates.category.trim();
+    if (updates.capacity !== undefined) dataToUpdate.capacity = updates.capacity;
     if (updates.isPublic !== undefined) dataToUpdate.isPublic = Boolean(updates.isPublic);
     if (updates.maxAttendees !== undefined) dataToUpdate.maxAttendees = updates.maxAttendees ? parseInt(updates.maxAttendees) : null;
     
     // Tratamento especial para datas
-    if (updates.date) {
-      const newDate = new Date(updates.date);
+    if (updates.date_start) {
+      const newDate = new Date(updates.date_start);
       if (newDate < new Date()) {
         return res.status(400).json({
           status: 'fail',
           message: 'A data do evento não pode ser no passado',
         });
       }
-      dataToUpdate.date = newDate;
+      dataToUpdate.date_start = newDate.toISOString();
     }
-    
-    if (updates.registrationEndDate) {
-      dataToUpdate.registrationEndDate = new Date(updates.registrationEndDate);
+
+    if (updates.date_end) {
+      const newDate = new Date(updates.date_end);
+      if(new Date(updates.date_end) < new Date(updates.date_start)){
+        return res.status(400).json({
+          status: 'fail',
+          message: 'A data do evento não pode ser retroativa',
+        });
+      }
+      dataToUpdate.date_end = newDate.toISOString();
     }
+
 
     // 3. Atualizar evento
     const event = await eventService.update(dataToUpdate, id)

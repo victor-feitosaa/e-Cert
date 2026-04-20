@@ -15,8 +15,10 @@ export default function CreateEvent({ onBack }) {
     name: "",
     description: "",
     category: "tecnologia",
-    date: "",
-    time: "",
+    date_start: "",
+    date_end: "",
+    time_start: "",
+    time_end: "",
     location: "",
     locationUrl: "",
     workload: "",
@@ -33,7 +35,7 @@ export default function CreateEvent({ onBack }) {
     if (step === 0) {
       setForm({
         name: "", description: "", category: "tecnologia",
-        date: "", time: "", location: "", locationUrl: "",
+        date_start: "", date_end: "", time_start: "", time_end: "", location: "", locationUrl: "",
         workload: "", certType: "participante", issuer: "",
         certMessage: "", capacity: "",
       });
@@ -58,8 +60,10 @@ export default function CreateEvent({ onBack }) {
       if (!form.description.trim()) e.description = "Campo obrigatório";
     }
     if (s === 1) {
-      if (!form.date) e.date = "Campo obrigatório";
-      if (!form.time) e.time = "Campo obrigatório";
+      if (!form.date_start) e.date_start = "Campo obrigatório";
+      if (!form.date_end) e.date_end = "Campo obrigatório";
+      if (!form.time_start) e.time_start = "Campo obrigatório";
+      if (!form.time_end) e.time_end = "Campo obrigatório";
       if (!form.location.trim()) e.location = "Campo obrigatório";
     }
     if (s === 2) {
@@ -85,7 +89,9 @@ export default function CreateEvent({ onBack }) {
         body: JSON.stringify({
           title: form.name,
           description: form.description,
-          date: form.date && form.time ? `${form.date}T${form.time}:00` : null,
+          date: form.date_start,
+          date_start: form.date_start && form.time_start ? `${form.date_start}T${form.time_start}:00` : null,
+          date_end: form.date_end && form.time_end ? `${form.date_end}T${form.time_end}:00` : null,
           location: form.location,
           isPublic: true,
           workload: form.workload ? parseInt(form.workload) : undefined,
@@ -132,7 +138,7 @@ export default function CreateEvent({ onBack }) {
               onClick={() => {
                 setForm({
                   name: "", description: "", category: "tecnologia",
-                  date: "", time: "", location: "", locationUrl: "",
+                  date_start: "", date_end: "", time: "", location: "", locationUrl: "",
                   workload: "", certType: "participante", issuer: "",
                   certMessage: "", capacity: "",
                 });
@@ -300,21 +306,21 @@ export default function CreateEvent({ onBack }) {
           {step === 1 && (
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div id="data-inicio">
                   <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                    Data <span className="text-primary">*</span>
+                    Data de ínicio <span className="text-primary">*</span>
                   </label>
                   <input
                     type="date"
-                    value={form.date}
-                    onChange={e => set("date", e.target.value)}
+                    value={form.date_start}
+                    onChange={e => set("date_start", e.target.value)}
                     className={`
                       w-full px-4 py-2.5 rounded-lg text-sm bg-background border
-                      ${errors.date ? "border-red-400/50" : "border-border"}
+                      ${errors.date_start ? "border-red-400/50" : "border-border"}
                       focus:border-primary outline-none
                     `}
                   />
-                  {errors.date && <p className="text-xs text-red-400 mt-1">{errors.date}</p>}
+                  {errors.date_start && <p className="text-xs text-red-400 mt-1">{errors.date_start}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-accent-foreground mb-1.5">
@@ -322,17 +328,53 @@ export default function CreateEvent({ onBack }) {
                   </label>
                   <input
                     type="time"
-                    value={form.time}
-                    onChange={e => set("time", e.target.value)}
+                    value={form.time_start}
+                    onChange={e => set("time_start", e.target.value)}
                     className={`
                       w-full px-4 py-2.5 rounded-lg text-sm bg-background border
-                      ${errors.time ? "border-red-400/50" : "border-border"}
+                      ${errors.time_start ? "border-red-400/50" : "border-border"}
                       focus:border-primary outline-none
                     `}
                   />
-                  {errors.time && <p className="text-xs text-red-400 mt-1">{errors.time}</p>}
+                  {errors.time_start && <p className="text-xs text-red-400 mt-1">{errors.time_start}</p>}
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div id="data-fim">
+                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">
+                    Data de termino <span className="text-primary">*</span>
+                  </label>
+                  <input
+                      type="date"
+                      value={form.date_end}
+                      onChange={e => set("date_end", e.target.value)}
+                      className={`
+                      w-full px-4 py-2.5 rounded-lg text-sm bg-background border
+                      ${errors.date_end ? "border-red-400/50" : "border-border"}
+                      focus:border-primary outline-none
+                    `}
+                  />
+                  {errors.date_end && <p className="text-xs text-red-400 mt-1">{errors.date_end}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">
+                    Horário <span className="text-primary">*</span>
+                  </label>
+                  <input
+                      type="time"
+                      value={form.time_end}
+                      onChange={e => set("time_end", e.target.value)}
+                      className={`
+                      w-full px-4 py-2.5 rounded-lg text-sm bg-background border
+                      ${errors.time_end ? "border-red-400/50" : "border-border"}
+                      focus:border-primary outline-none
+                    `}
+                  />
+                  {errors.time_end && <p className="text-xs text-red-400 mt-1">{errors.time_end}</p>}
+                </div>
+              </div>
+
 
               <div>
                 <label className="block text-sm font-bold text-accent-foreground mb-1.5">
@@ -467,12 +509,12 @@ export default function CreateEvent({ onBack }) {
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-wider text-accent-foreground/40 mb-3">Data & Local</div>
                 <div className="space-y-2">
-                  {form.date && form.time && (
+                  {form.date_start && form.time_start && (
                     <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
                       <CalendarDays size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
                       <div>
                         <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Início</div>
-                        <div className="text-sm font-medium">{form.date} às {form.time}</div>
+                        <div className="text-sm font-medium">{form.date_start} às {form.time_start}</div>
                       </div>
                     </div>
                   )}

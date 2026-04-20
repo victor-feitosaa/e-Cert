@@ -27,18 +27,12 @@ export default function AnalyticTabs({ eventData: initialEventData , apiURL , co
     function parseDateTime(isoString) {
         const d = new Date(isoString);
         return {
-            date: d.toLocaleDateString("pt-BR", {
-                day: "2-digit", month: "2-digit", year: "numeric",
-                timeZone: "America/Sao_Paulo",
-            }),
-            time: d.toLocaleTimeString("pt-BR", {
-                hour: "2-digit", minute: "2-digit",
-                timeZone: "America/Sao_Paulo",
-            }),
+            date: `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`,
+            time: `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`
         };
     }
 
-    const { date, time } = parseDateTime(eventData.date);
+    const { date, time } = parseDateTime(eventData.date_start);
 
     const handleEventUpdated = useCallback((updatedEvent) => {
         setEventData(updatedEvent);
