@@ -2,42 +2,44 @@ import { useState, useCallback } from "react";
 import {
   Calendar, Clock, MapPin, ArrowLeft, ArrowRight, Check,
   AlertCircle, ClipboardList, FileText, CalendarDays,
-  Timer, GraduationCap, Building2, Tag, Hash, Sparkles
+  UserPlus, Trash2, User, Plus, Sparkles
 } from "lucide-react";
 import Particles from "./Particles";
 
-const STEP_LABELS = ["Informações", "Data & Local", "Certificado", "Revisão"];
+const STEP_LABELS = ["Informações", "Seções", "Equipe", "Revisão"];
 
 export default function CreateSubEvent({ eventId, onBack }) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
     name: "",
     description: "",
-    date_start: "",
-    date_end: "",
-    time_start: "",
-    time_end: "",
     location: "",
     locationUrl: "",
-    workload: "",
-    certType: "participante",
-    issuer: "",
-    certMessage: "",
     capacity: "",
-    order: "",
   });
+  const [sections, setSections] = useState([]);
+  const [newSection, setNewSection] = useState({
+    title: "",
+    date_start: "",
+    time_start: "",
+    date_end: "",
+    time_end: "",
+    location: "",
+  });
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberJob, setNewMemberJob] = useState("");
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("idle");
   const [errMsg, setErrMsg] = useState("");
 
-  // Volta para a página do evento sinalizando que um sub-evento foi criado
+  // Volta para a página do evento
   const goBack = (created = false) => {
     const base = typeof onBack === "string"
       ? onBack
       : `/eventPageAdm?eventId=${eventId}`;
 
     if (created) {
-      // Adiciona ?created=1 para que SubeventosView atualize a lista
       const url = new URL(base, window.location.origin);
       url.searchParams.set("created", "1");
       window.location.href = url.toString();
@@ -58,6 +60,75 @@ export default function CreateSubEvent({ eventId, onBack }) {
     setErrors(e => ({ ...e, [name]: "" }));
   }, []);
 
+  // Funções para gerenciar seções
+  const addSection = () => {
+    if (!newSection.date_start) {
+      setErrors(prev => ({ ...prev, sectionDate: "Data de início é obrigatória" }));
+      return;
+    }
+    if (!newSection.time_start) {
+      setErrors(prev => ({ ...prev, sectionTime: "Horário de início é obrigatório" }));
+      return;
+    }
+    if (!newSection.date_end) {
+      setErrors(prev => ({ ...prev, sectionDateEnd: "Data de término é obrigatória" }));
+      return;
+    }
+    if (!newSection.time_end) {
+      setErrors(prev => ({ ...prev, sectionTimeEnd: "Horário de término é obrigatório" }));
+      return;
+    }
+
+    setSections(prev => [...prev, {
+      id: Date.now(),
+      title: newSection.title || null,
+      date_start: newSection.date_start,
+      time_start: newSection.time_start,
+      date_end: newSection.date_end,
+      time_end: newSection.time_end,
+      location: newSection.location || null,
+    }]);
+    
+    setNewSection({
+      title: "",
+      date_start: "",
+      time_start: "",
+      date_end: "",
+      time_end: "",
+      location: "",
+    });
+    setErrors(prev => ({ ...prev, sectionDate: "", sectionTime: "", sectionDateEnd: "", sectionTimeEnd: "" }));
+  };
+
+  const removeSection = (id) => {
+    setSections(prev => prev.filter(section => section.id !== id));
+  };
+
+  // Funções para gerenciar membros da equipe
+  const addTeamMember = () => {
+    if (!newMemberName.trim()) {
+      setErrors(prev => ({ ...prev, teamMemberName: "Nome do membro é obrigatório" }));
+      return;
+    }
+    if (!newMemberJob.trim()) {
+      setErrors(prev => ({ ...prev, teamMemberJob: "Função é obrigatória" }));
+      return;
+    }
+    
+    setTeamMembers(prev => [...prev, { 
+      id: Date.now(), 
+      name: newMemberName.trim(), 
+      job: newMemberJob.trim() 
+    }]);
+    setNewMemberName("");
+    setNewMemberJob("");
+    setErrors(prev => ({ ...prev, teamMemberName: "", teamMemberJob: "" }));
+  };
+
+  const removeTeamMember = (id) => {
+    setTeamMembers(prev => prev.filter(member => member.id !== id));
+  };
+
   const validate = (s) => {
     const e = {};
     if (s === 0) {
@@ -65,15 +136,12 @@ export default function CreateSubEvent({ eventId, onBack }) {
       if (!form.description.trim()) e.description = "Campo obrigatório";
     }
     if (s === 1) {
-      if (!form.date_start) e.date_start = "Campo obrigatório";
-      if (!form.date_end) e.date_end = "Campo obrigatório";
-      if (!form.time_start) e.time_start = "Campo obrigatório";
-      if (!form.time_end) e.time_end = "Campo obrigatório";
-      if (!form.location.trim()) e.location = "Campo obrigatório";
+      if (sections.length === 0) {
+        e.sections = "Adicione pelo menos uma seção";
+      }
     }
     if (s === 2) {
-      if (!form.workload) e.workload = "Campo obrigatório";
-      if (!form.issuer.trim()) e.issuer = "Campo obrigatório";
+      // Sem validação obrigatória para equipe
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -87,34 +155,83 @@ export default function CreateSubEvent({ eventId, onBack }) {
     setErrMsg("");
 
     try {
-      const res = await fetch(`/api/events/${eventId}/subevents`, {
+      // Primeiro, cria o subevento
+      const subeventRes = await fetch(`/api/events/${eventId}/subevents`, {
         method: "POST",
-        headers: { "Content-Type": "application/json"},
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           title: form.name,
           description: form.description,
-          date_start: form.date_start && form.time_start ? `${form.date_start}T${form.time_start}:00.000Z` : null,
-          date_end: form.date_end && form.time_end ? `${form.date_end}T${form.time_end}:00.000Z` : null,
           location: form.location,
-          workload: form.workload ? parseInt(form.workload) : undefined,
-          capacity: form.capacity ? parseInt(form.capacity) : undefined,
-          certType: form.certType,
-          issuer: form.issuer,
-          certMessage: form.certMessage,
           locationUrl: form.locationUrl,
-          order: form.order ? parseInt(form.order) : undefined,
+          capacity: form.capacity ? parseInt(form.capacity) : undefined,
         }),
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.message || data?.error || `Erro ${res.status}`);
+      if (!subeventRes.ok) {
+        const data = await subeventRes.json().catch(() => ({}));
+        throw new Error(data?.message || data?.error || `Erro ${subeventRes.status}`);
+      }
+
+      const subeventData = await subeventRes.json();
+      const createdSubeventId = subeventData?.data?.subevent?.id || subeventData?.subevent?.id || subeventData?.id;
+      
+      console.log("Subevento criado com ID:", createdSubeventId);
+
+      // Depois, adiciona as seções
+      if (sections.length > 0 && createdSubeventId) {
+        const sectionPromises = sections.map(async (section) => {
+          const sectionRes = await fetch(`/api/events/${eventId}/subevents/${createdSubeventId}/sections`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              title: section.title,
+              date_start: `${section.date_start}T${section.time_start}:00.000Z`,
+              date_end: `${section.date_end}T${section.time_end}:00.000Z`,
+              location: section.location,
+            }),
+          });
+
+          if (!sectionRes.ok) {
+            console.error(`Erro ao adicionar seção:`, await sectionRes.json());
+            throw new Error(`Falha ao adicionar seção`);
+          }
+
+          return sectionRes.json();
+        });
+
+        await Promise.all(sectionPromises);
+        console.log("Todas as seções adicionadas com sucesso!");
+      }
+
+      // Depois, adiciona os membros da equipe
+      if (teamMembers.length > 0 && createdSubeventId) {
+        const memberPromises = teamMembers.map(async (member) => {
+          const memberRes = await fetch(`/api/events/${eventId}/subevents/${createdSubeventId}/members`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              name: member.name,
+              job: member.job,
+            }),
+          });
+
+          if (!memberRes.ok) {
+            console.error(`Erro ao adicionar membro ${member.name}:`, await memberRes.json());
+            throw new Error(`Falha ao adicionar membro: ${member.name}`);
+          }
+
+          return memberRes.json();
+        });
+
+        await Promise.all(memberPromises);
+        console.log("Todos os membros adicionados com sucesso!");
       }
 
       setStatus("success");
-
-      // Volta após 1.2s com ?created=1 para atualizar a lista
       setTimeout(() => goBack(true), 1200);
 
     } catch (err) {
@@ -148,11 +265,9 @@ export default function CreateSubEvent({ eventId, onBack }) {
             </button>
             <button
               onClick={() => {
-                setForm({
-                  name: "", description: "", date_start: "", time_start: "", date_end: "", time_end: "", location: "",
-                  locationUrl: "", workload: "", certType: "participante",
-                  issuer: "", certMessage: "", capacity: "", order: "",
-                });
+                setForm({ name: "", description: "", location: "", locationUrl: "", capacity: "" });
+                setSections([]);
+                setTeamMembers([]);
                 setStep(0);
                 setStatus("idle");
               }}
@@ -165,6 +280,21 @@ export default function CreateSubEvent({ eventId, onBack }) {
       </div>
     );
   }
+
+  // Função para validar ano com máximo 4 dígitos
+  const handleDateChange = (field, value, isSection = false) => {
+    if (value) {
+      const year = value.split('-')[0];
+      if (year && year.length > 4) {
+        return;
+      }
+    }
+    if (isSection) {
+      setNewSection(prev => ({ ...prev, [field]: value }));
+    } else {
+      set(field, value);
+    }
+  };
 
   return (
     <div className="dark min-h-screen bg-background">
@@ -194,7 +324,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
             </span>
           </h1>
           <p className="text-accent-foreground/60">
-            Adicione palestras, workshops ou atividades ao seu evento principal.
+            Adicione atividades ao seu evento principal.
           </p>
         </div>
 
@@ -246,7 +376,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                   type="text"
                   value={form.name}
                   onChange={e => set("name", e.target.value)}
-                  placeholder="ex: Workshop de React, Palestra Principal, Oficina de Design..."
+                  placeholder="ex: Workshop de React, Palestra Principal"
                   className={`
                     w-full text-accent-foreground px-4 py-2.5 rounded-lg text-sm bg-background border
                     ${errors.name ? "border-red-400/50" : "border-border"}
@@ -274,8 +404,18 @@ export default function CreateSubEvent({ eventId, onBack }) {
                 {errors.description && <p className="text-xs text-red-400 mt-1">{errors.description}</p>}
               </div>
 
-              <div className="grid  gap-4">
-
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">Local</label>
+                  <input
+                    type="text"
+                    value={form.location}
+                    onChange={e => set("location", e.target.value)}
+                    placeholder="ex: Auditório Principal"
+                    className="w-full text-accent-foreground px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                  />
+                  <p className="text-xs text-accent-foreground/40 mt-1">Local padrão (pode ser sobrescrito nas seções)</p>
+                </div>
                 <div>
                   <label className="block text-sm font-bold text-accent-foreground mb-1.5">Capacidade</label>
                   <input
@@ -285,104 +425,8 @@ export default function CreateSubEvent({ eventId, onBack }) {
                     placeholder="ex: 50"
                     className="w-full text-accent-foreground px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
                   />
-                  <p className="text-xs text-accent-foreground/40 mt-1">Opcional - limite de vagas</p>
+                  <p className="text-xs text-accent-foreground/40 mt-1">Capacidade padrão</p>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 1 - Data & Local */}
-          {step === 1 && (
-            <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div id="date_start">
-                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                    Data de ínicio <span className="text-primary">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={form.date_start}
-                    onChange={e => set("date_start", e.target.value)}
-                    min={new Date().toISOString().split("T")[0]}
-                    max="2099-12-31"
-                    className={`
-                      w-full px-4 text-accent-foreground py-2.5 rounded-lg text-sm bg-background border
-                      ${errors.date_start ? "border-red-400/50" : "border-border"}
-                      focus:border-primary outline-none
-                    `}
-                  />
-                  {errors.date_start && <p className="text-xs text-red-400 mt-1">{errors.date_start}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                    Horário <span className="text-primary">*</span>
-                  </label>
-                  <input
-                    type="time"
-                    value={form.time_start}
-                    onChange={e => set("time_start", e.target.value)}
-                    className={`
-                      w-full px-4 text-accent-foreground py-2.5 rounded-lg text-sm bg-background border
-                      ${errors.time_start ? "border-red-400/50" : "border-border"}
-                      focus:border-primary outline-none
-                    `}
-                  />
-                  {errors.time_start && <p className="text-xs text-red-400 mt-1">{errors.time_start}</p>}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div id="date_end">
-                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                    Data de término <span className="text-primary">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={form.date_end}
-                    onChange={e => set("date_end", e.target.value)}
-                    min={new Date().toISOString().split("T")[0]}
-                    max="2099-12-31"
-                    className={`
-                      w-full px-4 text-accent-foreground py-2.5 rounded-lg text-sm bg-background border
-                      ${errors.date_end ? "border-red-400/50" : "border-border"}
-                      focus:border-primary outline-none
-                    `}
-                  />
-                  {errors.date_end && <p className="text-xs text-red-400 mt-1">{errors.date_end}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                    Horário <span className="text-primary">*</span>
-                  </label>
-                  <input
-                    type="time"
-                    value={form.time_end}
-                    onChange={e => set("time_end", e.target.value)}
-                    className={`
-                      w-full px-4 text-accent-foreground py-2.5 rounded-lg text-sm bg-background border
-                      ${errors.time_end ? "border-red-400/50" : "border-border"}
-                      focus:border-primary outline-none
-                    `}
-                  />
-                  {errors.time_end && <p className="text-xs text-red-400 mt-1">{errors.time_end}</p>}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                  Local <span className="text-primary">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={form.location}
-                  onChange={e => set("location", e.target.value)}
-                  placeholder="ex: Sala 101, Auditório Principal, Online via Zoom..."
-                  className={`
-                    w-full px-4 py-2.5 rounded-lg text-accent-foreground text-sm bg-background border
-                    ${errors.location ? "border-red-400/50" : "border-border"}
-                    focus:border-primary outline-none
-                  `}
-                />
-                {errors.location && <p className="text-xs text-red-400 mt-1">{errors.location}</p>}
               </div>
 
               <div>
@@ -392,9 +436,137 @@ export default function CreateSubEvent({ eventId, onBack }) {
                   value={form.locationUrl}
                   onChange={e => set("locationUrl", e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-4 text-accent-foreground py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                  className="w-full text-accent-foreground px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
                 />
                 <p className="text-xs text-accent-foreground/40 mt-1">Opcional — Google Maps, link do Meet/Zoom</p>
+              </div>
+            </div>
+          )}
+
+          {/* Step 1 - Seções */}
+          {step === 1 && (
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-bold text-accent-foreground mb-1.5">
+                  Seções / Horários <span className="text-primary">*</span>
+                </label>
+                <p className="text-xs text-accent-foreground/40 mb-3">
+                  Adicione diferentes horários para este subevento (ex: manhã, tarde, múltiplos dias).
+                </p>
+                
+                {/* Lista de seções */}
+                {sections.length > 0 && (
+                  <div className="space-y-3 mb-4">
+                    <p className="text-sm font-semibold text-accent-foreground">Seções adicionadas:</p>
+                    {sections.map((section) => (
+                      <div key={section.id} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <Calendar size={14} className="text-purple-400" />
+                            <span className="text-sm font-medium text-accent-foreground">
+                              {section.title && `${section.title} - `}
+                              {section.date_start} {section.time_start} → {section.date_end} {section.time_end}
+                            </span>
+                          </div>
+                          {section.location && (
+                            <div className="flex items-center gap-2 mt-1">
+                              <MapPin size={12} className="text-accent-foreground/40" />
+                              <span className="text-xs text-accent-foreground/60">{section.location}</span>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => removeSection(section.id)}
+                          className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {errors.sections && (
+                  <p className="text-xs text-red-400 mb-3">{errors.sections}</p>
+                )}
+
+                {/* Adicionar nova seção */}
+                <div className="border-t border-border pt-4 mt-2">
+                  <p className="text-sm font-semibold text-accent-foreground mb-3">Nova seção:</p>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <input
+                        type="text"
+                        value={newSection.title}
+                        onChange={e => setNewSection(prev => ({ ...prev, title: e.target.value }))}
+                        placeholder="Título da seção (opcional - ex: Manhã, Tarde, Dia 1)"
+                        className="w-full px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-accent-foreground mb-1">Data início *</label>
+                        <input
+                          type="date"
+                          value={newSection.date_start}
+                          onChange={e => handleDateChange("date_start", e.target.value, true)}
+                          className="w-full px-3 py-2 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-accent-foreground mb-1">Horário início *</label>
+                        <input
+                          type="time"
+                          value={newSection.time_start}
+                          onChange={e => setNewSection(prev => ({ ...prev, time_start: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-accent-foreground mb-1">Data término *</label>
+                        <input
+                          type="date"
+                          value={newSection.date_end}
+                          onChange={e => handleDateChange("date_end", e.target.value, true)}
+                          className="w-full px-3 py-2 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-accent-foreground mb-1">Horário término *</label>
+                        <input
+                          type="time"
+                          value={newSection.time_end}
+                          onChange={e => setNewSection(prev => ({ ...prev, time_end: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <input
+                        type="text"
+                        value={newSection.location}
+                        onChange={e => setNewSection(prev => ({ ...prev, location: e.target.value }))}
+                        placeholder="Local específico (opcional)"
+                        className="w-full px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={addSection}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
+                    >
+                      <Plus size={16} />
+                      Adicionar seção
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -402,66 +574,76 @@ export default function CreateSubEvent({ eventId, onBack }) {
           {/* Step 2 - Equipe */}
           {step === 2 && (
             <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                    Carga horária (h) <span className="text-primary">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={form.workload}
-                    onChange={e => set("workload", e.target.value)}
-                    placeholder="ex: 4"
-                    className={`
-                      w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-background border
-                      ${errors.workload ? "border-red-400/50" : "border-border"}
-                      focus:border-primary outline-none
-                    `}
-                  />
-                  {errors.workload && <p className="text-xs text-red-400 mt-1">{errors.workload}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">Tipo de certificado</label>
-                  <select
-                    value={form.certType}
-                    onChange={e => set("certType", e.target.value)}
-                    className="w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-background border border-border focus:border-primary outline-none cursor-pointer"
-                  >
-                    <option value="participante">Participante</option>
-                    <option value="palestrante">Palestrante</option>
-                    <option value="organizador">Organizador</option>
-                  </select>
-                </div>
-              </div>
-
               <div>
                 <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                  Emissor / Organização <span className="text-primary">*</span>
+                  Membros da Equipe
                 </label>
-                <input
-                  type="text"
-                  value={form.issuer}
-                  onChange={e => set("issuer", e.target.value)}
-                  placeholder="ex: Instituto de Tecnologia Brasil"
-                  className={`
-                    w-full px-4 py-2.5 rounded-lg text-accent-foreground text-sm bg-background border
-                    ${errors.issuer ? "border-red-400/50" : "border-border"}
-                    focus:border-primary outline-none
-                  `}
-                />
-                {errors.issuer && <p className="text-xs text-red-400 mt-1">{errors.issuer}</p>}
-              </div>
+                <p className="text-xs text-accent-foreground/40 mb-3">
+                  Adicione os membros da equipe deste subevento e suas respectivas funções.
+                </p>
+                
+                {teamMembers.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    <p className="text-sm font-semibold text-accent-foreground">Equipe:</p>
+                    {teamMembers.map((member) => (
+                      <div key={member.id} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border">
+                        <div className="flex items-center gap-3">
+                          <User size={16} className="text-purple-400" />
+                          <div>
+                            <p className="text-sm font-medium text-accent-foreground">{member.name}</p>
+                            <p className="text-xs text-accent-foreground/60">{member.job}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeTeamMember(member.id)}
+                          className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-              <div>
-                <label className="block text-sm font-bold text-accent-foreground mb-1.5">Mensagem personalizada</label>
-                <textarea
-                  value={form.certMessage}
-                  onChange={e => set("certMessage", e.target.value)}
-                  placeholder="Mensagem que aparecerá no certificado..."
-                  rows={3}
-                  className="w-full px-4 py-2.5 rounded-lg text-accent-foreground text-sm bg-background border border-border focus:border-primary outline-none resize-y"
-                />
-                <p className="text-xs text-accent-foreground/40 mt-1">Opcional</p>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <input
+                      type="text"
+                      value={newMemberName}
+                      onChange={e => setNewMemberName(e.target.value)}
+                      placeholder="Nome do membro"
+                      className={`
+                        w-full px-4 py-2.5 rounded-lg text-sm bg-background border
+                        ${errors.teamMemberName ? "border-red-400/50" : "border-border"}
+                        focus:border-primary outline-none transition-colors
+                      `}
+                    />
+                    {errors.teamMemberName && <p className="text-xs text-red-400 mt-1">{errors.teamMemberName}</p>}
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      value={newMemberJob}
+                      onChange={e => setNewMemberJob(e.target.value)}
+                      placeholder="Função (ex: Palestrante, Monitor)"
+                      className={`
+                        w-full px-4 py-2.5 rounded-lg text-sm bg-background border
+                        ${errors.teamMemberJob ? "border-red-400/50" : "border-border"}
+                        focus:border-primary outline-none transition-colors
+                      `}
+                    />
+                    {errors.teamMemberJob && <p className="text-xs text-red-400 mt-1">{errors.teamMemberJob}</p>}
+                  </div>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={addTeamMember}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
+                >
+                  <UserPlus size={16} />
+                  Adicionar membro
+                </button>
               </div>
             </div>
           )}
@@ -474,8 +656,8 @@ export default function CreateSubEvent({ eventId, onBack }) {
               </p>
 
               <div>
-                <div className="text-[11px] text-accent-foreground font-bold uppercase tracking-wider text-accent-foreground/40 mb-3">Informações</div>
-                <div className="space-y-2 text-accent-foreground">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-accent-foreground/40 mb-3">Informações</div>
+                <div className="space-y-2">
                   {form.name && (
                     <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
                       <ClipboardList size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
@@ -494,41 +676,6 @@ export default function CreateSubEvent({ eventId, onBack }) {
                       </div>
                     </div>
                   )}
-                  {form.capacity && (
-                    <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
-                      <Tag size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Capacidade</div>
-                        <div className="text-sm font-medium">{form.capacity}</div>
-                      </div>
-                    </div>
-                  )}
-
-                </div>
-              </div>
-
-              <div>
-                <div className="text-[11px] font-bold uppercase tracking-wider text-accent-foreground/40 mb-3">Data & Local</div>
-                <div className="space-y-2 text-accent-foreground">
-                  {form.date_start && form.time_start && (
-                    <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
-                      <CalendarDays size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Início</div>
-                        {/* para o formato de dia/mes/ano */}
-                        <div className="text-sm font-medium">{form.date_start} às {form.time_start}</div>
-                      </div>
-                    </div>
-                  )}
-                  {form.date_end && form.time_end && (
-                    <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
-                      <CalendarDays size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Término</div>
-                        <div className="text-sm font-medium">{form.date_end} às {form.time_end}</div>
-                      </div>
-                    </div>
-                  )}
                   {form.location && (
                     <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
                       <MapPin size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
@@ -538,44 +685,57 @@ export default function CreateSubEvent({ eventId, onBack }) {
                       </div>
                     </div>
                   )}
+                  {form.capacity && (
+                    <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
+                      <Users size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Capacidade</div>
+                        <div className="text-sm font-medium">{form.capacity}</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div>
-                <div className="text-[11px] font-bold uppercase tracking-wider text-accent-foreground/40 mb-3">Certificado</div>
-                <div className="space-y-2 text-accent-foreground">
-                  {form.workload && (
-                    <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
-                      <Timer size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Carga horária</div>
-                        <div className="text-sm font-medium">{form.workload}h</div>
-                      </div>
-                    </div>
-                  )}
-                  {form.certType && (
-                    <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
-                      <GraduationCap size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Tipo</div>
-                        <div className="text-sm font-medium">
-                          {form.certType === "participante" ? "Participante" :
-                           form.certType === "palestrante" ? "Palestrante" : "Organizador"}
+              {sections.length > 0 && (
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-accent-foreground/40 mb-3">Seções</div>
+                  <div className="space-y-2">
+                    {sections.map((section, idx) => (
+                      <div key={section.id} className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
+                        <CalendarDays size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="text-[10px] font-bold uppercase text-accent-foreground/40">
+                            Seção {idx + 1}
+                          </div>
+                          <div className="text-sm font-medium">
+                            {section.title && `${section.title} - `}
+                            {section.date_start} {section.time_start} → {section.date_end} {section.time_end}
+                            {section.location && ` - ${section.location}`}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                  {form.issuer && (
-                    <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
-                      <Building2 size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Emissor</div>
-                        <div className="text-sm font-medium">{form.issuer}</div>
-                      </div>
-                    </div>
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {teamMembers.length > 0 && (
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-accent-foreground/40 mb-3">Equipe</div>
+                  <div className="space-y-2">
+                    {teamMembers.map((member) => (
+                      <div key={member.id} className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
+                        <User size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Membro</div>
+                          <div className="text-sm font-medium">{member.name} - {member.job}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {status === "error" && (
                 <div className="flex gap-3 p-3 rounded-lg bg-red-400/5 border border-red-400/20">

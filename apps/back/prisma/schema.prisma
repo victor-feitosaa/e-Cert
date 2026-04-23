@@ -136,3 +136,7 @@ model SubEventTeam {
   user     User     @relation(fields: [userId], references: [id])
   subEvent SubEvent @relation(fields: [subEventId], references: [id])
 }
+
+
+
+

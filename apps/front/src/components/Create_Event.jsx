@@ -2,12 +2,11 @@ import { useState, useCallback } from "react";
 import {
   Calendar, Clock, MapPin, ArrowLeft, ArrowRight, Check,
   AlertCircle, ClipboardList, FileText, CalendarDays,
-  Timer, GraduationCap, Building2, Tag, Hash
+  Timer, GraduationCap, Building2, Tag, Hash, UserPlus, Trash2, User
 } from "lucide-react";
-import DotGrid from "./DotGrid";
 import Particles from "./Particles";
 
-const STEP_LABELS = ["Informações", "Data & Local", "Certificado", "Revisão"];
+const STEP_LABELS = ["Informações", "Data & Local", "Equipe", "Revisão"];
 
 export default function CreateEvent({ onBack }) {
   const [step, setStep] = useState(0);
@@ -27,6 +26,9 @@ export default function CreateEvent({ onBack }) {
     certMessage: "",
     capacity: "",
   });
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberJob, setNewMemberJob] = useState("");
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("idle");
   const [errMsg, setErrMsg] = useState("");
@@ -39,6 +41,7 @@ export default function CreateEvent({ onBack }) {
         workload: "", certType: "participante", issuer: "",
         certMessage: "", capacity: "",
       });
+      setTeamMembers([]);
       setErrors({});
       setStatus("idle");
       setErrMsg("");
@@ -52,6 +55,30 @@ export default function CreateEvent({ onBack }) {
     setForm(f => ({ ...f, [name]: value }));
     setErrors(e => ({ ...e, [name]: "" }));
   }, []);
+
+  const addTeamMember = () => {
+    if (!newMemberName.trim()) {
+      setErrors(prev => ({ ...prev, teamMemberName: "Nome do membro é obrigatório" }));
+      return;
+    }
+    if (!newMemberJob.trim()) {
+      setErrors(prev => ({ ...prev, teamMemberJob: "Função é obrigatória" }));
+      return;
+    }
+    
+    setTeamMembers(prev => [...prev, { 
+      id: Date.now(), 
+      name: newMemberName.trim(), 
+      job: newMemberJob.trim() 
+    }]);
+    setNewMemberName("");
+    setNewMemberJob("");
+    setErrors(prev => ({ ...prev, teamMemberName: "", teamMemberJob: "" }));
+  };
+
+  const removeTeamMember = (id) => {
+    setTeamMembers(prev => prev.filter(member => member.id !== id));
+  };
 
   const validate = (s) => {
     const e = {};
@@ -67,8 +94,7 @@ export default function CreateEvent({ onBack }) {
       if (!form.location.trim()) e.location = "Campo obrigatório";
     }
     if (s === 2) {
-      if (!form.workload) e.workload = "Campo obrigatório";
-      if (!form.issuer.trim()) e.issuer = "Campo obrigatório";
+      // Sem validação obrigatória para equipe
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -77,91 +103,113 @@ export default function CreateEvent({ onBack }) {
   const next = () => { if (validate(step)) setStep(s => s + 1); };
   const prev = () => setStep(s => s - 1);
 
-  const handleSubmit = async () => {
-    setStatus("loading");
-    setErrMsg("");
 
-    try {
-      const res = await fetch("/api/events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          title: form.name,
-          description: form.description,
-          date: form.date_start,
-          date_start: form.date_start && form.time_start ? `${form.date_start}T${form.time_start}:00` : null,
-          date_end: form.date_end && form.time_end ? `${form.date_end}T${form.time_end}:00` : null,
-          location: form.location,
-          isPublic: true,
-          workload: form.workload ? parseInt(form.workload) : undefined,
-          capacity: form.capacity ? parseInt(form.capacity) : undefined,
-          category: form.category,
-          certType: form.certType,
-          issuer: form.issuer,
-          certMessage: form.certMessage,
-          locationUrl: form.locationUrl,
-        }),
-      });
+const handleSubmit = async () => {
+  setStatus("loading");
+  setErrMsg("");
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.message || data?.error || `Erro ${res.status}`);
-      }
+  try {
+    const eventRes = await fetch("/api/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        title: form.name,
+        description: form.description,
+        date_start: form.date_start && form.time_start ? `${form.date_start}T${form.time_start}:00` : null,
+        date_end: form.date_end && form.time_end ? `${form.date_end}T${form.time_end}:00` : null,
+        location: form.location,
+        isPublic: true,
+        workload: form.workload ? parseInt(form.workload) : undefined,
+        capacity: form.capacity ? parseInt(form.capacity) : undefined,
+        category: form.category,
+        certType: form.certType,
+        issuer: form.issuer,
+        certMessage: form.certMessage,
+        locationUrl: form.locationUrl,
+        teamMembers: teamMembers,
+      }),
+    });
 
-      const data = await res.json();
-      console.log("Evento criado com sucesso:", data);
-      setStatus("success");
-    } catch (err) {
-      console.error("Erro ao criar evento:", err);
-      setStatus("error");
-      setErrMsg(err.message || "Falha ao criar evento.");
+    if (!eventRes.ok) {
+      const data = await eventRes.json().catch(() => ({}));
+      throw new Error(data?.message || data?.error || `Erro ${eventRes.status}`);
     }
-  };
 
-  // ── Tela de sucesso ──
-  if (status === "success") {
-    return (
-      <div className="dark min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="text-center max-w-md animate-in fade-in zoom-in duration-300">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-400 mx-auto mb-6 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-            <Check size={36} className="text-white" />
-          </div>
-          <h2 className="text-3xl font-extrabold text-accent-foreground mb-3">
-            Evento criado!
-          </h2>
-          <p className="text-accent-foreground/60 mb-8">
-            <strong className="text-primary">{form.name}</strong> foi publicado com sucesso.
-          </p>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => {
-                setForm({
-                  name: "", description: "", category: "tecnologia",
-                  date_start: "", date_end: "", time: "", location: "", locationUrl: "",
-                  workload: "", certType: "participante", issuer: "",
-                  certMessage: "", capacity: "",
-                });
-                window.location.href = "/userDashboard";
-              }}
-              className="px-5 flex cursor-pointer hover:scale-[1.05] justify-center items-center py-2.5 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg transition-all"
-            >
-              <Check size={16} className="mr-2" />
-              Concluir
-            </button>
-            {onBack && (
-              <button
-                onClick={onBack}
-                className="px-5 py-2.5 rounded-lg text-sm font-bold text-accent-foreground bg-sidebar border border-border hover:bg-sidebar-accent transition-all"
-              >
-                ← Voltar
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
+    const eventData = await eventRes.json();
+    const createdEventId = eventData?.data?.event?.id || eventData?.event?.id || eventData?.id;
+    
+    // Redireciona diretamente para a página do evento
+    if (createdEventId) {
+      window.location.href = `/eventPageAdm?id=${createdEventId}`;
+    } else {
+      window.location.href = "/userDashboard";
+    }
+    
+  } catch (err) {
+    console.error("Erro ao criar evento:", err);
+    setStatus("error");
+    setErrMsg(err.message || "Falha ao criar evento.");
   }
+};
+
+  // Tela de sucesso
+//   if (status === "success") {
+//   // Recupera o eventId do estado ou do localStorage
+//   const eventId = window.__createdEventId || localStorage.getItem('lastCreatedEventId');
+  
+//   return (
+//     <div className="dark min-h-screen bg-background flex items-center justify-center p-6">
+//       <div className="text-center max-w-md animate-in fade-in zoom-in duration-300">
+//         <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-400 mx-auto mb-6 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+//           <Check size={36} className="text-white" />
+//         </div>
+//         <h2 className="text-3xl font-extrabold text-accent-foreground mb-3">
+//           Evento criado!
+//         </h2>
+//         <p className="text-accent-foreground/60 mb-8">
+//           <strong className="text-primary">{form.name}</strong> foi publicado com sucesso.
+//         </p>
+//         <div className="flex gap-3 justify-center">
+//           <button
+//             onClick={() => {
+//               // Redireciona para a página do evento
+//               if (eventId) {
+//                 window.location.href = `/eventPageAdm?id=${eventId}`;
+//               } else {
+//                 // Fallback: vai para o dashboard
+//                 window.location.href = "/userDashboard";
+//               }
+//             }}
+//             className="px-5 flex cursor-pointer hover:scale-[1.05] justify-center items-center py-2.5 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg transition-all"
+//           >
+//             <Check size={16} className="mr-2" />
+//             Ir para o evento
+//           </button>
+//           <button
+//             onClick={() => {
+//               window.location.href = "/userDashboard";
+//             }}
+//             className="px-5 py-2.5 rounded-lg text-sm font-bold text-accent-foreground bg-sidebar border border-border hover:bg-sidebar-accent transition-all"
+//           >
+//             ← Voltar ao Dashboard
+//           </button>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
+  // Função para validar ano com máximo 4 dígitos
+  const handleDateChange = (field, value) => {
+    if (value) {
+      const year = value.split('-')[0];
+      if (year && year.length > 4) {
+        return; // Não permite ano com mais de 4 dígitos
+      }
+    }
+    set(field, value);
+  };
 
   return (
     <div className="dark min-h-screen bg-background">
@@ -306,14 +354,14 @@ export default function CreateEvent({ onBack }) {
           {step === 1 && (
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
-                <div id="data-inicio">
+                <div>
                   <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                    Data de ínicio <span className="text-primary">*</span>
+                    Data de início <span className="text-primary">*</span>
                   </label>
                   <input
                     type="date"
                     value={form.date_start}
-                    onChange={e => set("date_start", e.target.value)}
+                    onChange={e => handleDateChange("date_start", e.target.value)}
                     className={`
                       w-full px-4 py-2.5 rounded-lg text-sm bg-background border
                       ${errors.date_start ? "border-red-400/50" : "border-border"}
@@ -324,7 +372,7 @@ export default function CreateEvent({ onBack }) {
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                    Horário <span className="text-primary">*</span>
+                    Horário início <span className="text-primary">*</span>
                   </label>
                   <input
                     type="time"
@@ -341,15 +389,15 @@ export default function CreateEvent({ onBack }) {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div id="data-fim">
+                <div>
                   <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                    Data de termino <span className="text-primary">*</span>
+                    Data de término <span className="text-primary">*</span>
                   </label>
                   <input
-                      type="date"
-                      value={form.date_end}
-                      onChange={e => set("date_end", e.target.value)}
-                      className={`
+                    type="date"
+                    value={form.date_end}
+                    onChange={e => handleDateChange("date_end", e.target.value)}
+                    className={`
                       w-full px-4 py-2.5 rounded-lg text-sm bg-background border
                       ${errors.date_end ? "border-red-400/50" : "border-border"}
                       focus:border-primary outline-none
@@ -359,13 +407,13 @@ export default function CreateEvent({ onBack }) {
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                    Horário <span className="text-primary">*</span>
+                    Horário término <span className="text-primary">*</span>
                   </label>
                   <input
-                      type="time"
-                      value={form.time_end}
-                      onChange={e => set("time_end", e.target.value)}
-                      className={`
+                    type="time"
+                    value={form.time_end}
+                    onChange={e => set("time_end", e.target.value)}
+                    className={`
                       w-full px-4 py-2.5 rounded-lg text-sm bg-background border
                       ${errors.time_end ? "border-red-400/50" : "border-border"}
                       focus:border-primary outline-none
@@ -374,7 +422,6 @@ export default function CreateEvent({ onBack }) {
                   {errors.time_end && <p className="text-xs text-red-400 mt-1">{errors.time_end}</p>}
                 </div>
               </div>
-
 
               <div>
                 <label className="block text-sm font-bold text-accent-foreground mb-1.5">
@@ -408,69 +455,80 @@ export default function CreateEvent({ onBack }) {
             </div>
           )}
 
-          {/* Step 2 - Certificado */}
+          {/* Step 2 - Equipe */}
           {step === 2 && (
             <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                    Carga horária (h) <span className="text-primary">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={form.workload}
-                    onChange={e => set("workload", e.target.value)}
-                    placeholder="ex: 16"
-                    className={`
-                      w-full px-4 py-2.5 rounded-lg text-sm bg-background border
-                      ${errors.workload ? "border-red-400/50" : "border-border"}
-                      focus:border-primary outline-none
-                    `}
-                  />
-                  {errors.workload && <p className="text-xs text-red-400 mt-1">{errors.workload}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">Tipo de certificado</label>
-                  <select
-                    value={form.certType}
-                    onChange={e => set("certType", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none cursor-pointer"
-                  >
-                    <option value="participante">Participante</option>
-                    <option value="palestrante">Palestrante</option>
-                    <option value="organizador">Organizador</option>
-                  </select>
-                </div>
-              </div>
-
               <div>
                 <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                  Emissor / Organização <span className="text-primary">*</span>
+                  Membros da Equipe
                 </label>
-                <input
-                  type="text"
-                  value={form.issuer}
-                  onChange={e => set("issuer", e.target.value)}
-                  placeholder="ex: Instituto de Tecnologia Brasil"
-                  className={`
-                    w-full px-4 py-2.5 rounded-lg text-sm bg-background border
-                    ${errors.issuer ? "border-red-400/50" : "border-border"}
-                    focus:border-primary outline-none
-                  `}
-                />
-                {errors.issuer && <p className="text-xs text-red-400 mt-1">{errors.issuer}</p>}
-              </div>
+                <p className="text-xs text-accent-foreground/40 mb-3">
+                  Adicione os membros da equipe organizadora e suas respectivas funções.
+                </p>
+                
+                {/* Lista de membros */}
+                {teamMembers.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    {teamMembers.map((member) => (
+                      <div key={member.id} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border">
+                        <div className="flex items-center gap-3">
+                          <User size={16} className="text-purple-400" />
+                          <div>
+                            <p className="text-sm font-medium text-accent-foreground">{member.name}</p>
+                            <p className="text-xs text-accent-foreground/60">{member.job}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeTeamMember(member.id)}
+                          className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-              <div>
-                <label className="block text-sm font-bold text-accent-foreground mb-1.5">Mensagem personalizada</label>
-                <textarea
-                  value={form.certMessage}
-                  onChange={e => set("certMessage", e.target.value)}
-                  placeholder="Mensagem que aparecerá no certificado..."
-                  rows={3}
-                  className="w-full px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none resize-y"
-                />
-                <p className="text-xs text-accent-foreground/40 mt-1">Opcional</p>
+                {/* Adicionar novo membro */}
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <input
+                      type="text"
+                      value={newMemberName}
+                      onChange={e => setNewMemberName(e.target.value)}
+                      placeholder="Nome do membro"
+                      className={`
+                        w-full px-4 py-2.5 rounded-lg text-sm bg-background border
+                        ${errors.teamMemberName ? "border-red-400/50" : "border-border"}
+                        focus:border-primary outline-none transition-colors
+                      `}
+                    />
+                    {errors.teamMemberName && <p className="text-xs text-red-400 mt-1">{errors.teamMemberName}</p>}
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      value={newMemberJob}
+                      onChange={e => setNewMemberJob(e.target.value)}
+                      placeholder="Função (ex: Organizador, Palestrante)"
+                      className={`
+                        w-full px-4 py-2.5 rounded-lg text-sm bg-background border
+                        ${errors.teamMemberJob ? "border-red-400/50" : "border-border"}
+                        focus:border-primary outline-none transition-colors
+                      `}
+                    />
+                    {errors.teamMemberJob && <p className="text-xs text-red-400 mt-1">{errors.teamMemberJob}</p>}
+                  </div>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={addTeamMember}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
+                >
+                  <UserPlus size={16} />
+                  Adicionar membro
+                </button>
               </div>
             </div>
           )}
@@ -518,6 +576,15 @@ export default function CreateEvent({ onBack }) {
                       </div>
                     </div>
                   )}
+                  {form.date_end && form.time_end && (
+                    <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
+                      <CalendarDays size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Término</div>
+                        <div className="text-sm font-medium">{form.date_end} às {form.time_end}</div>
+                      </div>
+                    </div>
+                  )}
                   {form.location && (
                     <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
                       <MapPin size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
@@ -562,6 +629,23 @@ export default function CreateEvent({ onBack }) {
                   )}
                 </div>
               </div>
+
+              {teamMembers.length > 0 && (
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-accent-foreground/40 mb-3">Equipe</div>
+                  <div className="space-y-2">
+                    {teamMembers.map((member) => (
+                      <div key={member.id} className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
+                        <User size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Membro</div>
+                          <div className="text-sm font-medium">{member.name} - {member.job}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {status === "error" && (
                 <div className="flex gap-3 p-3 rounded-lg bg-red-400/5 border border-red-400/20">
