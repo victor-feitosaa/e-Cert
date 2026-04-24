@@ -1,4 +1,4 @@
-// src/pages/api/events/[eventId]/subevents/[subeventId]/members/index.ts
+// src/pages/api/events/[eventId]/subevents/[subeventId]/sections/index.ts
 export const prerender = false;
 import type { APIRoute } from "astro";
 
@@ -18,10 +18,11 @@ export const POST: APIRoute = async ({ params, request }) => {
 
   const baseUrl = import.meta.env.API_URL || "https://ecert.duckdns.org";
   // ✅ Rota correta - igual ao Postman
-  const apiUrl = `${baseUrl}/subevents/${subeventId}/createMember`;
+  const apiUrl = `${baseUrl}/subevents/${subeventId}/sections`;
   
-  console.log("🟢 POST Member Proxy - URL:", apiUrl);
+  console.log("🟢 POST Section Proxy - URL:", apiUrl);
   console.log("📦 Body:", body);
+  console.log("Event ID (não usado):", eventId); // Apenas para debug
 
   try {
     const response = await fetch(apiUrl, {
@@ -56,7 +57,7 @@ export const POST: APIRoute = async ({ params, request }) => {
       headers: { "Content-Type": "application/json" }
     });
   } catch (error) {
-    console.error("🔴 POST Member Proxy Error:", error);
+    console.error("🔴 POST Section Proxy Error:", error);
     return new Response(JSON.stringify({ 
       error: "Could not reach event service",
       details: error.message 

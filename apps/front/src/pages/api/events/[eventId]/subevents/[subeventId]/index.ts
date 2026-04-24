@@ -1,24 +1,15 @@
-// src/pages/api/events/[eventId]/subevents/index.ts
+// src/pages/api/events/[eventId]/subevents/[subeventId]/index.ts
 export const prerender = false;
 import type { APIRoute } from "astro";
 
-// GET - Listar todos os subeventos de um evento
-export const GET: APIRoute = async ({ params, request }) => {
-  const { eventId } = params;
-  
-  console.log("🟢 GET Subevents - Event ID:", eventId);
-  
-  if (!eventId) {
-    return new Response(JSON.stringify({ error: "Event ID is required" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
 
-  const baseUrl = import.meta.env.API_URL || "https://ecert.duckdns.org";
-  const apiUrl = `${baseUrl}/subevents/${eventId}`;
+export const GET: APIRoute = async ({ params, request }) => {
+  const { subeventId } = params;
   
-  console.log("🟢 GET Subevents Proxy - URL:", apiUrl);
+  const baseUrl = import.meta.env.API_URL || "https://ecert.duckdns.org";
+  const apiUrl = `${baseUrl}/subevents/${subeventId}`;
+  
+  console.log("🟢 GET Subevent - URL:", apiUrl);
 
   try {
     const response = await fetch(apiUrl, {
@@ -29,49 +20,14 @@ export const GET: APIRoute = async ({ params, request }) => {
       },
     });
 
-    console.log("📡 Response status:", response.status);
-    console.log("📡 Response headers:", response.headers);
+    const data = await response.json();
 
-    const responseText = await response.text();
-    console.log("📡 Response body (primeiros 500 chars):", responseText.substring(0, 500));
-    
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (e) {
-      console.error("❌ Resposta não é JSON:", responseText.substring(0, 200));
-      return new Response(JSON.stringify({ 
-        error: "Backend returned invalid response",
-        details: responseText.substring(0, 200)
-      }), {
-        status: 502,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
-
-    // Extrair os subevents de diferentes estruturas possíveis
-    let subevents = [];
-    if (Array.isArray(data)) {
-      subevents = data;
-    } else if (data?.data?.subevents && Array.isArray(data.data.subevents)) {
-      subevents = data.data.subevents;
-    } else if (data?.subevents && Array.isArray(data.subevents)) {
-      subevents = data.subevents;
-    } else if (data?.data && Array.isArray(data.data)) {
-      subevents = data.data;
-    }
-
-    console.log(`✅ Encontrados ${subevents.length} subeventos`);
-
-    return new Response(JSON.stringify({
-      status: "success",
-      data: { subevents }
-    }), {
-      status: 200,
+    return new Response(JSON.stringify(data), {
+      status: response.status,
       headers: { "Content-Type": "application/json" }
     });
   } catch (error) {
-    console.error("🔴 GET Subevents Proxy Error:", error);
+    console.error("🔴 GET Subevent Proxy Error:", error);
     return new Response(JSON.stringify({ 
       error: "Could not reach event service",
       details: error.message 
@@ -83,19 +39,11 @@ export const GET: APIRoute = async ({ params, request }) => {
 };
 
 
-// POST - Criar um novo subevento
-export const POST: APIRoute = async ({ params, request }) => {
-  const { eventId } = params;
-  
-  console.log("🟢 POST Subevent - Event ID:", eventId);
-  
-  if (!eventId) {
-    return new Response(JSON.stringify({ error: "Event ID is required" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
 
+// PUT - Atualizar subevento
+export const PUT: APIRoute = async ({ params, request }) => {
+  const { eventId, subeventId } = params;
+  
   let body;
   try {
     const text = await request.text();
@@ -108,14 +56,14 @@ export const POST: APIRoute = async ({ params, request }) => {
   }
 
   const baseUrl = import.meta.env.API_URL || "https://ecert.duckdns.org";
-  const apiUrl = `${baseUrl}/subevents/${eventId}`;
+  const apiUrl = `${baseUrl}/subevents/${subeventId}`;
   
-  console.log("🟢 POST Subevent Proxy - URL:", apiUrl);
+  console.log("🟢 PUT Subevent Proxy - URL:", apiUrl);
   console.log("📦 Body:", body);
 
   try {
     const response = await fetch(apiUrl, {
-      method: "POST",
+      method: "PUT",
       headers: {
         "Content-Type": "application/json",
         "Cookie": request.headers.get("cookie") || "",
@@ -146,7 +94,58 @@ export const POST: APIRoute = async ({ params, request }) => {
       headers: { "Content-Type": "application/json" }
     });
   } catch (error) {
-    console.error("🔴 POST Subevent Proxy Error:", error);
+    console.error("🔴 PUT Subevent Proxy Error:", error);
+    return new Response(JSON.stringify({ 
+      error: "Could not reach event service",
+      details: error.message 
+    }), {
+      status: 502,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+};
+
+// DELETE - Deletar subevento
+export const DELETE: APIRoute = async ({ params, request }) => {
+  const { eventId, subeventId } = params;
+  
+  const baseUrl = import.meta.env.API_URL || "https://ecert.duckdns.org";
+  const apiUrl = `${baseUrl}/subevents/${subeventId}`;
+  
+  console.log("🔴 DELETE Subevent Proxy - URL:", apiUrl);
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "DELETE",
+      headers: {
+        "Cookie": request.headers.get("cookie") || "",
+      },
+    });
+
+    console.log("📡 Response status:", response.status);
+
+    const responseText = await response.text();
+    let data;
+    
+    try {
+      data = responseText ? JSON.parse(responseText) : null;
+    } catch (e) {
+      console.error("❌ Resposta não é JSON:", responseText.substring(0, 200));
+      return new Response(JSON.stringify({ 
+        error: "Backend returned invalid response",
+        details: responseText.substring(0, 200)
+      }), {
+        status: 502,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    return new Response(JSON.stringify(data), {
+      status: response.status,
+      headers: { "Content-Type": "application/json" }
+    });
+  } catch (error) {
+    console.error("🔴 DELETE Subevent Proxy Error:", error);
     return new Response(JSON.stringify({ 
       error: "Could not reach event service",
       details: error.message 

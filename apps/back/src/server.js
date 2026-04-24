@@ -11,6 +11,8 @@ import authRoutes from './routes/authRoutes.js';
 import subEventsRoutes from './routes/subEventsRoutes.js';
 import userRoutes from "./routes/userRoutes.js"
 import testeRoutes from "./routes/testeRoutes.js"
+import sectionRoutes from './routes/sectionRoutes.js'
+
 
 config();
 connectDB();
@@ -38,6 +40,7 @@ app.use("/auth", authRoutes);
 app.use("/subevents", subEventsRoutes);
 app.use("/user", userRoutes);
 app.use("/testes", testeRoutes);
+app.use('/events/:eventId/subevents/:subEventId/sections', sectionRoutes)
 
 const PORT = 5001;
 app.listen(PORT, () => {

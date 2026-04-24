@@ -2,7 +2,8 @@ import { useState, useCallback } from "react";
 import {
   Calendar, Clock, MapPin, ArrowLeft, ArrowRight, Check,
   AlertCircle, ClipboardList, FileText, CalendarDays,
-  UserPlus, Trash2, User, Plus, Sparkles
+  UserPlus, Trash2, User, Plus, Sparkles,
+  Users
 } from "lucide-react";
 import Particles from "./Particles";
 
@@ -33,25 +34,17 @@ export default function CreateSubEvent({ eventId, onBack }) {
   const [status, setStatus] = useState("idle");
   const [errMsg, setErrMsg] = useState("");
 
-  // Volta para a página do evento
-  const goBack = (created = false) => {
+  // Volta para a página do evento - agora sem parâmetro created
+  const goBack = () => {
     const base = typeof onBack === "string"
       ? onBack
       : `/eventPageAdm?eventId=${eventId}`;
-
-    if (created) {
-      const url = new URL(base, window.location.origin);
-      url.searchParams.set("created", "1");
-      window.location.href = url.toString();
-    } else if (typeof onBack === "function") {
-      onBack();
-    } else {
-      window.location.href = base;
-    }
+    
+    window.location.href = base;
   };
 
   const handleBack = () => {
-    if (step === 0) goBack(false);
+    if (step === 0) goBack();
     else prev();
   };
 
@@ -59,6 +52,24 @@ export default function CreateSubEvent({ eventId, onBack }) {
     setForm(f => ({ ...f, [name]: value }));
     setErrors(e => ({ ...e, [name]: "" }));
   }, []);
+
+  // Função para validar ano com máximo 4 dígitos
+  const validateYear = (value) => {
+    if (!value) return true;
+    const year = value.split('-')[0];
+    return !(year && year.length > 4);
+  };
+
+  const handleDateChange = (field, value, isSection = false) => {
+    if (!validateYear(value)) {
+      return; // Impede a mudança se o ano tiver mais de 4 dígitos
+    }
+    if (isSection) {
+      setNewSection(prev => ({ ...prev, [field]: value }));
+    } else {
+      set(field, value);
+    }
+  };
 
   // Funções para gerenciar seções
   const addSection = () => {
@@ -140,9 +151,6 @@ export default function CreateSubEvent({ eventId, onBack }) {
         e.sections = "Adicione pelo menos uma seção";
       }
     }
-    if (s === 2) {
-      // Sem validação obrigatória para equipe
-    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -154,8 +162,12 @@ export default function CreateSubEvent({ eventId, onBack }) {
     setStatus("loading");
     setErrMsg("");
 
+    console.log("=== INICIANDO CRIAÇÃO DO SUBEVENTO ===");
+    console.log("Event ID:", eventId);
+
     try {
-      // Primeiro, cria o subevento
+      // 1. Criar subevento
+      console.log("1️⃣ Enviando requisição para criar subevento...");
       const subeventRes = await fetch(`/api/events/${eventId}/subevents`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -169,132 +181,145 @@ export default function CreateSubEvent({ eventId, onBack }) {
         }),
       });
 
+      console.log("Status da resposta:", subeventRes.status);
+      
       if (!subeventRes.ok) {
-        const data = await subeventRes.json().catch(() => ({}));
-        throw new Error(data?.message || data?.error || `Erro ${subeventRes.status}`);
+        const errorText = await subeventRes.text();
+        console.error("Erro na resposta:", errorText);
+        throw new Error(`Erro ${subeventRes.status}: ${errorText}`);
       }
 
       const subeventData = await subeventRes.json();
-      const createdSubeventId = subeventData?.data?.subevent?.id || subeventData?.subevent?.id || subeventData?.id;
+      console.log("Resposta completa do backend:", JSON.stringify(subeventData, null, 2));
       
-      console.log("Subevento criado com ID:", createdSubeventId);
+      const createdSubeventId = 
+        subeventData?.data?.subEvent?.id ||
+        subeventData?.data?.subevent?.id ||
+        subeventData?.subevent?.id || 
+        subeventData?.id;
+      
+      console.log("ID extraído:", createdSubeventId);
+      
+      if (!createdSubeventId) {
+        console.error("Não foi possível extrair o ID. Estrutura recebida:", subeventData);
+        throw new Error("Backend não retornou o ID do subevento criado");
+      }
+      
+      console.log(`✅ Subevento criado com ID: ${createdSubeventId}`);
 
-      // Depois, adiciona as seções
-      if (sections.length > 0 && createdSubeventId) {
-        const sectionPromises = sections.map(async (section) => {
+      // 2. Adicionar seções (se houver)
+      if (sections.length > 0) {
+        console.log(`2️⃣ Adicionando ${sections.length} seção(ões)...`);
+        
+        for (let i = 0; i < sections.length; i++) {
+          const section = sections[i];
+          const sectionData = {
+            title: section.title,
+            date_start: `${section.date_start}T${section.time_start}:00.000Z`,
+            date_end: `${section.date_end}T${section.time_end}:00.000Z`,
+            location: section.location,
+          };
+          
+          console.log(`  Seção ${i + 1}:`, sectionData);
+          
           const sectionRes = await fetch(`/api/events/${eventId}/subevents/${createdSubeventId}/sections`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify({
-              title: section.title,
-              date_start: `${section.date_start}T${section.time_start}:00.000Z`,
-              date_end: `${section.date_end}T${section.time_end}:00.000Z`,
-              location: section.location,
-            }),
+            body: JSON.stringify(sectionData),
           });
 
+          console.log(`  Resposta seção ${i + 1} - Status:`, sectionRes.status);
+
           if (!sectionRes.ok) {
-            console.error(`Erro ao adicionar seção:`, await sectionRes.json());
-            throw new Error(`Falha ao adicionar seção`);
+            const errorText = await sectionRes.text();
+            console.error(`  Erro na seção ${i + 1}:`, errorText);
+            throw new Error(`Falha ao adicionar seção ${i + 1}`);
           }
 
-          return sectionRes.json();
-        });
-
-        await Promise.all(sectionPromises);
-        console.log("Todas as seções adicionadas com sucesso!");
+          const sectionResult = await sectionRes.json();
+          console.log(`  ✅ Seção ${i + 1} criada:`, sectionResult);
+        }
+        console.log("✅ Todas as seções adicionadas com sucesso!");
+      } else {
+        console.log("2️⃣ Nenhuma seção para adicionar");
       }
 
-      // Depois, adiciona os membros da equipe
-      if (teamMembers.length > 0 && createdSubeventId) {
-        const memberPromises = teamMembers.map(async (member) => {
+      // 3. Adicionar membros da equipe (se houver)
+      if (teamMembers.length > 0) {
+        console.log(`3️⃣ Adicionando ${teamMembers.length} membro(s) da equipe...`);
+        
+        for (let i = 0; i < teamMembers.length; i++) {
+          const member = teamMembers[i];
+          const memberData = {
+            name: member.name,
+            job: member.job,
+            role: "USER",
+          };
+          
+          console.log(`  Membro ${i + 1}:`, memberData);
+          
           const memberRes = await fetch(`/api/events/${eventId}/subevents/${createdSubeventId}/members`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify({
-              name: member.name,
-              job: member.job,
-            }),
+            body: JSON.stringify(memberData),
           });
 
+          console.log(`  Resposta membro ${i + 1} - Status:`, memberRes.status);
+
           if (!memberRes.ok) {
-            console.error(`Erro ao adicionar membro ${member.name}:`, await memberRes.json());
+            const errorText = await memberRes.text();
+            console.error(`  Erro no membro ${i + 1}:`, errorText);
             throw new Error(`Falha ao adicionar membro: ${member.name}`);
           }
 
-          return memberRes.json();
-        });
-
-        await Promise.all(memberPromises);
-        console.log("Todos os membros adicionados com sucesso!");
+          const memberResult = await memberRes.json();
+          console.log(`  ✅ Membro ${i + 1} criado:`, memberResult);
+        }
+        console.log("✅ Todos os membros adicionados com sucesso!");
+      } else {
+        console.log("3️⃣ Nenhum membro para adicionar");
       }
 
-      setStatus("success");
-      setTimeout(() => goBack(true), 1200);
+      console.log("🎉 Subevento criado com sucesso!");
+      
+      // ✅ Redirecionar diretamente para a página do evento com a aba de subeventos ativa
+      if (createdSubeventId) {
+        window.location.href = `/eventPageAdm?id=${eventId}`;
+      } else {
+        window.location.href = "/userDashboard";
+      }
 
     } catch (err) {
-      console.error("Erro ao criar subevento:", err);
+      console.error("❌ Erro detalhado:", err);
       setStatus("error");
       setErrMsg(err.message || "Falha ao criar subevento.");
     }
   };
 
-  // Tela de sucesso
-  if (status === "success") {
+  // Se houver erro, mostra mensagem
+  if (status === "error") {
     return (
       <div className="dark min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="text-center max-w-md animate-in fade-in zoom-in duration-300">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-400 mx-auto mb-6 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-            <Check size={36} className="text-white" />
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-red-500 to-red-400 mx-auto mb-6 flex items-center justify-center shadow-lg shadow-red-500/30">
+            <AlertCircle size={36} className="text-white" />
           </div>
           <h2 className="text-3xl font-extrabold text-accent-foreground mb-3">
-            SubEvento criado!
+            Erro ao criar subevento
           </h2>
-          <p className="text-accent-foreground/60 mb-8">
-            <strong className="text-primary">{form.name}</strong> foi adicionado com sucesso.
-          </p>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => goBack(true)}
-              className="px-5 flex cursor-pointer hover:scale-[1.05] justify-center items-center py-2.5 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg transition-all"
-            >
-              <Check size={16} className="mr-2" />
-              Concluir
-            </button>
-            <button
-              onClick={() => {
-                setForm({ name: "", description: "", location: "", locationUrl: "", capacity: "" });
-                setSections([]);
-                setTeamMembers([]);
-                setStep(0);
-                setStatus("idle");
-              }}
-              className="px-5 py-2.5 rounded-lg text-sm font-bold text-accent-foreground bg-sidebar border border-border hover:bg-sidebar-accent transition-all"
-            >
-              + Criar outro
-            </button>
-          </div>
+          <p className="text-accent-foreground/60 mb-8">{errMsg}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-5 py-2.5 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg transition-all"
+          >
+            Tentar novamente
+          </button>
         </div>
       </div>
     );
   }
-
-  // Função para validar ano com máximo 4 dígitos
-  const handleDateChange = (field, value, isSection = false) => {
-    if (value) {
-      const year = value.split('-')[0];
-      if (year && year.length > 4) {
-        return;
-      }
-    }
-    if (isSection) {
-      setNewSection(prev => ({ ...prev, [field]: value }));
-    } else {
-      set(field, value);
-    }
-  };
 
   return (
     <div className="dark min-h-screen bg-background">
@@ -501,7 +526,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                         value={newSection.title}
                         onChange={e => setNewSection(prev => ({ ...prev, title: e.target.value }))}
                         placeholder="Título da seção (opcional - ex: Manhã, Tarde, Dia 1)"
-                        className="w-full px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                        className="w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
                       />
                     </div>
 
@@ -512,7 +537,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                           type="date"
                           value={newSection.date_start}
                           onChange={e => handleDateChange("date_start", e.target.value, true)}
-                          className="w-full px-3 py-2 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                          className="w-full px-3 py-2 text-accent-foreground rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
                         />
                       </div>
                       <div>
@@ -521,7 +546,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                           type="time"
                           value={newSection.time_start}
                           onChange={e => setNewSection(prev => ({ ...prev, time_start: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                          className="w-full px-3 py-2 text-accent-foreground rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
                         />
                       </div>
                     </div>
@@ -533,7 +558,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                           type="date"
                           value={newSection.date_end}
                           onChange={e => handleDateChange("date_end", e.target.value, true)}
-                          className="w-full px-3 py-2 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                          className="w-full px-3 py-2 text-accent-foreground rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
                         />
                       </div>
                       <div>
@@ -542,7 +567,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                           type="time"
                           value={newSection.time_end}
                           onChange={e => setNewSection(prev => ({ ...prev, time_end: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                          className="w-full px-3 py-2 text-accent-foreground rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
                         />
                       </div>
                     </div>
@@ -553,7 +578,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                         value={newSection.location}
                         onChange={e => setNewSection(prev => ({ ...prev, location: e.target.value }))}
                         placeholder="Local específico (opcional)"
-                        className="w-full px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                        className="w-full text-accent-foreground px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
                       />
                     </div>
 
@@ -613,7 +638,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                       onChange={e => setNewMemberName(e.target.value)}
                       placeholder="Nome do membro"
                       className={`
-                        w-full px-4 py-2.5 rounded-lg text-sm bg-background border
+                        w-full px-4 py-2.5 rounded-lg text-accent-foreground text-sm bg-background border
                         ${errors.teamMemberName ? "border-red-400/50" : "border-border"}
                         focus:border-primary outline-none transition-colors
                       `}
@@ -627,7 +652,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                       onChange={e => setNewMemberJob(e.target.value)}
                       placeholder="Função (ex: Palestrante, Monitor)"
                       className={`
-                        w-full px-4 py-2.5 rounded-lg text-sm bg-background border
+                        w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-background border
                         ${errors.teamMemberJob ? "border-red-400/50" : "border-border"}
                         focus:border-primary outline-none transition-colors
                       `}
@@ -663,7 +688,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                       <ClipboardList size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
                       <div>
                         <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Nome</div>
-                        <div className="text-sm font-medium">{form.name}</div>
+                        <div className="text-sm font-medium text-accent-foreground">{form.name}</div>
                       </div>
                     </div>
                   )}
@@ -672,7 +697,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                       <FileText size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
                       <div>
                         <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Descrição</div>
-                        <div className="text-sm font-medium">{form.description}</div>
+                        <div className="text-sm font-medium text-accent-foreground">{form.description}</div>
                       </div>
                     </div>
                   )}
@@ -681,7 +706,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                       <MapPin size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
                       <div>
                         <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Local</div>
-                        <div className="text-sm font-medium">{form.location}</div>
+                        <div className="text-sm font-medium text-accent-foreground">{form.location}</div>
                       </div>
                     </div>
                   )}
@@ -690,7 +715,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                       <Users size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
                       <div>
                         <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Capacidade</div>
-                        <div className="text-sm font-medium">{form.capacity}</div>
+                        <div className="text-sm font-medium text-accent-foreground">{form.capacity}</div>
                       </div>
                     </div>
                   )}
@@ -708,7 +733,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                           <div className="text-[10px] font-bold uppercase text-accent-foreground/40">
                             Seção {idx + 1}
                           </div>
-                          <div className="text-sm font-medium">
+                          <div className="text-sm font-medium text-accent-foreground">
                             {section.title && `${section.title} - `}
                             {section.date_start} {section.time_start} → {section.date_end} {section.time_end}
                             {section.location && ` - ${section.location}`}
@@ -729,7 +754,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                         <User size={18} className="text-accent-foreground/40 shrink-0 mt-0.5" />
                         <div>
                           <div className="text-[10px] font-bold uppercase text-accent-foreground/40">Membro</div>
-                          <div className="text-sm font-medium">{member.name} - {member.job}</div>
+                          <div className="text-sm font-medium text-accent-foreground">{member.name} - {member.job}</div>
                         </div>
                       </div>
                     ))}

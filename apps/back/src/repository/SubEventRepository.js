@@ -2,14 +2,11 @@ import { prisma } from "../config/db.js"
 
 class SubEventRepository {
 
-    async create (title, description, date, date_start, date_end, location, eventId, creator) {
+    async create (title, description, location, eventId, creator) {
         return prisma.subEvent.create({
             data: {
                 title: title.trim(),
                 description: description.trim(),
-                date: date,
-                date_start: date_start ? new Date(date_start) : null,
-                date_end: date_end ? new Date(date_end) : null,
                 location: location?.trim(),
                 eventId,
                 createdBy: creator,

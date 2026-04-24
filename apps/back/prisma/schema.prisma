@@ -51,7 +51,7 @@ model SubEvent {
   id          String   @id @default(uuid())
   title       String
   description String
-  date        DateTime
+  date        DateTime?
   date_start  DateTime?
   date_end    DateTime?
   location    String?
@@ -63,7 +63,23 @@ model SubEvent {
 
   creator  User           @relation("SubEventCreator", fields: [createdBy], references: [id], onDelete: Cascade)
   event    Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  subEvent SubEventTeam[]
+  sections Section[]      
+  team     SubEventTeam[]
+}
+
+model Section {
+  id         String   @id @default(uuid())
+  title      String?
+  date_start DateTime
+  date_end   DateTime
+  location   String?
+  subEventId String
+  subEvent   SubEvent @relation(fields: [subEventId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([subEventId])
 }
 
 //PERMISSIONS
@@ -119,6 +135,8 @@ model EventTeam {
 
   user  User  @relation(fields: [userId], references: [id])
   event Event @relation(fields: [eventId], references: [id])
+
+  @@map("event_teams")
 }
 
 model SubEventTeam {
@@ -135,8 +153,6 @@ model SubEventTeam {
 
   user     User     @relation(fields: [userId], references: [id])
   subEvent SubEvent @relation(fields: [subEventId], references: [id])
+
+  @@map("sub_event_teams")
 }
-
-
-
-

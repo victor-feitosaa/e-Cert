@@ -3,108 +3,143 @@ import SubEventRepository from '../repository/SubEventRepository.js';
 import eventService from '../services/eventService.js';
 import subEventService from "../services/subEventService.js"
 
-export const createSubEvent = async (req,res) => {
-
+// src/controllers/subEventsController.js
+export const createSubEvent = async (req, res) => {
     try {
-        
-        const { title, description, date_start, date_end, location } = req.body;
-
-        const {id} = req.params;
-
+        const { title, description, location } = req.body;
+        const { id } = req.params; // eventId
         const userId = req.user.id;
     
         const event = await eventService.getById(id);
         
-        
-
         if (!event) {
             return res.status(404).json({
                 status: 'fail',
                 message: 'Evento não encontrado'
-            })
+            });
         }
     
-            if (!userId) {
+        if (!userId) {
             return res.status(404).json({
                 status: 'fail',
                 message: 'User não encontrado'
-            })
+            });
         }
     
         if (!title?.trim()) {
-            return res.status(404).json({
+            return res.status(400).json({
                 status: 'fail',
                 message: 'Titulo é obrigatorio'
-    
-            })
+            });
         }
     
         if (!description?.trim()) {
-            return res.status(404).json({
+            return res.status(400).json({
                 status: 'fail',
                 message: 'A descrição é obrigatoria'
-            })
+            });
         }
     
-        if (!date_start) {
-            return res.status(404).json({
-                status: 'fail',
-                message: 'A data de início é obrigatória'
-            })
+        const subEvent = await subEventService.create(title, description, location, id, userId);
+        
+        // ✅ Verificar se o subEvent foi criado e tem ID
+        if (!subEvent || !subEvent.id) {
+            console.error("SubEvento criado sem ID:", subEvent);
+            return res.status(500).json({
+                status: 'error',
+                message: 'Erro ao criar sub evento: ID não gerado'
+            });
         }
-
-        if (!date_end) {
-            return res.status(404).json({
-                status: 'fail',
-                message: 'A data de término é obrigatória'
-            })
-        }
-
-    
-        const subEvent = await subEventService.create(title, description, date_start, date_end, location, id, userId )
+        
+        console.log("✅ SubEvento criado com ID:", subEvent.id);
         
         res.status(201).json({
-            status: 'sucess',
-            data: {subEvent}
+            status: 'success',
+            data: { 
+                subEvent: {
+                    id: subEvent.id,
+                    title: subEvent.title,
+                    description: subEvent.description,
+                    location: subEvent.location,
+                    eventId: subEvent.eventId,
+                    createdBy: subEvent.createdBy,
+                    createdAt: subEvent.createdAt
+                }
+            }
         });
-
-
 
     } catch (error) {
         console.error('Erro ao criar sub evento:', error);
         return res.status(500).json({
             status: 'error',
-            message: 'Erro ao criar sub evento'
+            message: 'Erro ao criar sub evento',
+            error: error.message
         });
     }
+};
 
-}
 
 export const getSubEvents = async (req, res) => {
+  try {
+    const { id } = req.params; // eventId
 
-    try {
+    const subEvents = await prisma.subEvent.findMany({
+      where: { eventId: id },
+      include: {
+        sections: {
+          orderBy: { date_start: 'asc' }
+        },
+        team: true
+      }
+    });
 
-        const {id} = req.params;
+    res.status(200).json({
+      status: 'success',
+      results: subEvents.length,
+      data: { subevents: subEvents }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar subEventos:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Erro ao buscar sub eventos'
+    });
+  }
+};
 
+export const getSubEventById = async (req, res) => {
+  try {
+    const { id } = req.params; // subEventId
 
-        const [subEvents, total ] = await subEventService.getAllSubEventsOfEvent(id);
+    const subEvent = await prisma.subEvent.findUnique({
+      where: { id },
+      include: {
+        sections: {
+          orderBy: { date_start: 'asc' }
+        },
+        team: true
+      }
+    });
 
-        res.status(200).json({
-            status: 'sucess',
-            results: subEvents.length,
-            data:{
-                subEvents,
-            },
-        });
-    } catch (error) {
-        console.error('Error ao buscar subEventos ', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Erro ao buscar sub eventos'
-        })
+    if (!subEvent) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'SubEvento não encontrado'
+      });
     }
 
-}
+    res.status(200).json({
+      status: 'success',
+      data: { subEvent }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar subEvento:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Erro ao buscar sub evento'
+    });
+  }
+};
 
 export const updateSubEvent = async (req, res) => {
 
