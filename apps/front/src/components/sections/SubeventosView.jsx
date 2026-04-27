@@ -12,6 +12,12 @@ const toLocalInput = (iso) => {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
+// Formatar data para envio ao backend
+const formatToISO = (dateStr, timeStr) => {
+  if (!dateStr || !timeStr) return null;
+  return `${dateStr}T${timeStr}:00.000Z`;
+};
+
 /* ─── MODAL EDIÇÃO ─── */
 function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
   const [form, setForm] = useState({
@@ -20,7 +26,10 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
     location:     subevento?.location     || "",
     capacity:     subevento?.capacity     ? String(subevento.capacity) : "",
   });
-  const [sections, setSections] = useState(subevento?.sections || []);
+  
+  // Estado para seções existentes e novas
+  const [existingSections, setExistingSections] = useState(subevento?.sections || []);
+  const [newSections, setNewSections] = useState([]);
   const [newSection, setNewSection] = useState({
     title: "",
     date_start: "",
@@ -29,9 +38,13 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
     time_end: "",
     location: "",
   });
-  const [teamMembers, setTeamMembers] = useState(subevento?.team || []);
+  
+  // Estado para membros existentes e novos
+  const [existingTeam, setExistingTeam] = useState(subevento?.team || []);
+  const [newTeam, setNewTeam] = useState([]);
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberJob, setNewMemberJob] = useState("");
+  
   const [errors, setErrors] = useState({});
 
   const set = (field, val) => {
@@ -47,7 +60,7 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
     return Object.keys(e).length === 0;
   };
 
-  // Funções para gerenciar seções no modal
+  // Funções para gerenciar seções
   const addSection = () => {
     if (!newSection.date_start) {
       setErrors(prev => ({ ...prev, sectionDate: "Data de início é obrigatória" }));
@@ -66,7 +79,7 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
       return;
     }
 
-    setSections(prev => [...prev, {
+    setNewSections(prev => [...prev, {
       id: Date.now(),
       title: newSection.title || null,
       date_start: newSection.date_start,
@@ -86,11 +99,15 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
     });
   };
 
-  const removeSection = (id) => {
-    setSections(prev => prev.filter(section => section.id !== id));
+  const removeExistingSection = (index) => {
+    setExistingSections(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Funções para gerenciar membros da equipe no modal
+  const removeNewSection = (index) => {
+    setNewSections(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Funções para gerenciar membros da equipe
   const addTeamMember = () => {
     if (!newMemberName.trim()) {
       setErrors(prev => ({ ...prev, teamMemberName: "Nome do membro é obrigatório" }));
@@ -101,7 +118,7 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
       return;
     }
     
-    setTeamMembers(prev => [...prev, { 
+    setNewTeam(prev => [...prev, { 
       id: Date.now(), 
       name: newMemberName.trim(), 
       job: newMemberJob.trim() 
@@ -110,16 +127,22 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
     setNewMemberJob("");
   };
 
-  const removeTeamMember = (id) => {
-    setTeamMembers(prev => prev.filter(member => member.id !== id));
+  const removeExistingTeamMember = (index) => {
+    setExistingTeam(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeNewTeamMember = (index) => {
+    setNewTeam(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSave = () => {
     if (validate()) {
       onSave({ 
         ...form, 
-        sections, 
-        teamMembers,
+        existingSections,
+        newSections,
+        existingTeam,
+        newTeam,
         id: subevento?.id 
       });
     }
@@ -187,17 +210,50 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
             </div>
           </div>
 
-          {/* Seções */}
-          <div className="border-t border-border pt-4">
-            <label className="block text-sm font-semibold text-gray-300 mb-1.5">Seções / Horários</label>
-            
-            {sections.length > 0 && (
-              <div className="space-y-2 mb-4">
-                {sections.map((section, idx) => (
+          {/* Seções Existentes */}
+          {existingSections.length > 0 && (
+            <div className="border-t border-border pt-4">
+              <label className="block text-sm font-semibold text-gray-300 mb-1.5">Seções Existentes</label>
+              <div className="space-y-2">
+                {existingSections.map((section, idx) => (
                   <div key={section.id || idx} className="flex items-center justify-between p-2 rounded-lg bg-background/50 border border-border">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 text-xs text-gray-400">
                         <CalendarDays size={12} className="text-purple-400" />
+                        <span>
+                          {section.title && `${section.title} - `}
+                          {new Date(section.date_start).toLocaleDateString()} {new Date(section.date_start).toLocaleTimeString()} → {new Date(section.date_end).toLocaleDateString()} {new Date(section.date_end).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      {section.location && (
+                        <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                          <MapPin size={10} />
+                          <span>{section.location}</span>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => removeExistingSection(idx)}
+                      className="p-1 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Novas Seções */}
+          {newSections.length > 0 && (
+            <div className="border-t border-border pt-4">
+              <label className="block text-sm font-semibold text-gray-300 mb-1.5">Novas Seções (serão adicionadas)</label>
+              <div className="space-y-2">
+                {newSections.map((section, idx) => (
+                  <div key={section.id} className="flex items-center justify-between p-2 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <CalendarDays size={12} className="text-green-400" />
                         <span>
                           {section.title && `${section.title} - `}
                           {section.date_start} {section.time_start} → {section.date_end} {section.time_end}
@@ -211,7 +267,7 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
                       )}
                     </div>
                     <button
-                      onClick={() => removeSection(section.id)}
+                      onClick={() => removeNewSection(idx)}
                       className="p-1 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20"
                     >
                       <Trash2 size={12} />
@@ -219,8 +275,12 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
                   </div>
                 ))}
               </div>
-            )}
+            </div>
+          )}
 
+          {/* Adicionar nova Seção */}
+          <div className="border-t border-border pt-4">
+            <label className="block text-sm font-semibold text-gray-300 mb-1.5">Adicionar Nova Seção</label>
             <div className="grid grid-cols-2 gap-2 mb-2">
               <input
                 type="date"
@@ -275,13 +335,12 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
             </button>
           </div>
 
-          {/* Membros da Equipe */}
-          <div className="border-t border-border pt-4">
-            <label className="block text-sm font-semibold text-gray-300 mb-1.5">Membros da Equipe</label>
-            
-            {teamMembers.length > 0 && (
-              <div className="space-y-2 mb-4">
-                {teamMembers.map((member, idx) => (
+          {/* Membros da Equipe Existentes */}
+          {existingTeam.length > 0 && (
+            <div className="border-t border-border pt-4">
+              <label className="block text-sm font-semibold text-gray-300 mb-1.5">Membros da Equipe</label>
+              <div className="space-y-2">
+                {existingTeam.map((member, idx) => (
                   <div key={member.id || idx} className="flex items-center justify-between p-2 rounded-lg bg-background/50 border border-border">
                     <div className="flex items-center gap-2">
                       <User size={12} className="text-purple-400" />
@@ -289,7 +348,7 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
                       <span className="text-xs text-gray-400">- {member.job}</span>
                     </div>
                     <button
-                      onClick={() => removeTeamMember(member.id)}
+                      onClick={() => removeExistingTeamMember(idx)}
                       className="p-1 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20"
                     >
                       <Trash2 size={12} />
@@ -297,8 +356,36 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
                   </div>
                 ))}
               </div>
-            )}
+            </div>
+          )}
 
+          {/* Novos Membros */}
+          {newTeam.length > 0 && (
+            <div className="border-t border-border pt-4">
+              <label className="block text-sm font-semibold text-gray-300 mb-1.5">Novos Membros (serão adicionados)</label>
+              <div className="space-y-2">
+                {newTeam.map((member, idx) => (
+                  <div key={member.id} className="flex items-center justify-between p-2 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <div className="flex items-center gap-2">
+                      <User size={12} className="text-green-400" />
+                      <span className="text-sm text-white">{member.name}</span>
+                      <span className="text-xs text-gray-400">- {member.job}</span>
+                    </div>
+                    <button
+                      onClick={() => removeNewTeamMember(idx)}
+                      className="p-1 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Adicionar novo Membro */}
+          <div className="border-t border-border pt-4">
+            <label className="block text-sm font-semibold text-gray-300 mb-1.5">Adicionar Membro</label>
             <div className="grid grid-cols-2 gap-2 mb-2">
               <input
                 type="text"
@@ -493,16 +580,9 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
         credentials: "include",
       });
       
-      console.log("📡 Status da resposta:", res.status);
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Erro na resposta:", errorText);
-        throw new Error(`Erro ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`Erro ${res.status}`);
       
       const data = await res.json();
-      console.log("📦 Dados recebidos:", data);
       
       let list = [];
       if (Array.isArray(data)) {
@@ -515,19 +595,16 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
         list = data.data;
       }
       
-      // Garantir que cada subevento tenha sections e team
       list = list.map(sub => ({
         ...sub,
         sections: sub.sections || [],
         team: sub.team || []
       }));
       
-      console.log(`✅ ${list.length} subeventos encontrados com seções e equipe`);
       setSubeventos(list);
       onSubeventsUpdate?.(list);
     } catch (err) {
       console.error("Erro ao buscar subeventos:", err);
-      // Fallback para os dados iniciais
       const fallbackList = Array.isArray(initialData) ? initialData : [];
       setSubeventos(fallbackList);
     } finally {
@@ -566,7 +643,7 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
     setApiError("");
 
     try {
-      // Atualizar subevento
+      // 1. Atualizar informações básicas do subevento
       const res = await fetch(`/api/events/${eventId}/subevents/${editing.id}`, {
         method: "PUT",
         credentials: "include",
@@ -579,45 +656,63 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
         }),
       });
 
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d?.message || `Erro ${res.status}`);
+      if (!res.ok) throw new Error(`Erro ${res.status}`);
+
+      // 2. Remover seções que foram deletadas
+      // As seções que estão em editing.sections mas não em formData.existingSections foram removidas
+      const removedSections = editing.sections?.filter(
+        oldSection => !formData.existingSections.some(newSection => newSection.id === oldSection.id)
+      ) || [];
+      
+      for (const section of removedSections) {
+        await fetch(`/api/events/${eventId}/subevents/${editing.id}/sections/${section.id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
       }
 
-      // Atualizar seções (apenas as novas)
-      for (const section of formData.sections) {
-        if (section.id && section.id.toString().includes('.')) {
-          await fetch(`/api/events/${eventId}/subevents/${editing.id}/sections`, {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: section.title,
-              date_start: `${section.date_start}T${section.time_start}:00.000Z`,
-              date_end: `${section.date_end}T${section.time_end}:00.000Z`,
-              location: section.location,
-            }),
-          });
-        }
+      // 3. Adicionar novas seções
+      for (const section of formData.newSections) {
+        await fetch(`/api/events/${eventId}/subevents/${editing.id}/sections`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: section.title,
+            date_start: `${section.date_start}T${section.time_start}:00.000Z`,
+            date_end: `${section.date_end}T${section.time_end}:00.000Z`,
+            location: section.location,
+          }),
+        });
       }
 
-      // Atualizar membros da equipe (apenas os novos)
-      for (const member of formData.teamMembers) {
-        if (member.id && member.id.toString().includes('.')) {
-          await fetch(`/api/events/${eventId}/subevents/${editing.id}/members`, {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: member.name,
-              job: member.job,
-              role: "USER",
-            }),
-          });
-        }
+      // 4. Remover membros que foram deletados
+      const removedMembers = editing.team?.filter(
+        oldMember => !formData.existingTeam.some(newMember => newMember.id === oldMember.id)
+      ) || [];
+      
+      for (const member of removedMembers) {
+        await fetch(`/api/events/${eventId}/subevents/${editing.id}/members/${member.id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
       }
 
-      // Recarregar a lista
+      // 5. Adicionar novos membros
+      for (const member of formData.newTeam) {
+        await fetch(`/api/events/${eventId}/subevents/${editing.id}/members`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: member.name,
+            job: member.job,
+            role: "USER",
+          }),
+        });
+      }
+
+      // 6. Recarregar a lista
       await fetchSubevents();
       closeModal();
 
