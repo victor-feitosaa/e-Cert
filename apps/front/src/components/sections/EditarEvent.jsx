@@ -10,21 +10,39 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
     const [error, setError] = useState("");
     const [deleting, setDeleting] = useState(false);
 
-    function formatDateForInput(isoString) {
+    // Função para validar se o ano tem no máximo 4 dígitos
+    const validateYear = (value) => {
+        if (!value) return true;
+        const year = value.split('-')[0];
+        return !(year && year.length > 4);
+    };
+
+    // Função para formatar data garantindo que não exceda 4 dígitos no ano
+    const formatDateForInput = (isoString) => {
         if (!isoString) return "";
         const date = new Date(isoString);
         const day = date.getDate().toString().padStart(2, "0");
         const month = `${date.getMonth() + 1}`.padStart(2, "0");
-        const year = date.getFullYear();
-        console.log(`${year}/${month}/${day}`)
-        return `${year}-${month}-${day}`;
-    }
+        const year = date.getFullYear().toString();
+        
+        // Se o ano tiver mais de 4 dígitos, usa ano atual
+        const validYear = year.length > 4 ? new Date().getFullYear().toString() : year;
+        return `${validYear}-${month}-${day}`;
+    };
 
     function formatTimeForInput(isoString) {
         if (!isoString) return "";
         const d = new Date(isoString);
         return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
     }
+
+    // Validador de data com ano máximo de 4 dígitos
+    const handleDateChange = (field, value) => {
+        if (!validateYear(value)) {
+            return; // Impede a mudança se o ano tiver mais de 4 dígitos
+        }
+        setForm(f => ({ ...f, [field]: value }));
+    };
 
     const fetchEventData = async () => {
         try {
@@ -45,15 +63,15 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
             const ev = response.data?.event || response.event || response.data;
             if (!ev) throw new Error("Dados do evento não encontrados");
 
-            console.log(ev);
+            console.log("Dados do evento:", ev);
             setForm({
                 title: ev.title || "",
                 description: ev.description || "",
                 location: ev.location || "",
                 date_start: formatDateForInput(ev.date_start),
                 date_end: formatDateForInput(ev.date_end),
-                category: ev.category,
-                capacity: ev.capacity,
+                category: ev.category || "tecnologia",
+                capacity: ev.capacity || "",
                 time_start: formatTimeForInput(ev.date_start),
                 time_end: formatTimeForInput(ev.date_end),
                 isPublic: ev.isPublic ?? true,
@@ -79,16 +97,30 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
         setError("");
         setSuccess(false);
 
+        // Validar anos das datas antes de enviar
+        if (form.date_start && !validateYear(form.date_start)) {
+            setError("Ano da data de início não pode ter mais de 4 dígitos");
+            setSaving(false);
+            return;
+        }
+        if (form.date_end && !validateYear(form.date_end)) {
+            setError("Ano da data de término não pode ter mais de 4 dígitos");
+            setSaving(false);
+            return;
+        }
+
         const payload = {
             title: form.title,
             description: form.description,
             location: form.location,
             category: form.category,
-            capacity: form.capacity,
-            date_start: `${form.date_start}T${form.time_start}:00`,
-            date_end: `${form.date_end}T${form.time_end}:00`,
+            capacity: form.capacity ? Number(form.capacity) : null,
+            date_start: form.date_start && form.time_start ? `${form.date_start}T${form.time_start}:00` : null,
+            date_end: form.date_end && form.time_end ? `${form.date_end}T${form.time_end}:00` : null,
             isPublic: Boolean(form.isPublic),
         };
+
+        console.log("Payload enviado:", payload);
 
         try {
             const res = await fetch(`/api/events/${eventId}`, {
@@ -140,11 +172,9 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                 throw new Error(errorData.error || errorData.message || "Erro ao cancelar evento");
             }
 
-            // Se chegou aqui, o delete foi bem sucedido
             if (onEventDeleted) {
                 onEventDeleted(eventId);
             } else {
-                // Fallback: redirecionar para o dashboard
                 window.location.href = "/userDashboard";
             }
         } catch (err) {
@@ -203,10 +233,10 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                     </fieldset>
 
                     <fieldset className="flex flex-col gap-1 p-4">
-                        <label className="text-sm font-bold">Catégoria</label>
+                        <label className="text-sm font-bold">Categoria</label>
                         <select
-                            value={form.category}
-                            onChange={e => set("category", e.target.value)}
+                            value={form.category || "tecnologia"}
+                            onChange={set("category")}
                             className="w-full px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none cursor-pointer"
                         >
                             <option value="tecnologia">Tecnologia</option>
@@ -217,13 +247,17 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                             <option value="cultura">Cultura</option>
                             <option value="outro">Outro</option>
                         </select>
-
-
                     </fieldset>
 
                     <fieldset className="flex flex-col gap-1 p-4">
                         <label className="text-sm font-bold">Capacidade</label>
-                        <input type="number" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.capacity} onChange={set("capacity")} />
+                        <input 
+                            type="number" 
+                            className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" 
+                            value={form.capacity || ""} 
+                            onChange={set("capacity")} 
+                            min="0"
+                        />
                     </fieldset>
                 </div>
 
@@ -237,21 +271,43 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                         <div className="flex">
                             <fieldset className="flex flex-col gap-1 p-4 w-1/2">
                                 <label className="text-sm font-bold">Data de início</label>
-                                <input type="date" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.date_start} onChange={set("date_start")} required />
+                                <input 
+                                    type="date" 
+                                    className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" 
+                                    value={form.date_start || ""} 
+                                    onChange={(e) => handleDateChange("date_start", e.target.value)} 
+                                    required 
+                                />
                             </fieldset>
                             <fieldset className="flex flex-col gap-1 p-4 w-1/2">
                                 <label className="text-sm font-bold">Horário</label>
-                                <input type="time" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.time_start} onChange={set("time_start")} />
+                                <input 
+                                    type="time" 
+                                    className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" 
+                                    value={form.time_start || ""} 
+                                    onChange={set("time_start")} 
+                                />
                             </fieldset>
                         </div>
                         <div className="flex">
                             <fieldset className="flex flex-col gap-1 p-4 w-1/2">
                                 <label className="text-sm font-bold">Data de Término</label>
-                                <input type="date" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.date_end} onChange={set("date_end")} required />
+                                <input 
+                                    type="date" 
+                                    className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" 
+                                    value={form.date_end || ""} 
+                                    onChange={(e) => handleDateChange("date_end", e.target.value)} 
+                                    required 
+                                />
                             </fieldset>
                             <fieldset className="flex flex-col gap-1 p-4 w-1/2">
                                 <label className="text-sm font-bold">Horário</label>
-                                <input type="time" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.time_end} onChange={set("time_end")} />
+                                <input 
+                                    type="time" 
+                                    className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" 
+                                    value={form.time_end || ""} 
+                                    onChange={set("time_end")} 
+                                />
                             </fieldset>
                         </div>
                     </div>
@@ -265,15 +321,21 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                         <div className="p-4 border-b border-border">
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Visibilidade</p>
                             <div className="grid grid-cols-2 gap-2">
-                                <button type="button" onClick={() => togglePublic(true)}
+                                <button 
+                                    type="button" 
+                                    onClick={() => togglePublic(true)}
                                     className={`flex flex-col items-start gap-1 px-4 py-3 rounded-lg border text-left transition-all text-sm font-bold cursor-pointer
-                                        ${form.isPublic === true ? "bg-emerald-400/10 border-emerald-400/25 text-emerald-400" : "border-border text-muted-foreground hover:border-primary/30"}`}>
+                                        ${form.isPublic === true ? "bg-emerald-400/10 border-emerald-400/25 text-emerald-400" : "border-border text-muted-foreground hover:border-primary/30"}`}
+                                >
                                     <div className="flex items-center gap-1.5"><Globe size={12} /> Público</div>
                                     <span className="text-xs font-normal opacity-60">Visível para todos</span>
                                 </button>
-                                <button type="button" onClick={() => togglePublic(false)}
+                                <button 
+                                    type="button" 
+                                    onClick={() => togglePublic(false)}
                                     className={`flex flex-col items-start gap-1 px-4 py-3 rounded-lg border text-left transition-all text-sm font-bold cursor-pointer
-                                        ${form.isPublic === false ? "bg-amber-400/10 border-amber-400/25 text-amber-400" : "border-border text-muted-foreground hover:border-primary/30"}`}>
+                                        ${form.isPublic === false ? "bg-amber-400/10 border-amber-400/25 text-amber-400" : "border-border text-muted-foreground hover:border-primary/30"}`}
+                                >
                                     <div className="flex items-center gap-1.5"><Lock size={12} /> Privado</div>
                                     <span className="text-xs font-normal opacity-60">Somente convidados</span>
                                 </button>
