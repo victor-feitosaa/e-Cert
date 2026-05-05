@@ -58,7 +58,7 @@ export default function AnalyticTabs({ eventData: initialEventData , apiURL , co
                         onSubeventsUpdate={handleSubeventsUpdated}
                     />
                 );
-            case "participantes": return <Participantes eventData={eventData} />;
+            case "participantes": return <Participantes eventId={eventId} eventData={eventData} onUpdate={handleEventUpdated}  />;
             case "certificados":  return <CertificadosAnalytics eventData={eventData} />;
             case "exportar":      return <Exportar eventData={eventData} />;
             case "editar":

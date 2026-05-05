@@ -98,7 +98,7 @@ export default function MyEvents({ userData, eventsData }) {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="bg-background border border-border rounded-lg px-3 py-2 text-sm focus:border-primary outline-none transition-colors"
+              className="bg-background text-accent-foreground border border-border rounded-lg px-3 py-2 text-sm focus:border-primary outline-none transition-colors"
             >
               <option value="all">Todos os eventos</option>
               <option value="upcoming">Próximos eventos</option>
