@@ -35,6 +35,20 @@ class EventRoleRepository {
     }
 
 
+    async findModeratorsByEvent(eventId) {
+        return prisma.eventPermission.findMany({
+            where: {
+                eventId,
+                role: 'MODERATOR'
+            },
+            include: {
+                user: {
+                    select: {id: true, name: true, email: true}
+                }
+            }
+        });
+    }
+
     async findUserByEventAndRole(userId, eventId, role) {
 
         return  prisma.eventPermission.findFirst({
@@ -42,6 +56,16 @@ class EventRoleRepository {
                 userId: userId,
                 eventId: eventId,
                 role: role
+            }
+        });
+    }
+
+    async deleteByUserAndEvent(userId, eventId, role) {
+        return prisma.eventPermission.deleteMany({
+            where: {
+                userId,
+                eventId,
+                role
             }
         });
     }

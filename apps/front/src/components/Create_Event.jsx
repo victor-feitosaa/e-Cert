@@ -109,6 +109,8 @@ const handleSubmit = async () => {
   setErrMsg("");
 
   try {
+    // 1. Primeiro, criar o evento
+    console.log("1️⃣ Criando evento...");
     const eventRes = await fetch("/api/events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -127,27 +129,61 @@ const handleSubmit = async () => {
         issuer: form.issuer,
         certMessage: form.certMessage,
         locationUrl: form.locationUrl,
-        teamMembers: teamMembers,
       }),
     });
 
     if (!eventRes.ok) {
       const data = await eventRes.json().catch(() => ({}));
-      throw new Error(data?.message || data?.error || `Erro ${eventRes.status}`);
+      throw new Error(data?.message || data?.error || `Erro ao criar evento: ${eventRes.status}`);
     }
 
     const eventData = await eventRes.json();
     const createdEventId = eventData?.data?.event?.id || eventData?.event?.id || eventData?.id;
     
-    // Redireciona diretamente para a página do evento
-    if (createdEventId) {
-      window.location.href = `/eventPageAdm?id=${createdEventId}`;
-    } else {
-      window.location.href = "/userDashboard";
+    console.log("✅ Evento criado com ID:", createdEventId);
+
+    if (!createdEventId) {
+      throw new Error("Não foi possível obter o ID do evento criado");
     }
+
+    // 2. Depois, adicionar os membros da equipe um por um
+    if (teamMembers.length > 0) {
+      console.log(`2️⃣ Adicionando ${teamMembers.length} membro(s) da equipe...`);
+      
+      const memberPromises = teamMembers.map(async (member, index) => {
+        console.log(`  Adicionando membro ${index + 1}:`, { name: member.name, job: member.job });
+        
+        const memberRes = await fetch(`/api/events/${createdEventId}/members`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            name: member.name,
+            job: member.job,
+          }),
+        });
+
+        if (!memberRes.ok) {
+          const errorData = await memberRes.json().catch(() => ({}));
+          console.error(`  Erro ao adicionar membro ${member.name}:`, errorData);
+          throw new Error(`Falha ao adicionar membro: ${member.name}`);
+        }
+
+        const memberData = await memberRes.json();
+        console.log(`  ✅ Membro ${index + 1} adicionado:`, memberData);
+        return memberData;
+      });
+
+      await Promise.all(memberPromises);
+      console.log("✅ Todos os membros adicionados com sucesso!");
+    }
+
+    // 3. Redirecionar para a página do evento
+    console.log("🎉 Evento criado com sucesso! Redirecionando...");
+    window.location.href = `/eventPageAdm?id=${createdEventId}`;
     
   } catch (err) {
-    console.error("Erro ao criar evento:", err);
+    console.error("❌ Erro ao criar evento:", err);
     setStatus("error");
     setErrMsg(err.message || "Falha ao criar evento.");
   }

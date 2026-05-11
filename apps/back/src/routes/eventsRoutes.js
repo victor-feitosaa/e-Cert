@@ -7,6 +7,8 @@ import {
   deleteEvent,
   getMyEvents,
   inviteModerator,
+  getModerators,
+  deleteModerator,
 } from '../controllers/eventsController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { isEventOwner } from '../middleware/eventMiddleware.js';
@@ -32,8 +34,11 @@ router.put('/:id', hasRole, updateEvent);
 router.delete('/:id', isEventOwner, deleteEvent);
 
 // Convidar Moderador
+router.get('/:id/moderators', isEventOwner, getModerators);
 router.post('/:id/invite/:email', isEventOwner, inviteModerator);
+router.delete('/:id/moderator/:userId', isEventOwner, deleteModerator)
 
+//members
 router.get('/:id/getMyTeam', isEventOwner, getMyTeam);
 router.post('/:id/createMember', isEventOwner, createTeamMember);
 router.put('/:id/member/:memberId',isEventOwner, updateMember);

@@ -1,4 +1,5 @@
 import { prisma } from '../config/db.js';
+import eventRoleService from '../services/eventRoleService.js';
 import EventRoleService from '../services/eventRoleService.js';
 import eventService from '../services/eventService.js';
 
@@ -353,6 +354,28 @@ export const deleteEvent = async (req, res) => {
 };
 
 
+export const getModerators = async (req, res) => {
+
+  try {
+    const {id} = req.params;
+
+    const moderators = await eventRoleService.getModerators(id);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        moderators
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar moderadores:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Erro interno ao buscar moderadores'
+    });
+  }
+};
+
 export const inviteModerator = async (req, res) => {
 
   try {
@@ -386,4 +409,35 @@ export const inviteModerator = async (req, res) => {
     })
   }
 
+}
+
+export const deleteModerator = async (req, res) => {
+
+    try {
+        const {id} = req.params;
+        const {moderatorId} = req.params;
+        const userId = req.user.id;
+        const existingEvent = await eventService.getById(id);
+
+        if(!existingEvent){
+            return res.status(404).json({
+                status: 'fail',
+                message: 'Evento não encontrado'
+            })
+        }
+
+        await EventRoleService.deleteModerator(id, moderatorId, userId);
+
+        res.status(200).json({
+            status: 'sucess',
+            message: `Moderador removido com sucesso`
+        })
+
+    } catch (error) {
+        console.log("Erro ao deletar moderador ", error);
+        res.status(500).json({
+            status: 'fail',
+            message: 'Erro ao deletar moderador '
+        });
+    }
 }

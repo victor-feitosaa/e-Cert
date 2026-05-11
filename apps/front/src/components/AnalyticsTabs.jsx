@@ -12,7 +12,7 @@ import EditarEvent from "./sections/EditarEvent.jsx";
 const NAV_ITEMS = [
     { id: "overview",      Icon: ChartLine,     label: "Overview"      },
     { id: "subeventos",    Icon: Calendar,      label: "Subeventos"    },
-    { id: "participantes", Icon: Users,         label: "Participantes" },
+    { id: "participantes", Icon: Users,         label: "Membros" },
     { id: "certificados",  Icon: GraduationCap, label: "Certificados"  },
     { id: "exportar",      Icon: Download,      label: "Exportar"      },
     { id: "editar",        Icon: Pen,           label: "Editar"        },
@@ -58,7 +58,7 @@ export default function AnalyticTabs({ eventData: initialEventData , apiURL , co
                         onSubeventsUpdate={handleSubeventsUpdated}
                     />
                 );
-            case "participantes": return <Participantes eventId={eventId} eventData={eventData} onUpdate={handleEventUpdated}  />;
+            case "participantes": return <Participantes eventId={eventId} eventData={eventData} />;
             case "certificados":  return <CertificadosAnalytics eventData={eventData} />;
             case "exportar":      return <Exportar eventData={eventData} />;
             case "editar":

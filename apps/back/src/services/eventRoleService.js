@@ -27,6 +27,11 @@ class EventRoleService {
         return !!await EventRoleRepository.findUserByEventAndRole(userId, eventId, role);
     }
 
+
+    async getModerators(eventId) {
+        return await EventRoleRepository.findModeratorsByEvent(eventId);
+    }
+
     async inviteModerator(eventId, email, granter) {
 
         let user = await UserRepository.findByEmail(email);
@@ -47,6 +52,10 @@ class EventRoleService {
 
         await emailService.sendEmail(email, `Convite para moderador', 'Você foi convidado para ser moderador do evento ${response.event.title} !`)
     }
+
+    async deleteModerator(eventId, userId) {
+        return await EventRoleRepository.deleteByUserAndEvent(userId, eventId, 'MODERATOR');
+    };
 }
 
 export default new EventRoleService();
