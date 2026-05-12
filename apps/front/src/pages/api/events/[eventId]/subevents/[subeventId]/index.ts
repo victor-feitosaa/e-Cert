@@ -107,12 +107,12 @@ export const PUT: APIRoute = async ({ params, request }) => {
 
 // DELETE - Deletar subevento
 export const DELETE: APIRoute = async ({ params, request }) => {
-  const { eventId, subeventId } = params;
+  const { subeventId } = params;
   
   const baseUrl = import.meta.env.API_URL || "https://ecert.duckdns.org";
   const apiUrl = `${baseUrl}/subevents/${subeventId}`;
   
-  console.log("🔴 DELETE Subevent Proxy - URL:", apiUrl);
+  console.log("DELETE Subevent Proxy - URL:", apiUrl);
 
   try {
     const response = await fetch(apiUrl, {
@@ -124,34 +124,35 @@ export const DELETE: APIRoute = async ({ params, request }) => {
 
     console.log("📡 Response status:", response.status);
 
+    
+    if (response.status === 204) {
+      return new Response(null, { status: 204 });
+    }
+
     const responseText = await response.text();
     let data;
-    
     try {
-      data = responseText ? JSON.parse(responseText) : null;
-    } catch (e) {
-      console.error("❌ Resposta não é JSON:", responseText.substring(0, 200));
-      return new Response(JSON.stringify({ 
-        error: "Backend returned invalid response",
-        details: responseText.substring(0, 200)
-      }), {
+      data = JSON.parse(responseText);
+    } catch {
+      return new Response(JSON.stringify({ error: "Backend returned invalid response" }), {
         status: 502,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       });
     }
 
     return new Response(JSON.stringify(data), {
       status: response.status,
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
     });
+
   } catch (error) {
     console.error("🔴 DELETE Subevent Proxy Error:", error);
     return new Response(JSON.stringify({ 
       error: "Could not reach event service",
-      details: error.message 
+      details: error.message,
     }), {
       status: 502,
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
     });
   }
 };
