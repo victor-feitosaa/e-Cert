@@ -27,8 +27,8 @@ const cookieHeader = Astro.request.headers.get("cookie") ?? "";
       />
     </div>
 
-    <div class="relative z-10 p-8">
-      <AnalyticTabs eventData={event} apiURL={apiURL} cookieHeader={cookieHeader} client:load />
+    <div class="relative z-10 ">
+      <AnalyticTabs eventData={event} apiURL={apiURL} cookieHeader={cookieHeader} onBack="/userDashboard" client:load />
     </div>
 
   </div>

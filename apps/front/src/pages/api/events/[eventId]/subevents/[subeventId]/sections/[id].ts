@@ -8,7 +8,7 @@ export const DELETE: APIRoute = async ({ params, request }) => {
   const baseUrl = import.meta.env.API_URL || "https://ecert.duckdns.org";
   const apiUrl = `${baseUrl}/subevents/${subeventId}/sections/${id}`;
   
-  console.log("🔴 DELETE Section Proxy - URL:", apiUrl);
+  console.log("DELETE Section Proxy - URL:", apiUrl);
 
   try {
     const response = await fetch(apiUrl, {

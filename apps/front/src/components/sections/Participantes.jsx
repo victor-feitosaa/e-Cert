@@ -25,7 +25,7 @@ function Modal({ children, onClose, danger }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6">
       <div className={`relative bg-[#111827] border rounded-2xl p-8 w-full max-w-md shadow-2xl ${danger ? "border-red-500/20" : "border-purple-500/20"}`}>
-        <button onClick={onClose} className="absolute top-5 right-5 text-gray-500 hover:text-white transition-colors">
+        <button onClick={onClose} className="absolute top-5  cursor-pointer right-5 text-gray-500 hover:text-white transition-colors">
           <X size={16} />
         </button>
         {children}
@@ -77,13 +77,13 @@ function InviteModeratorModal({ onClose, onSubmit, loading }) {
       </div>
 
       <div className="flex justify-end gap-2.5 mt-6 pt-5 border-t border-white/5">
-        <button onClick={onClose} className="px-4 py-2 text-sm font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
+        <button onClick={onClose} className="px-4 py-2  cursor-pointer text-sm font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
           Cancelar
         </button>
         <button
           onClick={submit}
           disabled={loading}
-          className="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-gradient-to-br from-[#7c3aed] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 disabled:opacity-50 transition-all"
+          className="flex items-center gap-2  cursor-pointer px-5 py-2 text-sm font-bold text-white bg-gradient-to-br from-[#7c3aed] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 disabled:opacity-50 transition-all"
         >
           {loading ? "Enviando..." : <><Send size={13} /> Enviar convite</>}
         </button>
@@ -163,13 +163,13 @@ function AddTeamMemberModal({ onClose, onSubmit, loading }) {
       </div>
 
       <div className="flex justify-end gap-2.5 mt-6 pt-5 border-t border-white/5">
-        <button onClick={onClose} className="px-4 py-2 text-sm font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
+        <button onClick={onClose} className="px-4 py-2 cursor-pointer  text-sm font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
           Cancelar
         </button>
         <button
           onClick={submit}
           disabled={loading}
-          className="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-gradient-to-br from-[#7c3aed] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 disabled:opacity-50 transition-all"
+          className="flex items-center gap-2 px-5 py-2 cursor-pointer  text-sm font-bold text-white bg-gradient-to-br from-[#7c3aed] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 disabled:opacity-50 transition-all"
         >
           {loading ? "Adicionando..." : <><UserPlus size={13} /> Adicionar</>}
         </button>
@@ -196,13 +196,13 @@ function RemoveModal({ member, onClose, onConfirm, loading }) {
         Você está prestes a remover <strong className="text-white">{name}</strong> do evento.
       </p>
       <div className="flex justify-end gap-2.5">
-        <button onClick={onClose} className="px-4 py-2 text-sm font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
+        <button onClick={onClose} className="px-4 py-2 text-sm cursor-pointer  font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
           Cancelar
         </button>
         <button
           onClick={onConfirm}
           disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-red-600 rounded-lg  hover:opacity-90 disabled:opacity-50 transition-all"
+          className="flex items-center gap-2 px-4 py-2 text-sm  cursor-pointer font-bold text-white bg-red-600 rounded-lg  hover:opacity-90 disabled:opacity-50 transition-all"
         >
           <UserX size={13} /> {loading ? "Removendo..." : "Remover"}
         </button>
@@ -269,14 +269,14 @@ function MemberRow({ member, isOrganizer, canManage, onRemove }) {
       <div className="flex justify-end shrink-0">
         {canManage && !isOrganizer ? (
           <div className="relative">
-            <button onClick={() => setMenuOpen(v => !v)} className="p-1.5 rounded-md text-[#2e2c42] hover:text-[#e2e0f0] hover:bg-white/5 transition-colors">
+            <button onClick={() => setMenuOpen(v => !v)} className="p-1.5 cursor-pointer rounded-md text-[#2e2c42] hover:text-[#e2e0f0] hover:bg-white/5 transition-colors">
               <MoreVertical size={14} />
             </button>
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="absolute  right-0 mt-1 w-32 rounded-lg bg-[#0c0e18] border border-purple-500/20 shadow-xl overflow-hidden z-20">
-                  <button onClick={() => { onRemove(member); setMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors">
+                <div className="absolute  right-6 top-1 mt-0 w-32 rounded-lg bg-[#0c0e18] border border-purple-500/20 shadow-xl overflow-hidden z-20">
+                  <button onClick={() => { onRemove(member); setMenuOpen(false); }} className="w-full  cursor-pointer flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors">
                     <Trash2 size={11} /> Remover
                   </button>
                 </div>
@@ -481,13 +481,13 @@ export default function ParticipantesTab({ eventId, eventData }) {
           <div className="flex gap-2">
             <button
               onClick={() => setAddMemberOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-[#e2e0f0] bg-[#111827] border border-white/[0.08] rounded-lg hover:border-purple-500/30 hover:text-white transition-all"
+              className="flex items-center gap-2 px-3 py-2 text-sm  cursor-pointer font-bold text-[#e2e0f0] bg-[#111827] border border-white/[0.08] rounded-lg hover:border-purple-500/30 hover:text-white transition-all"
             >
               <UserPlus size={14} /> Equipe
             </button>
             <button
               onClick={() => setInviteModOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-white bg-gradient-to-br from-[#7c3aed] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 transition-all"
+              className="flex items-center gap-2 px-3 py-2 text-sm font-bold cursor-pointer  text-white bg-gradient-to-br from-[#7c3aed] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 transition-all"
             >
               <Shield size={14} /> Moderador
             </button>
@@ -505,7 +505,7 @@ export default function ParticipantesTab({ eventId, eventData }) {
           className="w-full bg-[#0c0e18] border border-white/[0.06] rounded-lg pl-9 pr-8 py-2 text-sm text-[#e2e0f0] placeholder-[#2e2c42] outline-none focus:border-purple-500/40 transition-colors"
         />
         {search && (
-          <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#2e2c42] hover:text-white">
+          <button onClick={() => setSearch("")} className="absolute cursor-pointer  right-2.5 top-1/2 -translate-y-1/2 text-[#2e2c42] hover:text-white">
             <X size={12} />
           </button>
         )}
@@ -524,7 +524,7 @@ export default function ParticipantesTab({ eventId, eventData }) {
             canManage && (
               <button
                 onClick={() => setInviteModOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-400 bg-blue-400/10 border border-blue-400/20 rounded-lg hover:bg-blue-400/20 transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs  cursor-pointer font-bold text-blue-400 bg-blue-400/10 border border-blue-400/20 rounded-lg hover:bg-blue-400/20 transition-all"
               >
                 <Send size={11} /> Convidar
               </button>
@@ -555,7 +555,7 @@ export default function ParticipantesTab({ eventId, eventData }) {
             canManage && (
               <button
                 onClick={() => setAddMemberOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-violet-400 bg-violet-400/10 border border-violet-400/20 rounded-lg hover:bg-violet-400/20 transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer  font-bold text-violet-400 bg-violet-400/10 border border-violet-400/20 rounded-lg hover:bg-violet-400/20 transition-all"
               >
                 <UserPlus size={11} /> Adicionar
               </button>

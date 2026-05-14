@@ -153,7 +153,7 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
       <div className="bg-[#111827] border border-purple-500/20 rounded-2xl p-8 w-full max-w-2xl shadow-2xl mt-10 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-bold text-white">Editar sub-evento</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-gray-500 cursor-pointer  hover:text-white transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -234,7 +234,7 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
                     </div>
                     <button
                       onClick={() => removeExistingSection(idx)}
-                      className="p-1 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20"
+                      className="p-1 rounded-md bg-red-500/10 border cursor-pointer  border-red-500/20 text-red-400 hover:bg-red-500/20"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -268,7 +268,7 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
                     </div>
                     <button
                       onClick={() => removeNewSection(idx)}
-                      className="p-1 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20"
+                      className="p-1 rounded-md bg-red-500/10  cursor-pointer border border-red-500/20 text-red-400 hover:bg-red-500/20"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -329,7 +329,7 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
             </div>
             <button
               onClick={addSection}
-              className="w-full flex items-center justify-center gap-2 py-1.5 rounded-lg text-xs font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
+              className="w-full flex items-center  cursor-pointer justify-center gap-2 py-1.5 rounded-lg text-xs font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
             >
               <Plus size={12} /> Adicionar seção
             </button>
@@ -349,7 +349,7 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
                     </div>
                     <button
                       onClick={() => removeExistingTeamMember(idx)}
-                      className="p-1 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20"
+                      className="p-1 rounded-md cursor-pointer  bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -373,7 +373,7 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
                     </div>
                     <button
                       onClick={() => removeNewTeamMember(idx)}
-                      className="p-1 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20"
+                      className="p-1 rounded-md cursor-pointer  bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -404,7 +404,7 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
             </div>
             <button
               onClick={addTeamMember}
-              className="w-full flex items-center justify-center gap-2 py-1.5 rounded-lg text-xs font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
+              className="w-full flex  cursor-pointer items-center justify-center gap-2 py-1.5 rounded-lg text-xs font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
             >
               <UserPlus size={12} /> Adicionar membro
             </button>
@@ -421,14 +421,14 @@ function SubeventoModal({ subevento, onClose, onSave, loading, apiError }) {
         <div className="flex justify-end gap-2.5 mt-6 pt-5 border-t border-white/5">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all"
+            className="px-4 py-2 text-sm font-bold cursor-pointer  text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all"
           >
             Cancelar
           </button>
           <button
             onClick={handleSave}
             disabled={loading}
-            className="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-gradient-to-br from-[#7c3aed] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="flex items-center gap-2 px-5  cursor-pointer py-2 text-sm font-bold text-white bg-gradient-to-br from-[#7c3aed] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {loading ? "Salvando..." : <><Edit2 size={13} /> Salvar</>}
           </button>
@@ -456,13 +456,13 @@ function DeleteModal({ subevento, onConfirm, onCancel, loading }) {
           Você está prestes a excluir <strong className="text-white">{subevento?.title}</strong>. Todos os dados serão removidos permanentemente.
         </p>
         <div className="flex justify-end gap-2.5">
-          <button onClick={onCancel} className="px-4 py-2 text-sm font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
+          <button onClick={onCancel} className="px-4 py-2 text-sm font-bold text-gray-400 border border-white/10 rounded-lg cursor-pointer  hover:text-white hover:border-purple-500/30 transition-all">
             Cancelar
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-gradient-to-br from-red-600 to-red-400 rounded-lg shadow-[0_4px_14px_rgba(248,113,113,0.3)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="flex items-center gap-2 px-4 cursor-pointer  py-2 text-sm font-bold text-white bg-gradient-to-br from-red-600 to-red-400 rounded-lg shadow-[0_4px_14px_rgba(248,113,113,0.3)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             <Trash2 size={13} /> {loading ? "Excluindo..." : "Excluir"}
           </button>
@@ -484,16 +484,16 @@ function SubeventoCard({ subevento, onEdit, onDelete }) {
     : null;
 
   return (
-    <div className="bg-[#111827] border border-purple-500/10 rounded-xl overflow-hidden hover:border-purple-500/30 hover:-translate-y-1 hover:shadow-[0_16px_48px_rgba(0,0,0,0.4)] transition-all duration-200 group">
+    <div className="hover:bg-purple-500/3 transition-colors border border-purple-500/10 rounded-xl overflow-hidden hover:border-purple-500/30 hover:-translate-y-1 hover:shadow-[0_16px_48px_rgba(0,0,0,0.4)]  duration-200 group">
       <div className="h-0.5 bg-gradient-to-r from-purple-600/60 via-purple-400/30 to-transparent" />
       <div className="p-5">
         <div className="flex items-start justify-between gap-3 mb-3">
           <h3 className="font-bold text-white text-base leading-snug line-clamp-2">{subevento.title}</h3>
           <div className="flex gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={() => onEdit(subevento)} className="p-1.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 transition-colors">
+            <button onClick={() => onEdit(subevento)} className="p-1.5 cursor-pointer rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 transition-colors">
               <Edit2 size={13} />
             </button>
-            <button onClick={() => onDelete(subevento)} className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors">
+            <button onClick={() => onDelete(subevento)} className="p-1.5 cursor-pointer rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors">
               <Trash2 size={13} />
             </button>
           </div>
@@ -767,7 +767,7 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
         </div>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:shadow-[0_8px_24px_rgba(124,58,237,0.55)] hover:opacity-90 transition-all"
+          className="flex items-center gap-2 cursor-pointer px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:shadow-[0_8px_24px_rgba(124,58,237,0.55)] hover:opacity-90 transition-all"
         >
           <Plus size={15} /> Novo sub-evento
         </button>
@@ -786,7 +786,7 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ">
           {subeventos.map(sub => (
             <SubeventoCard
               key={sub.id}
@@ -797,7 +797,7 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
           ))}
           <button
             onClick={openCreate}
-            className="flex flex-col items-center justify-center gap-2 p-8 border border-dashed border-gray-700 rounded-xl text-sm font-semibold text-gray-600 hover:text-purple-400 hover:border-purple-500/40 hover:bg-purple-500/[0.03] transition-all min-h-[140px]"
+            className="flex flex-col items-center justify-center gap-2 cursor-pointer p-8 border border-dashed border-gray-700 rounded-xl text-sm font-semibold text-gray-600 hover:text-purple-400 hover:border-purple-500/40 hover:bg-purple-500/[0.03] transition-all min-h-[140px]"
           >
             <Plus size={20} strokeWidth={1.5} />
             Adicionar sub-evento
