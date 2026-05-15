@@ -25,8 +25,8 @@ router.delete('/member/:memberId',  deleteSubMember);
 
 router.post('/:subEventId/sections', createSection);
 router.get('/:subEventId/sections', getSections);
-router.put('/:subEventId/sections/:sectionId', updateSection);
-router.delete('/:subEventId/sections/:sectionId', deleteSection);
+router.put('/:subEventId/sections/:id', updateSection);
+router.delete('/:subEventId/sections/:id', deleteSection);
 
 
 export default router;

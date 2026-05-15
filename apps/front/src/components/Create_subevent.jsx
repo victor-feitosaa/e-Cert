@@ -167,7 +167,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
 
     try {
       // 1. Criar subevento
-      console.log("1️⃣ Enviando requisição para criar subevento...");
+      console.log("Enviando requisição para criar subevento...");
       const subeventRes = await fetch(`/api/events/${eventId}/subevents`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -450,6 +450,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                     placeholder="ex: 50"
                     className="w-full text-accent-foreground px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
                   />
+                  
                   <p className="text-xs text-accent-foreground/40 mt-1">Capacidade padrão</p>
                 </div>
               </div>

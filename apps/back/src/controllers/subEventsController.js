@@ -6,7 +6,7 @@ import subEventService from "../services/subEventService.js"
 // src/controllers/subEventsController.js
 export const createSubEvent = async (req, res) => {
     try {
-        const { title, description, location } = req.body;
+        const { title, description, location, capacity } = req.body;
         const { id } = req.params; // eventId
         const userId = req.user.id;
     
@@ -39,10 +39,17 @@ export const createSubEvent = async (req, res) => {
                 message: 'A descrição é obrigatoria'
             });
         }
-    
-        const subEvent = await subEventService.create(title, description, location, id, userId);
+
+        if (!capacity || isNaN(parseInt(capacity)) || parseInt(capacity) < 0) {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'A capacidade do evento deve ser um número positivo'
+            });
+        }
+
+        const subEvent = await subEventService.create(title, description, location, capacity, id, userId);
         
-        // ✅ Verificar se o subEvent foi criado e tem ID
+        
         if (!subEvent || !subEvent.id) {
             console.error("SubEvento criado sem ID:", subEvent);
             return res.status(500).json({
@@ -172,6 +179,9 @@ export const updateSubEvent = async (req, res) => {
             }
             dataToUpdate.date = newDate;
         }
+        if (updates.location !== undefined) dataToUpdate.location = updates.location.trim();
+        if (updates.capacity !== undefined) {     dataToUpdate.capacity = updates.capacity; }
+        
 
         const subEvent = await subEventService.update(dataToUpdate, id);
 

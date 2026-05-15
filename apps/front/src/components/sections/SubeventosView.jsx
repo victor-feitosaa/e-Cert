@@ -530,7 +530,7 @@ function SubeventoCard({ subevento, onEdit, onDelete }) {
         )}
 
         <div className="space-y-2">
-          {subevento.location && (
+          {subevento.location?.trim() && (
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <MapPin size={12} className="text-gray-600 shrink-0" />
               <span className="truncate">{subevento.location}</span>
@@ -597,6 +597,7 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
       
       list = list.map(sub => ({
         ...sub,
+        location: sub.location ?? "",
         sections: sub.sections || [],
         team: sub.team || []
       }));
@@ -651,7 +652,7 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
         body: JSON.stringify({
           title: formData.title,
           description: formData.description || null,
-          location: formData.location,
+          location: formData.location.trim() || null,
           capacity: formData.capacity ? Number(formData.capacity) : null,
         }),
       });
@@ -807,6 +808,7 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
 
       {modalOpen && (
         <SubeventoModal
+          key={editing?.id}
           subevento={editing}
           onClose={closeModal}
           onSave={handleSave}

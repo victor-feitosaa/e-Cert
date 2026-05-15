@@ -18,13 +18,13 @@ export const DELETE: APIRoute = async ({ params, request }) => {
       },
     });
 
-    console.log("📡 Response status:", response.status);
+    console.log("Response status:", response.status);
 
     return new Response(null, {
       status: response.status,
     });
   } catch (error) {
-    console.error("🔴 DELETE Section Proxy Error:", error);
+    console.error("DELETE Section Proxy Error:", error);
     return new Response(JSON.stringify({ 
       error: "Could not reach event service",
       details: error.message 
