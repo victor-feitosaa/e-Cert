@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   Users, UserPlus, UserX, Crown, Shield, UserCheck,
   Mail, Search, X, Send, AlertCircle, MoreVertical,
-  Trash2, Mic2, BookOpen, Star, Briefcase,
+  Trash2, Mic2, BookOpen, Star, Briefcase, Edit2
 } from "lucide-react";
 
 const TEAM_ROLES = [
@@ -25,7 +25,7 @@ function Modal({ children, onClose, danger }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6">
       <div className={`relative bg-[#111827] border rounded-2xl p-8 w-full max-w-md shadow-2xl ${danger ? "border-red-500/20" : "border-purple-500/20"}`}>
-        <button onClick={onClose} className="absolute top-5  cursor-pointer right-5 text-gray-500 hover:text-white transition-colors">
+        <button onClick={onClose} className="absolute top-5 cursor-pointer right-5 text-gray-500 hover:text-white transition-colors">
           <X size={16} />
         </button>
         {children}
@@ -77,13 +77,13 @@ function InviteModeratorModal({ onClose, onSubmit, loading }) {
       </div>
 
       <div className="flex justify-end gap-2.5 mt-6 pt-5 border-t border-white/5">
-        <button onClick={onClose} className="px-4 py-2  cursor-pointer text-sm font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
+        <button onClick={onClose} className="px-4 py-2 cursor-pointer text-sm font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
           Cancelar
         </button>
         <button
           onClick={submit}
           disabled={loading}
-          className="flex items-center gap-2  cursor-pointer px-5 py-2 text-sm font-bold text-white bg-gradient-to-br from-[#7c3aed] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 disabled:opacity-50 transition-all"
+          className="flex items-center gap-2 cursor-pointer px-5 py-2 text-sm font-bold text-white bg-gradient-to-br from-[#7c3aed] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 disabled:opacity-50 transition-all"
         >
           {loading ? "Enviando..." : <><Send size={13} /> Enviar convite</>}
         </button>
@@ -163,13 +163,13 @@ function AddTeamMemberModal({ onClose, onSubmit, loading }) {
       </div>
 
       <div className="flex justify-end gap-2.5 mt-6 pt-5 border-t border-white/5">
-        <button onClick={onClose} className="px-4 py-2 cursor-pointer  text-sm font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
+        <button onClick={onClose} className="px-4 py-2 cursor-pointer text-sm font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
           Cancelar
         </button>
         <button
           onClick={submit}
           disabled={loading}
-          className="flex items-center gap-2 px-5 py-2 cursor-pointer  text-sm font-bold text-white bg-gradient-to-br from-[#7c3aed] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 disabled:opacity-50 transition-all"
+          className="flex items-center gap-2 px-5 py-2 cursor-pointer text-sm font-bold text-white bg-gradient-to-br from-[#7c3aed] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 disabled:opacity-50 transition-all"
         >
           {loading ? "Adicionando..." : <><UserPlus size={13} /> Adicionar</>}
         </button>
@@ -178,9 +178,94 @@ function AddTeamMemberModal({ onClose, onSubmit, loading }) {
   );
 }
 
-/* ─── MODAL REMOVER ─── */
-function RemoveModal({ member, onClose, onConfirm, loading }) {
-  const name = member.user?.name || member.name || "Usuário";
+/* ─── MODAL ADICIONAR PARTICIPANTE ─── */
+function AddParticipantModal({ onClose, onSubmit, loading }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [emailError, setEmailError] = useState("");
+
+  const submit = () => {
+    let hasError = false;
+    
+    if (!name.trim()) { 
+      setNameError("Nome é obrigatório"); 
+      hasError = true; 
+    }
+    
+    if (!email.trim() || !email.includes("@")) { 
+      setEmailError("E-mail inválido"); 
+      hasError = true; 
+    }
+    
+    if (hasError) return;
+    
+    onSubmit({ name: name.trim(), email: email.trim().toLowerCase() });
+  };
+
+  return (
+    <Modal onClose={onClose}>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-9 h-9 rounded-lg bg-emerald-400/10 border border-emerald-400/20 flex items-center justify-center shrink-0">
+          <UserPlus size={15} className="text-emerald-400" />
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-white">Adicionar Participante</h2>
+          <p className="text-xs text-gray-500">Adicione um participante ao evento</p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-semibold text-gray-300 mb-1.5">
+            Nome completo <span className="text-purple-400">*</span>
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={e => { setName(e.target.value); setNameError(""); }}
+            placeholder="ex: João Silva"
+            className="w-full bg-[#161f30] border border-purple-500/20 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-purple-500/60 transition-colors"
+          />
+          {nameError && <p className="text-xs text-red-400 mt-1">{nameError}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-300 mb-1.5">
+            E-mail <span className="text-purple-400">*</span>
+          </label>
+          <div className="relative">
+            <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
+            <input
+              type="email"
+              value={email}
+              onChange={e => { setEmail(e.target.value); setEmailError(""); }}
+              placeholder="joao@exemplo.com"
+              className="w-full bg-[#161f30] border border-purple-500/20 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-purple-500/60 transition-colors"
+            />
+          </div>
+          {emailError && <p className="text-xs text-red-400 mt-1">{emailError}</p>}
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2.5 mt-6 pt-5 border-t border-white/5">
+        <button onClick={onClose} className="px-4 py-2 cursor-pointer text-sm font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
+          Cancelar
+        </button>
+        <button
+          onClick={submit}
+          disabled={loading}
+          className="flex items-center gap-2 px-5 py-2 cursor-pointer text-sm font-bold text-white bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-lg shadow-[0_4px_14px_rgba(16,185,129,0.4)] hover:opacity-90 disabled:opacity-50 transition-all"
+        >
+          {loading ? "Adicionando..." : <><UserPlus size={13} /> Adicionar</>}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+/* ─── MODAL REMOVER PARTICIPANTE ─── */
+function RemoveParticipantModal({ participant, onClose, onConfirm, loading }) {
   return (
     <Modal onClose={onClose} danger>
       <div className="flex items-center gap-3 mb-4">
@@ -188,21 +273,21 @@ function RemoveModal({ member, onClose, onConfirm, loading }) {
           <AlertCircle size={15} className="text-red-400" />
         </div>
         <div>
-          <p className="font-bold text-white text-sm">Remover membro</p>
+          <p className="font-bold text-white text-sm">Remover participante</p>
           <p className="text-xs text-gray-500">Essa ação pode ser desfeita depois</p>
         </div>
       </div>
       <p className="text-sm text-gray-400 leading-relaxed mb-6 p-3 bg-white/[0.02] border border-white/5 rounded-lg">
-        Você está prestes a remover <strong className="text-white">{name}</strong> do evento.
+        Você está prestes a remover <strong className="text-white">{participant?.name}</strong> do evento.
       </p>
       <div className="flex justify-end gap-2.5">
-        <button onClick={onClose} className="px-4 py-2 text-sm cursor-pointer  font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
+        <button onClick={onClose} className="px-4 py-2 text-sm cursor-pointer font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
           Cancelar
         </button>
         <button
           onClick={onConfirm}
           disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 text-sm  cursor-pointer font-bold text-white bg-red-600 rounded-lg  hover:opacity-90 disabled:opacity-50 transition-all"
+          className="flex items-center gap-2 px-4 py-2 text-sm cursor-pointer font-bold text-white bg-red-600 rounded-lg hover:opacity-90 disabled:opacity-50 transition-all"
         >
           <UserX size={13} /> {loading ? "Removendo..." : "Remover"}
         </button>
@@ -211,13 +296,12 @@ function RemoveModal({ member, onClose, onConfirm, loading }) {
   );
 }
 
-/* ─── MEMBER ROW ─── */
+/* ─── MEMBER ROW (Equipe) ─── */
 function MemberRow({ member, isOrganizer, canManage, onRemove }) {
   const roleConfig = ROLE_CONFIG[member.role] || ROLE_CONFIG.OTHER;
   const { Icon: RoleIcon } = roleConfig;
   const [menuOpen, setMenuOpen] = useState(false);
   
-  // PRIORIZAR os dados do membro (não do user)
   const name = member.name || member.user?.name || "Usuário";
   const email = member.user?.email || member.email || null;
   const job = member.job || member.roleDescription || roleConfig.label;
@@ -251,9 +335,7 @@ function MemberRow({ member, isOrganizer, canManage, onRemove }) {
                 Externo
               </span>
             )}
-
           </div>
-          
         </div>
       </div>
 
@@ -275,8 +357,8 @@ function MemberRow({ member, isOrganizer, canManage, onRemove }) {
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="absolute  right-6 top-1 mt-0 w-32 rounded-lg bg-[#0c0e18] border border-purple-500/20 shadow-xl overflow-hidden z-20">
-                  <button onClick={() => { onRemove(member); setMenuOpen(false); }} className="w-full  cursor-pointer flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors">
+                <div className="absolute right-6 top-1 mt-0 w-32 rounded-lg bg-[#0c0e18] border border-purple-500/20 shadow-xl overflow-hidden z-20">
+                  <button onClick={() => { onRemove(member); setMenuOpen(false); }} className="w-full cursor-pointer flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors">
                     <Trash2 size={11} /> Remover
                   </button>
                 </div>
@@ -284,6 +366,61 @@ function MemberRow({ member, isOrganizer, canManage, onRemove }) {
             )}
           </div>
         ) : <span className="w-5" />}
+      </div>
+    </div>
+  );
+}
+
+/* ─── PARTICIPANT ROW ─── */
+function ParticipantRow({ participant, canManage, onRemove }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const name = participant.name;
+  const email = participant.email;
+  const initial = name[0].toUpperCase();
+  const joined = participant.createdAt
+    ? new Date(participant.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
+    : "—";
+
+  return (
+    <div
+      className="flex items-center justify-between px-4 py-3 rounded-lg border-b border-white/[0.04] hover:bg-purple-500/[0.03] transition-colors"
+    >
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shrink-0 text-white font-bold text-xs shadow-md">
+          {initial}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-[#e2e0f0] truncate">{name}</p>
+          <p className="text-xs text-[#6b6888] truncate">{email}</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-[#6b6888] hidden md:block">{joined}</span>
+
+        {canManage && (
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="p-1.5 cursor-pointer rounded-md text-[#2e2c42] hover:text-[#e2e0f0] hover:bg-white/5 transition-colors"
+            >
+              <MoreVertical size={14} />
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-[#0c0e18] border border-purple-500/20 shadow-xl overflow-hidden z-20">
+                  <button
+                    onClick={() => { onRemove(participant); setMenuOpen(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                  >
+                    <Trash2 size={11} /> Remover
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -303,10 +440,9 @@ function Section({ title, subtitle, dot, accentBorder, headerAction, children, e
       </div>
 
       <div className="grid px-4 py-2 border-b border-white/[0.04] bg-[#0c0e18]/50"
-        style={{ gridTemplateColumns: "minmax(200px, 1fr) minmax(100px, 130px) 90px 36px" }}>
-        {["Membro", "Função", "Adicionado", ""].map(h => (
-          <span key={h} className="text-[10px] font-bold text-[#6b6888] tracking-widest uppercase">{h}</span>
-        ))}
+        style={{ gridTemplateColumns: "1fr auto" }}>
+        <span className="text-[10px] font-bold text-[#6b6888] tracking-widest uppercase">Participante</span>
+        <span className="text-[10px] font-bold text-[#6b6888] tracking-widest uppercase text-right">Ações</span>
       </div>
 
       {children}
@@ -326,13 +462,15 @@ export default function ParticipantesTab({ eventId, eventData }) {
   const [organizer, setOrganizer] = useState(null);
   const [moderators, setModerators] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
-  const [attendees, setAttendees] = useState([]);
+  const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [inviteModOpen, setInviteModOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [addParticipantOpen, setAddParticipantOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState(null);
+  const [removeParticipantTarget, setRemoveParticipantTarget] = useState(null);
 
   const canManage = eventData?.isOwner ?? true;
 
@@ -353,21 +491,28 @@ export default function ParticipantesTab({ eventId, eventData }) {
   // Buscar membros da equipe e participantes
   const fetchTeamAndParticipants = async () => {
     try {
-      const res = await fetch(`/api/events/${eventId}/members`, { credentials: "include" });
+      const [membersRes, participantsRes] = await Promise.all([
+        fetch(`/api/events/${eventId}/members`, { credentials: "include" }),
+        fetch(`/api/events/${eventId}/participants`, { credentials: "include" })
+      ]);
       
-      if (res.ok) {
-        const data = await res.json();
-        console.log(data)
+      if (membersRes.ok) {
+        const data = await membersRes.json();
         const teamList = data?.data?.team || data?.team || [];
         
         const org = teamList.find(m => m.role === "ORGANIZER");
         setOrganizer(org || null);
         
         setTeamMembers(teamList.filter(m => !["ORGANIZER", "MODERATOR", "ATTENDEE"].includes(m.role)));
-        setAttendees(teamList.filter(m => m.role === "ATTENDEE"));
+      }
+      
+      if (participantsRes.ok) {
+        const data = await participantsRes.json();
+        const participantsList = data?.data?.participants || data?.participants || [];
+        setParticipants(participantsList);
       }
     } catch (err) {
-      console.error("Erro ao buscar equipe:", err);
+      console.error("Erro ao buscar dados:", err);
     }
   };
 
@@ -430,6 +575,29 @@ export default function ParticipantesTab({ eventId, eventData }) {
     }
   };
 
+  const handleAddParticipant = async (payload) => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/events/${eventId}/participants`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        await fetchTeamAndParticipants();
+        setAddParticipantOpen(false);
+      } else {
+        const d = await res.json();
+        alert(d.message || "Erro ao adicionar participante");
+      }
+    } catch (err) {
+      console.error("Erro:", err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleRemove = async () => {
     if (!removeTarget) return;
     setActionLoading(true);
@@ -451,21 +619,44 @@ export default function ParticipantesTab({ eventId, eventData }) {
     }
   };
 
+  const handleRemoveParticipant = async () => {
+    if (!removeParticipantTarget) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/events/${eventId}/participants/${removeParticipantTarget.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) {
+        await fetchTeamAndParticipants();
+        setRemoveParticipantTarget(null);
+      }
+    } catch (err) {
+      console.error("Erro:", err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const q = search.toLowerCase();
-  const matches = (m) =>
+  const matchesTeam = (m) =>
     (m.name || m.user?.name || "").toLowerCase().includes(q) ||
     (m.email || m.user?.email || "").toLowerCase().includes(q) ||
     (m.job || m.roleDescription || "").toLowerCase().includes(q);
+  
+  const matchesParticipant = (p) =>
+    p.name.toLowerCase().includes(q) ||
+    p.email.toLowerCase().includes(q);
 
-  const filteredModerators = moderators.filter(matches);
-  const filteredTeamMembers = teamMembers.filter(matches);
-  const filteredAttendees = attendees.filter(matches);
+  const filteredModerators = moderators.filter(matchesTeam);
+  const filteredTeamMembers = teamMembers.filter(matchesTeam);
+  const filteredParticipants = participants.filter(matchesParticipant);
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64 gap-3">
         <div className="w-5 h-5 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
-        <span className="text-sm text-[#6b6888]">Carregando equipe...</span>
+        <span className="text-sm text-[#6b6888]">Carregando...</span>
       </div>
     );
   }
@@ -480,14 +671,20 @@ export default function ParticipantesTab({ eventId, eventData }) {
         {canManage && (
           <div className="flex gap-2">
             <button
+              onClick={() => setAddParticipantOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer font-bold text-white bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-lg shadow-[0_4px_14px_rgba(16,185,129,0.4)] hover:opacity-90 transition-all"
+            >
+              <UserPlus size={14} /> Participante
+            </button>
+            <button
               onClick={() => setAddMemberOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 text-sm  cursor-pointer font-bold text-[#e2e0f0] bg-[#111827] border border-white/[0.08] rounded-lg hover:border-purple-500/30 hover:text-white transition-all"
+              className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer font-bold text-[#e2e0f0] bg-[#111827] border border-white/[0.08] rounded-lg hover:border-purple-500/30 hover:text-white transition-all"
             >
               <UserPlus size={14} /> Equipe
             </button>
             <button
               onClick={() => setInviteModOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-bold cursor-pointer  text-white bg-gradient-to-br from-[#7c3aed] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 transition-all"
+              className="flex items-center gap-2 px-3 py-2 text-sm font-bold cursor-pointer text-white bg-gradient-to-br from-[#7c3aed] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 transition-all"
             >
               <Shield size={14} /> Moderador
             </button>
@@ -505,14 +702,48 @@ export default function ParticipantesTab({ eventId, eventData }) {
           className="w-full bg-[#0c0e18] border border-white/[0.06] rounded-lg pl-9 pr-8 py-2 text-sm text-[#e2e0f0] placeholder-[#2e2c42] outline-none focus:border-purple-500/40 transition-colors"
         />
         {search && (
-          <button onClick={() => setSearch("")} className="absolute cursor-pointer  right-2.5 top-1/2 -translate-y-1/2 text-[#2e2c42] hover:text-white">
+          <button onClick={() => setSearch("")} className="absolute cursor-pointer right-2.5 top-1/2 -translate-y-1/2 text-[#2e2c42] hover:text-white">
             <X size={12} />
           </button>
         )}
       </div>
 
       <div className="space-y-5">
-
+        {/* PARTICIPANTES */}
+        <Section
+          title="Participantes"
+          subtitle={`${filteredParticipants.length} inscrito${filteredParticipants.length !== 1 ? "s" : ""}`}
+          dot="bg-emerald-400"
+          accentBorder="border-l-emerald-400/50"
+          headerAction={
+            canManage && (
+              <button
+                onClick={() => setAddParticipantOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer font-bold text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-lg hover:bg-emerald-400/20 transition-all"
+              >
+                <UserPlus size={11} /> Adicionar
+              </button>
+            )
+          }
+        >
+          {filteredParticipants.length > 0 ? (
+            filteredParticipants.map(p => (
+              <ParticipantRow
+                key={p.id}
+                participant={p}
+                canManage={canManage}
+                onRemove={setRemoveParticipantTarget}
+              />
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Users size={20} className="text-[#2e2c42] mb-2" strokeWidth={1.5} />
+              <p className="text-xs text-[#6b6888]">
+                {search ? "Nenhum participante encontrado" : "Nenhum participante inscrito ainda"}
+              </p>
+            </div>
+          )}
+        </Section>
 
         {/* MODERADORES */}
         <Section
@@ -524,7 +755,7 @@ export default function ParticipantesTab({ eventId, eventData }) {
             canManage && (
               <button
                 onClick={() => setInviteModOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs  cursor-pointer font-bold text-blue-400 bg-blue-400/10 border border-blue-400/20 rounded-lg hover:bg-blue-400/20 transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer font-bold text-blue-400 bg-blue-400/10 border border-blue-400/20 rounded-lg hover:bg-blue-400/20 transition-all"
               >
                 <Send size={11} /> Convidar
               </button>
@@ -555,7 +786,7 @@ export default function ParticipantesTab({ eventId, eventData }) {
             canManage && (
               <button
                 onClick={() => setAddMemberOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer  font-bold text-violet-400 bg-violet-400/10 border border-violet-400/20 rounded-lg hover:bg-violet-400/20 transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer font-bold text-violet-400 bg-violet-400/10 border border-violet-400/20 rounded-lg hover:bg-violet-400/20 transition-all"
               >
                 <UserPlus size={11} /> Adicionar
               </button>
@@ -575,37 +806,23 @@ export default function ParticipantesTab({ eventId, eventData }) {
             </div>
           )}
         </Section>
-
-        {/* PARTICIPANTES */}
-        <Section
-          title="Participantes"
-          subtitle={`${filteredAttendees.length} inscrito${filteredAttendees.length !== 1 ? "s" : ""}`}
-          dot="bg-emerald-400"
-          accentBorder="border-l-emerald-400/50"
-        >
-          {filteredAttendees.length > 0 ? (
-            filteredAttendees.map(m => (
-              <MemberRow key={m.id} member={m} isOrganizer={false} canManage={canManage} onRemove={setRemoveTarget} />
-            ))
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <Users size={20} className="text-[#2e2c42] mb-2" strokeWidth={1.5} />
-              <p className="text-xs text-[#6b6888]">
-                {search ? "Nenhum participante encontrado" : "Nenhum participante inscrito ainda"}
-              </p>
-            </div>
-          )}
-        </Section>
       </div>
 
+      {/* Modais */}
       {inviteModOpen && (
         <InviteModeratorModal onClose={() => setInviteModOpen(false)} onSubmit={handleInviteModerator} loading={actionLoading} />
       )}
       {addMemberOpen && (
         <AddTeamMemberModal onClose={() => setAddMemberOpen(false)} onSubmit={handleAddTeamMember} loading={actionLoading} />
       )}
+      {addParticipantOpen && (
+        <AddParticipantModal onClose={() => setAddParticipantOpen(false)} onSubmit={handleAddParticipant} loading={actionLoading} />
+      )}
       {removeTarget && (
         <RemoveModal member={removeTarget} onClose={() => setRemoveTarget(null)} onConfirm={handleRemove} loading={actionLoading} />
+      )}
+      {removeParticipantTarget && (
+        <RemoveParticipantModal participant={removeParticipantTarget} onClose={() => setRemoveParticipantTarget(null)} onConfirm={handleRemoveParticipant} loading={actionLoading} />
       )}
     </div>
   );

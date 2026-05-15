@@ -73,20 +73,23 @@ export default function CreateSubEvent({ eventId, onBack }) {
 
   // Funções para gerenciar seções
   const addSection = () => {
+    const newErrors = {};
+    
     if (!newSection.date_start) {
-      setErrors(prev => ({ ...prev, sectionDate: "Data de início é obrigatória" }));
-      return;
+      newErrors.sectionDate = "Data de início é obrigatória";
     }
     if (!newSection.time_start) {
-      setErrors(prev => ({ ...prev, sectionTime: "Horário de início é obrigatório" }));
-      return;
+      newErrors.sectionTime = "Horário de início é obrigatório";
     }
     if (!newSection.date_end) {
-      setErrors(prev => ({ ...prev, sectionDateEnd: "Data de término é obrigatória" }));
-      return;
+      newErrors.sectionDateEnd = "Data de término é obrigatória";
     }
     if (!newSection.time_end) {
-      setErrors(prev => ({ ...prev, sectionTimeEnd: "Horário de término é obrigatório" }));
+      newErrors.sectionTimeEnd = "Horário de término é obrigatório";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(prev => ({ ...prev, ...newErrors }));
       return;
     }
 
@@ -142,25 +145,58 @@ export default function CreateSubEvent({ eventId, onBack }) {
 
   const validate = (s) => {
     const e = {};
+    
     if (s === 0) {
       if (!form.name.trim()) e.name = "Campo obrigatório";
       if (!form.description.trim()) e.description = "Campo obrigatório";
+      if (!form.location.trim()) e.location = "Local é obrigatório";
+      if (!form.capacity) e.capacity = "Capacidade é obrigatória";
+      else if (parseInt(form.capacity) <= 0) e.capacity = "Capacidade deve ser maior que zero";
     }
+    
     if (s === 1) {
       if (sections.length === 0) {
         e.sections = "Adicione pelo menos uma seção";
       }
     }
+    
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const next = () => { if (validate(step)) setStep(s => s + 1); };
+  const next = () => { 
+    if (validate(step)) setStep(s => s + 1); 
+  };
   const prev = () => setStep(s => s - 1);
 
   const handleSubmit = async () => {
     setStatus("loading");
     setErrMsg("");
+
+    // Validação final antes de enviar
+    if (!form.location.trim()) {
+      setStatus("error");
+      setErrMsg("O local do subevento é obrigatório");
+      return;
+    }
+    
+    if (!form.capacity) {
+      setStatus("error");
+      setErrMsg("A capacidade do subevento é obrigatória");
+      return;
+    }
+    
+    if (parseInt(form.capacity) <= 0) {
+      setStatus("error");
+      setErrMsg("A capacidade deve ser maior que zero");
+      return;
+    }
+    
+    if (sections.length === 0) {
+      setStatus("error");
+      setErrMsg("Adicione pelo menos uma seção ao subevento");
+      return;
+    }
 
     console.log("=== INICIANDO CRIAÇÃO DO SUBEVENTO ===");
     console.log("Event ID:", eventId);
@@ -285,11 +321,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
       console.log("🎉 Subevento criado com sucesso!");
       
       // ✅ Redirecionar diretamente para a página do evento com a aba de subeventos ativa
-      if (createdSubeventId) {
-        window.location.href = `/eventPageAdm?id=${eventId}`;
-      } else {
-        window.location.href = "/userDashboard";
-      }
+      window.location.href = `/eventPageAdm?id=${eventId}&tab=subeventos`;
 
     } catch (err) {
       console.error("❌ Erro detalhado:", err);
@@ -312,7 +344,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
           <p className="text-accent-foreground/60 mb-8">{errMsg}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-5 py-2.5 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg transition-all"
+            className="px-5 cursor-pointer py-2.5 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg transition-all"
           >
             Tentar novamente
           </button>
@@ -431,26 +463,39 @@ export default function CreateSubEvent({ eventId, onBack }) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">Local</label>
+                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">
+                    Local <span className="text-primary">*</span>
+                  </label>
                   <input
                     type="text"
                     value={form.location}
                     onChange={e => set("location", e.target.value)}
                     placeholder="ex: Auditório Principal"
-                    className="w-full text-accent-foreground px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                    className={`
+                      w-full text-accent-foreground px-4 py-2.5 rounded-lg text-sm bg-background border 
+                      ${errors.location ? "border-red-400/50" : "border-border"} 
+                      focus:border-primary outline-none
+                    `}
                   />
+                  {errors.location && <p className="text-xs text-red-400 mt-1">{errors.location}</p>}
                   <p className="text-xs text-accent-foreground/40 mt-1">Local padrão (pode ser sobrescrito nas seções)</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">Capacidade</label>
+                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">
+                    Capacidade <span className="text-primary">*</span>
+                  </label>
                   <input
                     type="number"
                     value={form.capacity}
                     onChange={e => set("capacity", e.target.value)}
                     placeholder="ex: 50"
-                    className="w-full text-accent-foreground px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                    className={`
+                      w-full text-accent-foreground px-4 py-2.5 rounded-lg text-sm bg-background border 
+                      ${errors.capacity ? "border-red-400/50" : "border-border"} 
+                      focus:border-primary outline-none
+                    `}
                   />
-                  
+                  {errors.capacity && <p className="text-xs text-red-400 mt-1">{errors.capacity}</p>}
                   <p className="text-xs text-accent-foreground/40 mt-1">Capacidade padrão</p>
                 </div>
               </div>
@@ -503,7 +548,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                         </div>
                         <button
                           onClick={() => removeSection(section.id)}
-                          className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
+                          className="p-1.5 cursor-pointer rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -540,6 +585,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                           onChange={e => handleDateChange("date_start", e.target.value, true)}
                           className="w-full px-3 py-2 text-accent-foreground rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
                         />
+                        {errors.sectionDate && <p className="text-xs text-red-400 mt-1">{errors.sectionDate}</p>}
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-accent-foreground mb-1">Horário início *</label>
@@ -549,6 +595,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                           onChange={e => setNewSection(prev => ({ ...prev, time_start: e.target.value }))}
                           className="w-full px-3 py-2 text-accent-foreground rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
                         />
+                        {errors.sectionTime && <p className="text-xs text-red-400 mt-1">{errors.sectionTime}</p>}
                       </div>
                     </div>
 
@@ -561,6 +608,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                           onChange={e => handleDateChange("date_end", e.target.value, true)}
                           className="w-full px-3 py-2 text-accent-foreground rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
                         />
+                        {errors.sectionDateEnd && <p className="text-xs text-red-400 mt-1">{errors.sectionDateEnd}</p>}
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-accent-foreground mb-1">Horário término *</label>
@@ -570,6 +618,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                           onChange={e => setNewSection(prev => ({ ...prev, time_end: e.target.value }))}
                           className="w-full px-3 py-2 text-accent-foreground rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
                         />
+                        {errors.sectionTimeEnd && <p className="text-xs text-red-400 mt-1">{errors.sectionTimeEnd}</p>}
                       </div>
                     </div>
 
@@ -586,7 +635,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                     <button
                       type="button"
                       onClick={addSection}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
+                      className="w-full flex cursor-pointer items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
                     >
                       <Plus size={16} />
                       Adicionar seção
@@ -622,7 +671,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                         </div>
                         <button
                           onClick={() => removeTeamMember(member.id)}
-                          className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
+                          className="p-1.5 cursor-pointer rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -665,7 +714,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                 <button
                   type="button"
                   onClick={addTeamMember}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
+                  className="w-full flex cursor-pointer items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
                 >
                   <UserPlus size={16} />
                   Adicionar membro
@@ -779,7 +828,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
             <button
               onClick={handleBack}
-              className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium text-accent-foreground/60 border border-border hover:text-accent-foreground hover:border-primary/30 transition-all"
+              className="flex items-center gap-2 cursor-pointer px-5 py-2 rounded-lg text-sm font-medium text-accent-foreground/60 border border-border hover:text-accent-foreground hover:border-primary/30 transition-all"
             >
               <ArrowLeft size={14} />
               {step === 0 ? "Cancelar" : "Anterior"}
@@ -797,7 +846,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
             {step < STEP_LABELS.length - 1 ? (
               <button
                 onClick={next}
-                className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg transition-all"
+                className="flex items-center cursor-pointer gap-2 px-5 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg transition-all"
               >
                 Próximo
                 <ArrowRight size={14} />
@@ -806,7 +855,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
               <button
                 onClick={handleSubmit}
                 disabled={status === "loading"}
-                className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="flex items-center gap-2 px-5 py-2 cursor-pointer rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {status === "loading" ? (
                   <>

@@ -12,7 +12,7 @@ import subEventsRoutes from './routes/subEventsRoutes.js';
 import userRoutes from "./routes/userRoutes.js"
 import testeRoutes from "./routes/testeRoutes.js"
 import sectionRoutes from './routes/sectionRoutes.js'
-
+import participantRoutes from './routes/participantRoutes.js'
 
 config();
 connectDB();
@@ -41,6 +41,7 @@ app.use("/subevents", subEventsRoutes);
 app.use("/user", userRoutes);
 app.use("/testes", testeRoutes);
 app.use('/events/:eventId/subevents/:subEventId/sections', sectionRoutes)
+app.use('/events/:eventId/participants', participantRoutes)
 
 const PORT = 5001;
 app.listen(PORT, () => {

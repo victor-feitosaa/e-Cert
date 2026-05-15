@@ -516,7 +516,7 @@ const handleSubmit = async () => {
                         </div>
                         <button
                           onClick={() => removeTeamMember(member.id)}
-                          className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
+                          className="p-1.5 cursor-pointer rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -560,7 +560,7 @@ const handleSubmit = async () => {
                 <button
                   type="button"
                   onClick={addTeamMember}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
+                  className="w-full flex cursor-pointer  items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
                 >
                   <UserPlus size={16} />
                   Adicionar membro
@@ -699,7 +699,7 @@ const handleSubmit = async () => {
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
             <button
               onClick={handleBack}
-              className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium text-accent-foreground/60 border border-border hover:text-accent-foreground hover:border-primary/30 transition-all"
+              className="flex cursor-pointer  items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium text-accent-foreground/60 border border-border hover:text-accent-foreground hover:border-primary/30 transition-all"
             >
               <ArrowLeft size={14} />
               {step === 0 ? "Cancelar" : "Anterior"}
@@ -717,7 +717,7 @@ const handleSubmit = async () => {
             {step < STEP_LABELS.length - 1 ? (
               <button
                 onClick={next}
-                className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg transition-all"
+                className="flex  cursor-pointer items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg transition-all"
               >
                 Próximo
                 <ArrowRight size={14} />
@@ -726,7 +726,7 @@ const handleSubmit = async () => {
               <button
                 onClick={handleSubmit}
                 disabled={status === "loading"}
-                className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="flex cursor-pointer  items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {status === "loading" ? (
                   <>

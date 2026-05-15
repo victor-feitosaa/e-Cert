@@ -1,0 +1,41 @@
+---
+import PublicEvent from "@/components/PublicEvent.jsx"
+import Layout from "../layouts/Layout.astro"
+
+export const prerender = false;
+
+const id = Astro.url.searchParams.get("id");
+if (!id) return Astro.redirect("/");
+
+let event = null;
+let fetchError = null;
+
+const baseUrl = import.meta.env.API_URL || "https://ecert.duckdns.org";
+
+console.log("BASE URL: ", baseUrl);
+
+try {
+  console.log("FAZENDO FETCH DE ", `${baseUrl}/events/${id}`);
+  const res = await fetch(`${baseUrl}/events/${id}`);
+
+  if (res.ok) {
+    const data = await res.json();
+    event = data.data?.event ?? data;
+  } else if (res.status === 404) {
+    return Astro.redirect("/");
+  } else {
+    fetchError = res.status;
+  }
+} catch (err) {
+  console.error("Erro ao buscar evento público:", err);
+  fetchError = 500;
+}
+
+if (!event) {
+  return Astro.redirect("/");
+}
+---
+
+<Layout title={event?.title || "Evento"} description={event?.description}>
+  <PublicEvent client:load eventData={event} eventId={id} />
+</Layout>
