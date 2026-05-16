@@ -1,20 +1,18 @@
-// utils/generateToken.js
 import jwt from 'jsonwebtoken';
 
 export const generateToken = (userId, res) => {
   
   const token = jwt.sign(
-    { userId: userId },  
+    { id: userId },  // era "userId" — padronizado para "id" que o middleware de auth usa
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );
 
-  // Cookie para navegador
   res.cookie('jwt', token, {
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias
+    maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-    secure: process.env.NODE_ENV === 'production'
+    sameSite: 'lax',   // "strict" bloqueava o cookie no redirect pós-login
+    secure: process.env.NODE_ENV === 'production',
   });
 
   return token;

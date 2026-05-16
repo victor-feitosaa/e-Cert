@@ -3,21 +3,33 @@ import {
   Calendar, Clock, MapPin, Users, Award, Ticket,
   CheckCircle, Loader2, Share2, ExternalLink,
   Building2, Mic2, UserCheck, ArrowRight, Globe,
-  Lock, Tag,
+  Lock, Tag, LogIn, UserPlus, Plus,
 } from "lucide-react";
 
-export default function PublicEvent({ eventData, eventId }) {
-  const [formData, setFormData] = useState({ name: "", email: "" });
-  const [formErrors, setFormErrors] = useState({});
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState(null);
-  const [copied, setCopied] = useState(false);
+/**
+ * Props:
+ *   eventData  — objeto do evento (com subEvents, creator, etc.)
+ *   eventId    — string UUID do evento
+ *   user       — { id, name, email } injetado via SSR pelo Astro, ou null se não autenticado
+ *   isEnrolled — boolean, injetado via SSR (checou se user já é EventParticipant deste evento)
+ */
+export default function PublicEvent({ eventData, eventId, user = null, isEnrolled: initialEnrolled = false }) {
+  const [enrolled, setEnrolled]           = useState(initialEnrolled);
+  const [enrolling, setEnrolling]         = useState(false);
+  const [enrollError, setEnrollError]     = useState(null);
+
+  // subeventos: mapa de subEventId → estado de inscrição
+  const [subEnrolled, setSubEnrolled]     = useState({});
+  const [subEnrolling, setSubEnrolling]   = useState({});
+  const [subErrors, setSubErrors]         = useState({});
+
+  const [copied, setCopied]               = useState(false);
 
   const event = eventData;
   const subEvents = event.subEvents || [];
   const hasSubEvents = subEvents.length > 0;
 
+  /* ── formatters ── */
   const formatDate = (dateStr) => {
     if (!dateStr) return "—";
     return new Date(dateStr).toLocaleDateString("pt-BR", {
@@ -40,78 +52,179 @@ export default function PublicEvent({ eventData, eventId }) {
     return `${h}:${m}`;
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((p) => ({ ...p, [name]: value }));
-    if (formErrors[name]) setFormErrors((p) => ({ ...p, [name]: "" }));
-  };
-
-  const validateForm = () => {
-    const errors = {};
-    if (!formData.name.trim()) errors.name = "Nome é obrigatório";
-    if (!formData.email.trim()) errors.email = "E-mail é obrigatório";
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = "E-mail inválido";
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/events/${eventId}/participants/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Erro ao realizar inscrição");
-      }
-      setSubmitted(true);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
+  /* ── compartilhar ── */
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  /* ── inscrição no evento principal ── */
+  const handleEnroll = async () => {
+    setEnrolling(true);
+    setEnrollError(null);
+    try {
+      const res = await fetch(`/api/events/${eventId}/participants/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}), // user vem do JWT no cookie
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Erro ao realizar inscrição");
+      }
+      setEnrolled(true);
+    } catch (err) {
+      setEnrollError(err.message);
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  /* ── inscrição em subevento ── */
+  const handleSubEnroll = async (subEventId) => {
+    setSubEnrolling((s) => ({ ...s, [subEventId]: true }));
+    setSubErrors((s) => ({ ...s, [subEventId]: null }));
+    try {
+      const res = await fetch(`/api/subevents/${subEventId}/participants/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Erro ao se inscrever");
+      }
+      setSubEnrolled((s) => ({ ...s, [subEventId]: true }));
+    } catch (err) {
+      setSubErrors((s) => ({ ...s, [subEventId]: err.message }));
+    } finally {
+      setSubEnrolling((s) => ({ ...s, [subEventId]: false }));
+    }
+  };
+
+  /* ── redirect para login/registro ── */
+  const goToAuth = (mode = "register") => {
+    const redirect = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = `/login?redirect=${redirect}&mode=${mode}`;
+  };
+
   const startDate = event.date_start || event.date;
   const isOnline = event.location?.toLowerCase().includes("online");
 
-  /* ── Success ── */
-  if (submitted) {
-    return (
-      <div className="dark">
-        <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-6 font-['Nunito',sans-serif]">
-          <div className="text-center max-w-sm">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-6">
-              <CheckCircle size={30} className="text-emerald-400" />
+  /* ── painel lateral direito: depende do estado de auth/inscrição ── */
+  const renderActionPanel = () => {
+    /* Não autenticado */
+    if (!user) {
+      return (
+        <div className="bg-[#13111e] border border-violet-500/20 rounded-2xl overflow-hidden">
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center">
+                <Ticket size={14} className="text-violet-400" />
+              </div>
+              <div>
+                <h2 className="text-[14.5px] font-black text-white tracking-tight">Inscreva-se</h2>
+                <p className="text-[11.5px] text-[#3d3860]">Gratuito · Certificado automático</p>
+              </div>
             </div>
-            <h2 className="text-2xl font-black text-white mb-2 tracking-tight">Inscrição confirmada!</h2>
-            <p className="text-[#6b6888] text-sm leading-relaxed mb-1">
-              Você está inscrito em <strong className="text-white">{event.title}</strong>.
+
+            <p className="text-[13px] text-[#6b6888] leading-relaxed mb-5">
+              Crie sua conta para se inscrever neste evento e receber seu certificado automaticamente após a conclusão.
             </p>
-            <p className="text-[#3d3860] text-xs mb-8">
-              Confirmação enviada para <strong className="text-[#6b6888]">{formData.email}</strong>
+
+            <button
+              onClick={() => goToAuth("register")}
+              className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 active:scale-[0.99] text-white font-bold text-[14px] flex items-center justify-center gap-2 transition-all mb-3"
+            >
+              <UserPlus size={14} /> Criar conta e se inscrever
+            </button>
+
+            <button
+              onClick={() => goToAuth("login")}
+              className="w-full py-2.5 rounded-xl bg-transparent border border-white/[0.08] hover:border-white/20 text-[#6b6888] hover:text-white font-semibold text-[13px] flex items-center justify-center gap-2 transition-all"
+            >
+              <LogIn size={13} /> Já tenho conta
+            </button>
+          </div>
+          <div className="px-6 py-3 border-t border-white/[0.05] flex items-center gap-1.5">
+            <Lock size={10} className="text-[#3d3860] shrink-0" />
+            <p className="text-[11px] text-[#3d3860]">Seus dados estão seguros e não serão compartilhados</p>
+          </div>
+        </div>
+      );
+    }
+
+    /* Autenticado + já inscrito */
+    if (enrolled) {
+      return (
+        <div className="bg-[#13111e] border border-emerald-500/20 rounded-2xl overflow-hidden">
+          <div className="p-6">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-4">
+              <CheckCircle size={18} className="text-emerald-400" />
+            </div>
+            <h2 className="text-[15px] font-black text-white tracking-tight mb-1">Você está inscrito!</h2>
+            <p className="text-[12px] text-[#6b6888] leading-relaxed mb-4">
+              Olá, <strong className="text-white/60">{user.name}</strong>. Sua inscrição está confirmada.
             </p>
-            <div className="flex items-center gap-2 justify-center p-3 rounded-xl bg-[#13111e] border border-violet-500/10 text-sm text-[#6b6888]">
-              <Award size={14} className="text-violet-400 shrink-0" />
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-[#0f0d1a] border border-white/[0.05] text-[12px] text-[#6b6888]">
+              <Award size={13} className="text-violet-400 shrink-0" />
               Certificado emitido automaticamente após o evento
             </div>
           </div>
         </div>
+      );
+    }
+
+    /* Autenticado + não inscrito */
+    return (
+      <div className="bg-[#13111e] border border-violet-500/20 rounded-2xl overflow-hidden">
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center">
+              <Ticket size={14} className="text-violet-400" />
+            </div>
+            <div>
+              <h2 className="text-[14.5px] font-black text-white tracking-tight">Inscreva-se</h2>
+              <p className="text-[11.5px] text-[#3d3860]">Gratuito · Certificado automático</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[#0f0d1a] border border-white/[0.05] mb-5">
+            <div className="w-6 h-6 rounded-full bg-violet-600/20 flex items-center justify-center text-[10px] font-black text-violet-400 shrink-0">
+              {user.name?.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[12px] font-bold text-white truncate">{user.name}</p>
+              <p className="text-[11px] text-[#3d3860] truncate">{user.email}</p>
+            </div>
+          </div>
+
+          {enrollError && (
+            <div className="mb-4 p-3 rounded-xl bg-red-500/8 border border-red-500/15">
+              <p className="text-[12px] text-red-400 font-medium">{enrollError}</p>
+            </div>
+          )}
+
+          <button
+            onClick={handleEnroll}
+            disabled={enrolling}
+            className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 active:scale-[0.99] text-white font-bold text-[14px] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {enrolling
+              ? <><Loader2 size={14} className="animate-spin" /> Processando...</>
+              : <><span>Confirmar inscrição</span><ArrowRight size={14} /></>}
+          </button>
+        </div>
+        <div className="px-6 py-3 border-t border-white/[0.05] flex items-center gap-1.5">
+          <Lock size={10} className="text-[#3d3860] shrink-0" />
+          <p className="text-[11px] text-[#3d3860]">Seus dados estão seguros e não serão compartilhados</p>
+        </div>
       </div>
     );
-  }
+  };
 
   return (
     <div className="dark">
@@ -120,21 +233,36 @@ export default function PublicEvent({ eventData, eventId }) {
         {/* ── NAV ── */}
         <nav className="sticky top-0 z-50 h-12 flex items-center justify-between px-6 bg-[#0a0a0f]/90 backdrop-blur-md border-b border-white/[0.06]">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-violet-600 to-violet-400 flex items-center justify-center">
-              <Award size={11} className="text-white" strokeWidth={2.5} />
-            </div>
+
             <span className="text-[15px] font-black tracking-tight">
               e-<span className="text-violet-400">cert</span>
             </span>
           </div>
-          <button
-            onClick={handleShare}
-            className="flex items-center gap-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 px-3 py-1.5 rounded-full transition-all"
-          >
-            {copied
-              ? <><CheckCircle size={11} className="text-emerald-400" /> Copiado</>
-              : <><Share2 size={11} /> Compartilhar</>}
-          </button>
+          <div className="flex items-center gap-2">
+            {user ? (
+              <div className="flex items-center gap-2 text-[12px] text-[#6b6888]">
+                <div className="w-6 h-6 rounded-full bg-violet-600/20 flex items-center justify-center text-[10px] font-black text-violet-400">
+                  {user.name?.charAt(0).toUpperCase()}
+                </div>
+                <span className="hidden sm:block">{user.name}</span>
+              </div>
+            ) : (
+              <button
+                onClick={() => goToAuth("login")}
+                className="flex items-center gap-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 px-3 py-1.5 rounded-full transition-all"
+              >
+                <LogIn size={11} /> Entrar
+              </button>
+            )}
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 px-3 py-1.5 rounded-full transition-all"
+            >
+              {copied
+                ? <><CheckCircle size={11} className="text-emerald-400" /> Copiado</>
+                : <><Share2 size={11} /> Compartilhar</>}
+            </button>
+          </div>
         </nav>
 
         <div className="max-w-3xl dark mx-auto px-4 py-8 space-y-3">
@@ -142,7 +270,6 @@ export default function PublicEvent({ eventData, eventId }) {
           {/* ── LINHA 1: título + data/local ── */}
           <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-3">
 
-            {/* Título principal */}
             <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl p-6">
               {event.category && (
                 <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-violet-500/10 border border-violet-500/15 text-violet-400 text-[11px] font-bold mb-4 uppercase tracking-wide">
@@ -169,7 +296,6 @@ export default function PublicEvent({ eventData, eventId }) {
               )}
             </div>
 
-            {/* Data + Local empilhados */}
             <div className="flex flex-col gap-3">
               <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl p-5 flex-1">
                 <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-3">Data</p>
@@ -218,65 +344,11 @@ export default function PublicEvent({ eventData, eventId }) {
             </div>
           </div>
 
-          {/* ── LINHA 2: formulário + stats ── */}
+          {/* ── LINHA 2: painel de ação + stats ── */}
           <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-3">
 
-            {/* Formulário */}
-            <div className="bg-[#13111e] border border-violet-500/20 rounded-2xl overflow-hidden">
-              <div className="p-6">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center">
-                    <Ticket size={14} className="text-violet-400" />
-                  </div>
-                  <div>
-                    <h2 className="text-[14.5px] font-black text-white tracking-tight">Inscreva-se</h2>
-                    <p className="text-[11.5px] text-[#3d3860]">Gratuito · Certificado automático</p>
-                  </div>
-                </div>
+            {renderActionPanel()}
 
-                {error && (
-                  <div className="mb-4 p-3 rounded-xl bg-red-500/8 border border-red-500/15">
-                    <p className="text-sm text-red-400 font-medium">{error}</p>
-                  </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-3">
-                  <FieldInput
-                    label="Nome completo"
-                    name="name"
-                    type="text"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="Seu nome"
-                    error={formErrors.name}
-                  />
-                  <FieldInput
-                    label="E-mail"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="seu@email.com"
-                    error={formErrors.email}
-                  />
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 active:scale-[0.99] text-white font-bold text-[14px] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-1"
-                  >
-                    {submitting
-                      ? <><Loader2 size={14} className="animate-spin" /> Processando...</>
-                      : <><span>Confirmar inscrição</span><ArrowRight size={14} /></>}
-                  </button>
-                </form>
-              </div>
-              <div className="px-6 py-3 border-t border-white/[0.05] flex items-center gap-1.5">
-                <Lock size={10} className="text-[#3d3860] shrink-0" />
-                <p className="text-[11px] text-[#3d3860]">Seus dados estão seguros e não serão compartilhados</p>
-              </div>
-            </div>
-
-            {/* Stats empilhados */}
             <div className="flex flex-col gap-3">
               {event.capacity && (
                 <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl p-5">
@@ -323,6 +395,9 @@ export default function PublicEvent({ eventData, eventId }) {
                     : Calendar;
                   const time = formatTime(sub.date_start);
                   const date = sub.date_start ? formatShortDate(sub.date_start) : null;
+                  const isSubEnrolled = subEnrolled[sub.id];
+                  const isSubEnrolling = subEnrolling[sub.id];
+                  const subError = subErrors[sub.id];
 
                   return (
                     <div key={sub.id} className="px-6 py-4 flex items-start gap-4 hover:bg-white/[0.015] transition-colors">
@@ -353,11 +428,48 @@ export default function PublicEvent({ eventData, eventId }) {
                             </span>
                           )}
                         </div>
+                        {subError && (
+                          <p className="text-[11px] text-red-400 font-medium mt-1">{subError}</p>
+                        )}
+                      </div>
+
+                      {/* Botão de inscrição no subevento — só aparece se inscrito no evento principal */}
+                      <div className="shrink-0 mt-0.5">
+                        {!enrolled && !initialEnrolled ? (
+                          <span className="text-[11px] text-[#3d3860] italic">
+                            Inscreva-se no evento
+                          </span>
+                        ) : isSubEnrolled ? (
+                          <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400">
+                            <CheckCircle size={11} /> Inscrito
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleSubEnroll(sub.id)}
+                            disabled={isSubEnrolling}
+                            className="flex items-center gap-1.5 text-[12px] font-bold text-violet-400 hover:text-violet-300 border border-violet-500/20 hover:border-violet-500/40 bg-violet-500/5 hover:bg-violet-500/10 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isSubEnrolling
+                              ? <Loader2 size={11} className="animate-spin" />
+                              : <Plus size={11} />}
+                            {isSubEnrolling ? "..." : "Participar"}
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
                 })}
               </div>
+
+              {/* Aviso se não inscrito no evento principal */}
+              {!enrolled && !initialEnrolled && user && (
+                <div className="px-6 py-3 border-t border-white/[0.05] flex items-center gap-2 bg-[#0f0d1a]">
+                  <Lock size={11} className="text-[#3d3860] shrink-0" />
+                  <p className="text-[11.5px] text-[#3d3860]">
+                    Inscreva-se no evento principal para participar das atividades
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -366,7 +478,7 @@ export default function PublicEvent({ eventData, eventId }) {
             <span className="text-[11px] text-[#2e2c42]">Powered by</span>
             <div className="flex items-center gap-1">
               <div className="w-3.5 h-3.5 rounded bg-gradient-to-br from-violet-600 to-violet-400 flex items-center justify-center">
-                <Award size={7} className="text-white" strokeWidth={2.5} />
+                
               </div>
               <span className="text-[11px] font-black text-[#3d3860]">e-cert</span>
             </div>
@@ -374,27 +486,6 @@ export default function PublicEvent({ eventData, eventId }) {
 
         </div>
       </div>
-    </div>
-  );
-}
-
-function FieldInput({ label, name, type, value, onChange, placeholder, error }) {
-  return (
-    <div>
-      <label className="block text-[12px] font-bold text-[#6b6888] mb-1.5">{label}</label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className={`w-full px-3.5 py-2.5 rounded-xl bg-[#0f0d1a] border text-[13.5px] font-medium text-white placeholder-[#2e2c42] outline-none transition-all ${
-          error
-            ? "border-red-500/30 focus:border-red-500/50"
-            : "border-white/[0.08] focus:border-violet-500/40 focus:shadow-[0_0_0_3px_rgba(139,92,246,0.08)]"
-        }`}
-      />
-      {error && <p className="text-[11px] text-red-400 mt-1 font-medium">{error}</p>}
     </div>
   );
 }

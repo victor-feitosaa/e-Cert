@@ -23,6 +23,9 @@ model User {
   subEventTeam        SubEventTeam[]
   grantedPermissions  EventPermission[] @relation("Granter")
   receveidPermissions EventPermission[] @relation("GrantedUser")
+  eventParticipations EventParticipant[]
+  subEventParticipations SubeventParticipant[]
+  certificates        Certificate[]
 }
 
 model Event {
@@ -46,11 +49,11 @@ model Event {
   eventTeam        EventTeam[]
   eventPermissions EventPermission[]
   participants     EventParticipant[]
-  certificates      Certificate[]
+  certificates     Certificate[]
 }
 
 model SubEvent {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   title       String
   description String
   date        DateTime?
@@ -58,18 +61,18 @@ model SubEvent {
   date_end    DateTime?
   location    String?
   capacity    Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   createdBy String
   eventId   String
 
-  creator  User           @relation("SubEventCreator", fields: [createdBy], references: [id], onDelete: Cascade)
-  event    Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  sections Section[]      
-  team     SubEventTeam[]
+  creator      User                  @relation("SubEventCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  event        Event                 @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sections     Section[]
+  team         SubEventTeam[]
   participants SubeventParticipant[]
-  certificates  Certificate[]
+  certificates Certificate[]
 }
 
 model Section {
@@ -80,14 +83,73 @@ model Section {
   location   String?
   subEventId String
   subEvent   SubEvent @relation(fields: [subEventId], references: [id], onDelete: Cascade)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([subEventId])
 }
 
-//PERMISSIONS
+// ── Participantes ─────────────────────────────────────────────────────────────
+// Substituído name+email soltos por userId — inscrição sempre exige conta
+
+model EventParticipant {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId  String
+  eventId String
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])   // impede inscrição duplicada no banco
+  @@index([eventId])
+  @@index([userId])
+}
+
+model SubeventParticipant {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId     String
+  subEventId String
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subEvent SubEvent @relation(fields: [subEventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, subEventId])
+  @@index([subEventId])
+  @@index([userId])
+}
+
+// ── Certificados ──────────────────────────────────────────────────────────────
+
+model Certificate {
+  id        String   @id @default(uuid())
+  name      String?
+  template  String?
+  job       String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId     String            // ← novo: vínculo com o dono do certificado
+  eventId    String?
+  subEventId String?
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event    Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  subEvent SubEvent? @relation(fields: [subEventId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([subEventId])
+}
+
+// ── Permissões ────────────────────────────────────────────────────────────────
 
 enum Status {
   ACTIVE
@@ -124,7 +186,7 @@ model EventPermission {
   @@map("event_permissions")
 }
 
-//EQUIPES
+// ── Equipes ───────────────────────────────────────────────────────────────────
 
 model EventTeam {
   id   String      @id @default(uuid())
@@ -161,54 +223,3 @@ model SubEventTeam {
 
   @@map("sub_event_teams")
 }
-
-
-//PARTICIPANTES
-model EventParticipant {
-  id        String    @id @default(uuid())
-  name      String
-  email     String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  eventId String
-  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  @@index([eventId])
-}
-
-model SubeventParticipant {
-  id         String   @id @default(uuid())
-  name       String
-  email      String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  subEventId String
-  subEvent   SubEvent @relation(fields: [subEventId], references: [id], onDelete: Cascade)
-
-  @@index([subEventId])
-}
-
-//CERTIFICADOS
-
-model Certificate {
-  id         String   @id @default(uuid())
-  name       String?
-  template   String?
-  job        String
-  
-
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  eventId    String?
-  subEventId String?
-
-  event    Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  subEvent SubEvent? @relation(fields: [subEventId], references: [id], onDelete: Cascade)
-
-  @@index([eventId])
-  @@index([subEventId])
-}
-

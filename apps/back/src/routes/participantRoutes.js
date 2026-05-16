@@ -5,9 +5,10 @@ import {
   addEventParticipant,
   getEventParticipants,
   getEventParticipantById,
-  updateEventParticipant,
+
   deleteEventParticipant,
   bulkAddEventParticipants,
+  checkEventEnrollment,
   addSubeventParticipant,
   getSubeventParticipants,
   deleteSubeventParticipant
@@ -23,11 +24,13 @@ router.route('/')
   .post(addEventParticipant)
   .get(getEventParticipants)
 
+router.get('/check', checkEventEnrollment)   // ← novo: GET /events/:eventId/participants/check
+
 router.post('/bulk', bulkAddEventParticipants)
 
 router.route('/:id')
   .get(getEventParticipantById)
-  .put(updateEventParticipant)
+
   .delete(deleteEventParticipant)
 
 // Rotas para participantes do subevento

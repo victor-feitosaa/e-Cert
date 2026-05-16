@@ -18,19 +18,34 @@ import { Input } from "@/components/ui/input";
 
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { loginSchema, type LoginInput , registerSchema, type RegisterInput} from "../../../shared/src/schemas/auth/auth"
+import { loginSchema, type LoginInput, registerSchema, type RegisterInput } from "../../../shared/src/schemas/auth/auth"
 
-/* ── tipos de modo ── */
 type AuthMode = "login" | "register";
+
+/**
+ * Lê ?mode=register|login da URL para abrir já no modo correto.
+ * Lê ?redirect=/events/[id] para voltar ao destino após auth.
+ */
+function getInitialMode(): AuthMode {
+  if (typeof window === "undefined") return "login";
+  const params = new URLSearchParams(window.location.search);
+  const m = params.get("mode");
+  return m === "register" ? "register" : "login";
+}
+
+function getRedirectUrl(): string {
+  if (typeof window === "undefined") return "/userDashboard";
+  const params = new URLSearchParams(window.location.search);
+  return params.get("redirect") || "/userDashboard";
+}
 
 export function AuthForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const [mode, setMode] = useState<AuthMode>("login");
+  const [mode, setMode] = useState<AuthMode>(getInitialMode);
   const [animating, setAnimating] = useState(false);
 
-  /* Troca de modo com micro-animação */
   const switchMode = (next: AuthMode) => {
     if (next === mode || animating) return;
     setAnimating(true);
@@ -41,38 +56,37 @@ export function AuthForm({
     }, 220);
   };
 
+  const isLogin = mode === "login";
 
-const isLogin = mode === "login";
-
-const { register, handleSubmit, setError, reset, formState: { errors, isSubmitting } } = useForm<LoginInput | RegisterInput>({
-  resolver: zodResolver(isLogin ? loginSchema : registerSchema)
-});
+  const { register, handleSubmit, setError, reset, formState: { errors, isSubmitting } } = useForm<LoginInput | RegisterInput>({
+    resolver: zodResolver(isLogin ? loginSchema : registerSchema)
+  });
 
   async function onSubmit(data: RegisterInput) {
     try {
       const url = isLogin ? "/api/auth/login" : "/api/auth/register"
-
-      const payload = isLogin ? { email: data.email, password: data.password} : data;
+      const payload = isLogin ? { email: data.email, password: data.password } : data;
 
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json"},
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-        credentials: "include" //token jwt nos cookies
-      })
+        credentials: "include",
+      });
 
-      const json = await res.json()
-      console.log(`Resposta da API: ${json}`)
+      const json = await res.json();
 
       if (!res.ok) {
-        setError("root", {message: json.error ?? "Erro ao fazer login"})
-        return
+        setError("root", { message: json.error ?? "Erro ao autenticar" });
+        return;
       }
 
-      window.location.href = isLogin ? "/userDashboard" : "/login"
+      // Após registro, vai para o redirect (volta ao evento) ou dashboard
+      // Após login, idem
+      window.location.href = getRedirectUrl();
 
     } catch (error) {
-      setError("root", { message: "Erro de conexão. Tente novamente." })
+      setError("root", { message: "Erro de conexão. Tente novamente." });
     }
   }
 
@@ -133,7 +147,6 @@ const { register, handleSubmit, setError, reset, formState: { errors, isSubmitti
             position: "relative",
           }}
         >
-          {/* top shimmer line */}
           <div
             style={{
               position: "absolute",
@@ -166,53 +179,25 @@ const { register, handleSubmit, setError, reset, formState: { errors, isSubmitti
           </CardHeader>
 
           <CardContent>
-
             <form onSubmit={handleSubmit(onSubmit)}>
               <FieldGroup>
-                {/* Nome — só no cadastro */}
                 {mode === "register" && (
                   <Field>
-                    <FieldLabel
-                      htmlFor="name"
-                      style={{
-                        fontSize: 13.5,
-                        fontWeight: 700,
-                        color: "#e8e4ff",
-                      }}
-                    >
+                    <FieldLabel htmlFor="name" style={{ fontSize: 13.5, fontWeight: 700, color: "#e8e4ff" }}>
                       Nome completo
                     </FieldLabel>
-                    <Input
-                      id="name"
-                      type="text"
-                      placeholder="Seu nome"
-                      required
-                      style={inputStyle}
-                      {...register("name")}
-                    />
+                    <Input id="name" type="text" placeholder="Seu nome" required style={inputStyle} {...register("name")} />
                     {errors.name && (
-                      <FieldDescription className="text-destructive">
-                        {errors.name.message}
-                      </FieldDescription>
+                      <FieldDescription className="text-destructive">{errors.name.message}</FieldDescription>
                     )}
                   </Field>
                 )}
 
                 <Field>
-                  <FieldLabel
-                    htmlFor="email"
-                    style={{ fontSize: 13.5, fontWeight: 700, color: "#e8e4ff" }}
-                  >
+                  <FieldLabel htmlFor="email" style={{ fontSize: 13.5, fontWeight: 700, color: "#e8e4ff" }}>
                     E-mail
                   </FieldLabel>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="voce@exemplo.com.br"
-                    required
-                    style={inputStyle}
-                    {...register("email")}
-                  />
+                  <Input id="email" type="email" placeholder="voce@exemplo.com.br" required style={inputStyle} {...register("email")} />
                   {errors.email && (
                     <FieldDescription className="text-destructive">{errors.email.message}</FieldDescription>
                   )}
@@ -220,77 +205,37 @@ const { register, handleSubmit, setError, reset, formState: { errors, isSubmitti
 
                 <Field>
                   <div className="flex items-center">
-                    <FieldLabel
-                      htmlFor="password"
-                      style={{
-                        fontSize: 13.5,
-                        fontWeight: 700,
-                        color: "#e8e4ff",
-                      }}
-                    >
+                    <FieldLabel htmlFor="password" style={{ fontSize: 13.5, fontWeight: 700, color: "#e8e4ff" }}>
                       Senha
                     </FieldLabel>
                     {mode === "login" && (
-                      <a
-                        href="#"
-                        className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                        style={{ color: "#a78bfa", fontSize: 13 }}
-                      >
+                      <a href="#" className="ml-auto inline-block text-sm underline-offset-4 hover:underline" style={{ color: "#a78bfa", fontSize: 13 }}>
                         Esqueceu a senha?
                       </a>
                     )}
                   </div>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    required
-                    style={inputStyle}
-                    {...register("password")}
-                  />
+                  <Input id="password" type="password" placeholder="••••••••" required style={inputStyle} {...register("password")} />
                   {errors.password && (
-                    <FieldDescription className="text-destructive">
-                      {errors.password.message}
-                    </FieldDescription>
+                    <FieldDescription className="text-destructive">{errors.password.message}</FieldDescription>
                   )}
                 </Field>
 
-                {/* Confirmar senha — só no cadastro */}
                 {mode === "register" && (
                   <Field>
-                    <FieldLabel
-                      htmlFor="confirm-password"
-                      style={{
-                        fontSize: 13.5,
-                        fontWeight: 700,
-                        color: "#e8e4ff",
-                      }}
-                    >
+                    <FieldLabel htmlFor="confirm-password" style={{ fontSize: 13.5, fontWeight: 700, color: "#e8e4ff" }}>
                       Confirmar senha
                     </FieldLabel>
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      placeholder="••••••••"
-                      required
-                      style={inputStyle}
-                      {...register("confirmPassword")}
-                  />
-                  {errors.confirmPassword && (
-                    <FieldDescription className="text-destructive">
-                      {errors.confirmPassword.message}
-                    </FieldDescription>
-                  )}
+                    <Input id="confirm-password" type="password" placeholder="••••••••" required style={inputStyle} {...register("confirmPassword")} />
+                    {errors.confirmPassword && (
+                      <FieldDescription className="text-destructive">{errors.confirmPassword.message}</FieldDescription>
+                    )}
                   </Field>
                 )}
 
                 <Field>
                   {errors.root && (
-                    <FieldDescription className="text-destructive">
-                      {errors.root.message}
-                    </FieldDescription>
+                    <FieldDescription className="text-destructive">{errors.root.message}</FieldDescription>
                   )}
-                  {/* CTA button */}
                   <button
                     type="submit"
                     disabled={isSubmitting}
@@ -303,44 +248,28 @@ const { register, handleSubmit, setError, reset, formState: { errors, isSubmitti
                       fontWeight: 700,
                       fontSize: 15,
                       color: "#ffffff",
-                      background:
-                        "linear-gradient(135deg, #7c3aed, #9333ea)",
+                      background: "linear-gradient(135deg, #7c3aed, #9333ea)",
                       border: "none",
                       padding: "13px",
                       borderRadius: 10,
-                      cursor: "pointer",
+                      cursor: isSubmitting ? "not-allowed" : "pointer",
+                      opacity: isSubmitting ? 0.7 : 1,
                       textDecoration: "none",
                       boxShadow: "0 4px 20px rgba(124,58,237,0.4)",
                       transition: "transform 0.2s, box-shadow 0.2s",
-                    }}                 
+                    }}
                   >
                     {isSubmitting ? "Aguarde..." : mode === "login" ? "Entrar na plataforma" : "Criar conta grátis"}
                   </button>
 
-                  <FieldDescription
-                    style={{
-                      textAlign: "center",
-                      paddingTop: 16,
-                      fontSize: 13,
-                      color: "#8b85aa",
-                    }}
-                  >
+                  <FieldDescription style={{ textAlign: "center", paddingTop: 16, fontSize: 13, color: "#8b85aa" }}>
                     {mode === "login" ? (
                       <>
                         Não tem conta?{" "}
                         <button
                           type="button"
                           onClick={() => switchMode("register")}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            padding: 0,
-                            color: "#a78bfa",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                            fontSize: 13,
-                            fontFamily: "Nunito, sans-serif",
-                          }}
+                          style={{ background: "none", border: "none", padding: 0, color: "#a78bfa", fontWeight: 700, cursor: "pointer", fontSize: 13, fontFamily: "Nunito, sans-serif" }}
                         >
                           Cadastre-se gratuitamente →
                         </button>
@@ -351,16 +280,7 @@ const { register, handleSubmit, setError, reset, formState: { errors, isSubmitti
                         <button
                           type="button"
                           onClick={() => switchMode("login")}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            padding: 0,
-                            color: "#a78bfa",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                            fontSize: 13,
-                            fontFamily: "Nunito, sans-serif",
-                          }}
+                          style={{ background: "none", border: "none", padding: 0, color: "#a78bfa", fontWeight: 700, cursor: "pointer", fontSize: 13, fontFamily: "Nunito, sans-serif" }}
                         >
                           Entrar →
                         </button>
@@ -377,7 +297,6 @@ const { register, handleSubmit, setError, reset, formState: { errors, isSubmitti
   );
 }
 
-/* ── Estilo base dos inputs ── */
 const inputStyle: React.CSSProperties = {
   fontFamily: "Nunito, sans-serif",
   fontSize: 14,

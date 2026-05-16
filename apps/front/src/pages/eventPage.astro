@@ -7,35 +7,76 @@ export const prerender = false;
 const id = Astro.url.searchParams.get("id");
 if (!id) return Astro.redirect("/");
 
-let event = null;
-let fetchError = null;
-
 const baseUrl = import.meta.env.API_URL || "https://ecert.duckdns.org";
 
-console.log("BASE URL: ", baseUrl);
+// ── 1. Buscar evento ──────────────────────────────────────────────────────────
+let event = null;
 
 try {
-  console.log("FAZENDO FETCH DE ", `${baseUrl}/events/${id}`);
   const res = await fetch(`${baseUrl}/events/${id}`);
-
   if (res.ok) {
     const data = await res.json();
     event = data.data?.event ?? data;
   } else if (res.status === 404) {
     return Astro.redirect("/");
-  } else {
-    fetchError = res.status;
   }
 } catch (err) {
   console.error("Erro ao buscar evento público:", err);
-  fetchError = 500;
 }
 
-if (!event) {
-  return Astro.redirect("/");
+if (!event) return Astro.redirect("/");
+
+// ── 2. Diagnóstico ────────────────────────────────────────────────────────────
+const jwt = Astro.cookies.get("jwt")?.value;
+
+console.log("=== eventPage.astro ===");
+console.log("JWT cookie presente:", !!jwt);
+console.log("JWT (20 chars):", jwt ? jwt.substring(0, 20) + "..." : "null");
+
+// ── 3. Verificar usuário ──────────────────────────────────────────────────────
+let user = null;
+let isEnrolled = false;
+
+if (jwt) {
+  try {
+    const meRes = await fetch(`${baseUrl}/auth/me`, {
+      headers: { Cookie: `jwt=${jwt}` },
+    });
+
+    console.log("GET /auth/me status:", meRes.status);
+
+    if (meRes.ok) {
+      const meData = await meRes.json();
+      console.log("GET /auth/me resposta:", JSON.stringify(meData));
+      user = meData.data?.user ?? meData.user ?? meData;
+
+      const enrollRes = await fetch(`${baseUrl}/events/${id}/participants/check`, {
+        headers: { Cookie: `jwt=${jwt}` },
+      });
+
+      console.log("GET /participants/check status:", enrollRes.status);
+
+      if (enrollRes.ok) {
+        const enrollData = await enrollRes.json();
+        isEnrolled = enrollData.enrolled ?? false;
+      }
+    }
+  } catch (err) {
+    console.error("Erro ao verificar sessão:", err);
+  }
 }
+
+console.log("user resolvido:", JSON.stringify(user));
+console.log("isEnrolled:", isEnrolled);
+console.log("=======================");
 ---
 
 <Layout title={event?.title || "Evento"} description={event?.description}>
-  <PublicEvent client:load eventData={event} eventId={id} />
+  <PublicEvent
+    client:load
+    eventData={JSON.parse(JSON.stringify(event))}
+    eventId={id}
+    user={user}
+    isEnrolled={isEnrolled}
+  />
 </Layout>

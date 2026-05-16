@@ -22,7 +22,6 @@ const register = async (req, res) => {
 
         const user = await userService.createAccount(name, email, password);
 
-        // //gerar token JWT
         const token = generateToken(user.id, res)
 
         res.status(201).json({
@@ -49,7 +48,6 @@ const register = async (req, res) => {
 const login = async (req, res) => {
     const { email, password } = req.body;
 
-    //checar se ja existe user com o email
     const user = await prisma.user.findUnique({
         where: { email: email },
     });
@@ -58,17 +56,13 @@ const login = async (req, res) => {
         return res.status(401).json({ error: "Email ou senha inválidos " })
     }
 
-    //verificar senha
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
         return res.status(401).json({ error: "Email ou senha inválidos" });
     }
 
-
-    //gerar token JWT
     const token = generateToken(user.id, res);
-
 
     res.status(201).json({
         status: "sucess",
@@ -93,4 +87,18 @@ const logout = async (req, res) => {
     });
 };
 
-export { register, login, logout };
+// Retorna o usuário autenticado — usado pelo Astro SSR para hidratar props
+const me = async (req, res) => {
+    res.status(200).json({
+        status: "success",
+        data: {
+            user: {
+                id: req.user.id,
+                name: req.user.name,
+                email: req.user.email,
+            },
+        },
+    });
+};
+
+export { register, login, logout, me };
