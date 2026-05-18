@@ -144,12 +144,31 @@ export const createEvent = async (req, res) => {
   }
 };
 
+export const getAllEvents = async (req, res) => {
+  try {
+    const events = await eventService.getAll();
+    res.status(200).json({
+      status: 'success',
+      results: events.length,
+      data: {
+        events
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar todos os eventos:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Erro interno ao buscar todos os eventos',
+    });
+  }
+};
+
 export const getEvents = async (req, res) => {
   try {
   
     const [events, total] = await eventService.getUpcomingAndCount(req.query);
 
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 100 } = req.query;
     const totalPages = Math.ceil(total / parseInt(limit));
 
     res.json({
@@ -174,7 +193,7 @@ export const getEvents = async (req, res) => {
 export const getMyEvents = async (req, res) => {
   try {
     const id = req.user.id;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 100 } = req.query;
 
     const [events, total] = await eventService.getLoggedUserEvents(req.query, id);
    

@@ -1,0 +1,35 @@
+---
+// src/pages/my-participations.astro
+import MyEvents from "@/components/MyParticipations.jsx";
+import Layout from "../layouts/Layout.astro";
+
+export const prerender = false;
+
+const jwt = Astro.cookies.get("jwt")?.value;
+if (!jwt) return Astro.redirect("/login");
+
+
+let participations = [];
+
+try {
+  const res = await fetch(`api/events/${eventId}/participants/my-events`, {
+    headers: { Cookie: `jwt=${jwt}` },
+  });
+
+  if (res.ok) {
+    const data = await res.json();
+    participations = data.data?.events ?? data.events ?? [];
+  } else if (res.status === 401) {
+    return Astro.redirect("/login");
+  }
+} catch (err) {
+  console.error("Erro ao buscar participações:", err);
+}
+---
+
+<Layout title="Minha participações">
+  <MyEvents
+    client:load
+    participations={JSON.parse(JSON.stringify(participations))}
+  />
+</Layout>

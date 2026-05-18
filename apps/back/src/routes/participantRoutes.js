@@ -11,7 +11,8 @@ import {
   checkEventEnrollment,
   addSubeventParticipant,
   getSubeventParticipants,
-  deleteSubeventParticipant
+  deleteSubeventParticipant,
+  checkSubeventEnrollment,
 } from '../controllers/participantController.js'
 
 const router = express.Router({ mergeParams: true })
@@ -37,5 +38,7 @@ router.route('/:id')
 router.post('/subevent/:subEventId', addSubeventParticipant)
 router.get('/subevent/:subEventId', getSubeventParticipants)
 router.delete('/subevent/:id', deleteSubeventParticipant)
+router.get('/subevent/:subEventId/check', checkSubeventEnrollment);
+
 
 export default router

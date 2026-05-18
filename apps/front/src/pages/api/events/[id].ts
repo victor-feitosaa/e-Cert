@@ -28,7 +28,7 @@ export const GET: APIRoute = async ({ params, request }) => {
 
 export const PUT: APIRoute = async ({ params, request }) => {
   const { id } = params;
-  const url = `${API_URL}/events/${id}`;  // ← mesma variável, definida no topo
+  const url = `${API_URL}/events/${id}`;  
   console.log("🟢 PATCH Proxy - URL:", url);
 
   try {

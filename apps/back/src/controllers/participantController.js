@@ -50,8 +50,11 @@ export const checkEventEnrollment = async (req, res) => {
     const { eventId } = req.params
     const userId = req.user.id
 
-    const participant = await prisma.eventParticipant.findUnique({
-      where: { userId_eventId: { userId, eventId } }
+    const participant = await prisma.eventParticipant.findFirst({
+      where: { 
+        userId: userId, 
+        eventId: eventId 
+      }
     })
 
     res.status(200).json({ enrolled: !!participant })
@@ -139,26 +142,55 @@ export const bulkAddEventParticipants = async (req, res) => {
 
 // ── SubEvent Participants ─────────────────────────────────────────────────────
 
+// src/controllers/participantController.js
+
 export const addSubeventParticipant = async (req, res) => {
   try {
     const { subEventId } = req.params
     const requesterId = req.user.id
 
-    const subEvent = await subEventService.findById(subEventId)
+    console.log("🔍 Buscando subevento:", subEventId)
+
+    // ✅ Buscar o subevento com include do evento
+    const subEvent = await prisma.subEvent.findUnique({
+      where: { id: subEventId },
+      include: {
+        event: true  // Inclui os dados do evento pai
+      }
+    })
+
     if (!subEvent) {
-      return res.status(404).json({ status: 'fail', message: 'Subevento não encontrado' })
+      return res.status(404).json({ 
+        status: 'fail', 
+        message: 'Subevento não encontrado' 
+      })
     }
 
+    console.log("✅ Subevento encontrado:", subEvent.id)
+    console.log("📌 Event ID do subevento:", subEvent.eventId)
+
+    // ✅ Verificar se o evento existe (usando o eventId do subevento)
     const event = await eventService.getById(subEvent.eventId)
+    if (!event) {
+      return res.status(404).json({ 
+        status: 'fail', 
+        message: 'Evento pai não encontrado' 
+      })
+    }
+
     const manager = await isManager(requesterId, subEvent.eventId, event.createdBy)
 
     const targetUserId = manager && req.body.userId ? req.body.userId : requesterId
 
     // Usuário comum precisa estar inscrito no evento principal
     if (!manager) {
-      const enrolledInEvent = await prisma.eventParticipant.findUnique({
-        where: { userId_eventId: { userId: targetUserId, eventId: subEvent.eventId } }
+      const enrolledInEvent = await prisma.eventParticipant.findFirst({
+        where: { 
+          userId: targetUserId, 
+          eventId: subEvent.eventId 
+        }
       })
+      
       if (!enrolledInEvent) {
         return res.status(403).json({
           status: 'fail',
@@ -169,10 +201,13 @@ export const addSubeventParticipant = async (req, res) => {
 
     const participant = await participantService.addSubeventParticipant(subEventId, targetUserId)
 
-    res.status(201).json({ status: 'success', data: { participant } })
+    res.status(201).json({ 
+      status: 'success', 
+      data: { participant } 
+    })
 
   } catch (error) {
-    const alreadyEnrolled = error.message.includes('já está inscrito')
+    const alreadyEnrolled = error.message?.includes('já está inscrito')
     console.error('Erro ao adicionar participante do subevento:', error)
     res.status(alreadyEnrolled ? 409 : 500).json({
       status: alreadyEnrolled ? 'fail' : 'error',
@@ -205,3 +240,29 @@ export const deleteSubeventParticipant = async (req, res) => {
     res.status(500).json({ status: 'error', message: 'Erro ao remover participante' })
   }
 }
+
+
+
+export const checkSubeventEnrollment = async (req, res) => {
+  try {
+    const subEventId = req.params.subEventId;
+    const userId = req.user.id;
+
+    if (!subEventId) {
+      return res.status(400).json({ enrolled: false, error: "subEventId ausente" });
+    }
+
+    const participant = await prisma.subeventParticipant.findFirst({
+      where: {
+        userId,
+        subEventId,
+      }
+    });
+
+    res.status(200).json({ enrolled: !!participant });
+  } catch (error) {
+    console.error('Erro ao checar inscrição no subevento:', error);
+    res.status(500).json({ enrolled: false, error: error.message });
+  }
+};
+

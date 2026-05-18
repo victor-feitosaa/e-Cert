@@ -22,11 +22,12 @@ router.put('/:memberId/updateMember', updateSubMember);
 router.delete('/member/:memberId',  deleteSubMember);
 
 
-
+//sections
 router.post('/:subEventId/sections', createSection);
 router.get('/:subEventId/sections', getSections);
 router.put('/:subEventId/sections/:id', updateSection);
 router.delete('/:subEventId/sections/:id', deleteSection);
+
 
 
 export default router;

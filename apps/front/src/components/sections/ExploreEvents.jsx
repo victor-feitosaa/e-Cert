@@ -1,7 +1,9 @@
+import Explore from "../Explore.jsx"
+
 export default function ExploreEvents() {
     return (
         <section>
-            <h1>teste</h1>
+            <Explore />
         </section>
     )
 }

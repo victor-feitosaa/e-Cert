@@ -35,6 +35,20 @@ class EventRepository {
 
     }
 
+    async getAll() {
+        return prisma.event.findMany({
+            include: {
+                creator: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                }
+            }
+        });
+    }
+
     async getUpcomingAndCount(whereClause, skip, limit) {
         return Promise.all([
             prisma.event.findMany({

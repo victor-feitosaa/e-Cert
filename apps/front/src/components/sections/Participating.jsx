@@ -1,7 +1,9 @@
+import MyParticipations from "../MyParticipations.jsx";
+
 export default function Participating() {
     return (
         <section>
-            <h1>teste</h1>
+            <MyParticipations />
         </section>
     )
 }

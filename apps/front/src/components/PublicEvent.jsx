@@ -1,33 +1,66 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Calendar, Clock, MapPin, Users, Award, Ticket,
   CheckCircle, Loader2, Share2, ExternalLink,
   Building2, Mic2, UserCheck, ArrowRight, Globe,
   Lock, Tag, LogIn, UserPlus, Plus,
+  ArrowLeft, Home,
 } from "lucide-react";
 
-/**
- * Props:
- *   eventData  — objeto do evento (com subEvents, creator, etc.)
- *   eventId    — string UUID do evento
- *   user       — { id, name, email } injetado via SSR pelo Astro, ou null se não autenticado
- *   isEnrolled — boolean, injetado via SSR (checou se user já é EventParticipant deste evento)
- */
 export default function PublicEvent({ eventData, eventId, user = null, isEnrolled: initialEnrolled = false }) {
-  const [enrolled, setEnrolled]           = useState(initialEnrolled);
-  const [enrolling, setEnrolling]         = useState(false);
-  const [enrollError, setEnrollError]     = useState(null);
-
-  // subeventos: mapa de subEventId → estado de inscrição
-  const [subEnrolled, setSubEnrolled]     = useState({});
-  const [subEnrolling, setSubEnrolling]   = useState({});
-  const [subErrors, setSubErrors]         = useState({});
-
-  const [copied, setCopied]               = useState(false);
+  const [enrolled, setEnrolled] = useState(initialEnrolled);
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollError, setEnrollError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [subEnrolled, setSubEnrolled] = useState({});
+  const [subEnrolling, setSubEnrolling] = useState({});
+  const [subErrors, setSubErrors] = useState({});
+  const [copied, setCopied] = useState(false);
 
   const event = eventData;
-  const subEvents = event.subEvents || [];
+  const subEvents = event?.subEvents || [];
   const hasSubEvents = subEvents.length > 0;
+
+  // Buscar status de inscrição dos subeventos
+  const fetchSubeventStatus = async () => {
+    if (!user || !eventId || subEvents.length === 0) return;
+    
+    setLoading(true);
+    try {
+      const promises = subEvents.map(async (sub) => {
+        try {
+          const res = await fetch(`/api/events/${eventId}/subevents/${sub.id}/check-enrollment`, {
+            credentials: "include",
+          });
+          if (res.ok) {
+            const data = await res.json();
+            return { id: sub.id, enrolled: data.enrolled };
+          }
+          return { id: sub.id, enrolled: false };
+        } catch {
+          return { id: sub.id, enrolled: false };
+        }
+      });
+      
+      const results = await Promise.all(promises);
+      const enrollmentMap = {};
+      results.forEach(({ id, enrolled }) => {
+        enrollmentMap[id] = enrolled;
+      });
+      setSubEnrolled(enrollmentMap);
+    } catch (err) {
+      console.error("Erro ao buscar status dos subeventos:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Carregar status quando usuário estiver logado e evento carregado
+  useEffect(() => {
+    if (user && eventId) {
+      fetchSubeventStatus();
+    }
+  }, [user, eventId, subEvents.length]);
 
   /* ── formatters ── */
   const formatDate = (dateStr) => {
@@ -68,13 +101,14 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({}), // user vem do JWT no cookie
+        body: JSON.stringify({}),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message || "Erro ao realizar inscrição");
       }
       setEnrolled(true);
+      await fetchSubeventStatus();
     } catch (err) {
       setEnrollError(err.message);
     } finally {
@@ -87,7 +121,7 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
     setSubEnrolling((s) => ({ ...s, [subEventId]: true }));
     setSubErrors((s) => ({ ...s, [subEventId]: null }));
     try {
-      const res = await fetch(`/api/subevents/${subEventId}/participants/`, {
+      const res = await fetch(`/api/events/${eventId}/subevents/${subEventId}/participants/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -111,12 +145,11 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
     window.location.href = `/login?redirect=${redirect}&mode=${mode}`;
   };
 
-  const startDate = event.date_start || event.date;
-  const isOnline = event.location?.toLowerCase().includes("online");
+  const startDate = event?.date_start || event?.date;
+  const isOnline = event?.location?.toLowerCase().includes("online");
 
-  /* ── painel lateral direito: depende do estado de auth/inscrição ── */
+  /* ── painel lateral direito ── */
   const renderActionPanel = () => {
-    /* Não autenticado */
     if (!user) {
       return (
         <div className="bg-[#13111e] border border-violet-500/20 rounded-2xl overflow-hidden">
@@ -130,18 +163,15 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
                 <p className="text-[11.5px] text-[#3d3860]">Gratuito · Certificado automático</p>
               </div>
             </div>
-
             <p className="text-[13px] text-[#6b6888] leading-relaxed mb-5">
-              Crie sua conta para se inscrever neste evento e receber seu certificado automaticamente após a conclusão.
+              Crie sua conta para se inscrever neste evento e receber seu certificado automaticamente.
             </p>
-
             <button
               onClick={() => goToAuth("register")}
               className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 active:scale-[0.99] text-white font-bold text-[14px] flex items-center justify-center gap-2 transition-all mb-3"
             >
               <UserPlus size={14} /> Criar conta e se inscrever
             </button>
-
             <button
               onClick={() => goToAuth("login")}
               className="w-full py-2.5 rounded-xl bg-transparent border border-white/[0.08] hover:border-white/20 text-[#6b6888] hover:text-white font-semibold text-[13px] flex items-center justify-center gap-2 transition-all"
@@ -151,13 +181,12 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
           </div>
           <div className="px-6 py-3 border-t border-white/[0.05] flex items-center gap-1.5">
             <Lock size={10} className="text-[#3d3860] shrink-0" />
-            <p className="text-[11px] text-[#3d3860]">Seus dados estão seguros e não serão compartilhados</p>
+            <p className="text-[11px] text-[#3d3860]">Seus dados estão seguros</p>
           </div>
         </div>
       );
     }
 
-    /* Autenticado + já inscrito */
     if (enrolled) {
       return (
         <div className="bg-[#13111e] border border-emerald-500/20 rounded-2xl overflow-hidden">
@@ -178,7 +207,6 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
       );
     }
 
-    /* Autenticado + não inscrito */
     return (
       <div className="bg-[#13111e] border border-violet-500/20 rounded-2xl overflow-hidden">
         <div className="p-6">
@@ -220,40 +248,37 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
         </div>
         <div className="px-6 py-3 border-t border-white/[0.05] flex items-center gap-1.5">
           <Lock size={10} className="text-[#3d3860] shrink-0" />
-          <p className="text-[11px] text-[#3d3860]">Seus dados estão seguros e não serão compartilhados</p>
+          <p className="text-[11px] text-[#3d3860]">Seus dados estão seguros</p>
         </div>
       </div>
     );
   };
 
+  if (!event) {
+    return (
+      <div className="dark min-h-screen bg-[#000000] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 size={32} className="animate-spin text-violet-400 mx-auto mb-4" />
+          <p className="text-white">Carregando evento...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="dark">
       <div className="min-h-screen dark bg-[#000000] font-['Nunito',sans-serif] text-white">
-
-        {/* ── NAV ── */}
-        <nav className="sticky top-0 z-50 h-12 flex items-center justify-between px-6 bg-[#0a0a0f]/90 backdrop-blur-md border-b border-white/[0.06]">
-          <div className="flex items-center gap-2">
-
+        {/* ── NAV CENTRALIZADA ── */}
+        <nav className="sticky top-0 z-50 h-14 flex items-center justify-between px-6 bg-[#0a0a0f]/90 backdrop-blur-md border-b border-white/[0.06]">
+          {/* Esquerda - Logo */}
+          <div className="flex items-center gap-2 w-32">
             <span className="text-[15px] font-black tracking-tight">
               e-<span className="text-violet-400">cert</span>
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            {user ? (
-              <div className="flex items-center gap-2 text-[12px] text-[#6b6888]">
-                <div className="w-6 h-6 rounded-full bg-violet-600/20 flex items-center justify-center text-[10px] font-black text-violet-400">
-                  {user.name?.charAt(0).toUpperCase()}
-                </div>
-                <span className="hidden sm:block">{user.name}</span>
-              </div>
-            ) : (
-              <button
-                onClick={() => goToAuth("login")}
-                className="flex items-center gap-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 px-3 py-1.5 rounded-full transition-all"
-              >
-                <LogIn size={11} /> Entrar
-              </button>
-            )}
+
+          {/* Centro - Compartilhar */}
+          <div className="absolute left-1/2 transform -translate-x-1/2">
             <button
               onClick={handleShare}
               className="flex items-center gap-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 px-3 py-1.5 rounded-full transition-all"
@@ -263,13 +288,36 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
                 : <><Share2 size={11} /> Compartilhar</>}
             </button>
           </div>
+
+          {/* Direita - Dashboard/Login */}
+          <div className="flex items-center justify-end gap-2 w-32">
+            {user ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.location.href = "/userDashboard"}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 rounded-full transition-all"
+                >
+                  <Home size={12} />
+                  <span className="hidden sm:inline">Dashboard</span>
+                </button>
+                <div className="w-7 h-7 rounded-full bg-violet-600/20 flex items-center justify-center text-[11px] font-black text-violet-400">
+                  {user.name?.charAt(0).toUpperCase()}
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => goToAuth("login")}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 rounded-full transition-all"
+              >
+                <LogIn size={11} /> Entrar
+              </button>
+            )}
+          </div>
         </nav>
 
-        <div className="max-w-3xl dark mx-auto px-4 py-8 space-y-3">
-
-          {/* ── LINHA 1: título + data/local ── */}
+        <div className="max-w-3xl mx-auto px-4 py-8 space-y-3">
+          {/* LINHA 1: título + data/local */}
           <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-3">
-
             <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl p-6">
               {event.category && (
                 <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-violet-500/10 border border-violet-500/15 text-violet-400 text-[11px] font-bold mb-4 uppercase tracking-wide">
@@ -321,19 +369,12 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
                   <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-3">Local</p>
                   <div className="flex items-start gap-2.5">
                     <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/15 flex items-center justify-center shrink-0">
-                      {isOnline
-                        ? <Globe size={14} className="text-violet-400" />
-                        : <MapPin size={14} className="text-violet-400" />}
+                      {isOnline ? <Globe size={14} className="text-violet-400" /> : <MapPin size={14} className="text-violet-400" />}
                     </div>
                     <div>
                       <p className="text-[13px] font-bold text-white leading-snug">{event.location}</p>
                       {event.locationUrl && (
-                        <a
-                          href={event.locationUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[11.5px] text-violet-400 hover:text-violet-300 flex items-center gap-1 mt-1 transition-colors"
-                        >
+                        <a href={event.locationUrl} target="_blank" rel="noopener noreferrer" className="text-[11.5px] text-violet-400 hover:text-violet-300 flex items-center gap-1 mt-1 transition-colors">
                           Ver mapa <ExternalLink size={9} />
                         </a>
                       )}
@@ -344,35 +385,28 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
             </div>
           </div>
 
-          {/* ── LINHA 2: painel de ação + stats ── */}
+          {/* LINHA 2: painel de ação + stats */}
           <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-3">
-
             {renderActionPanel()}
-
             <div className="flex flex-col gap-3">
               {event.capacity && (
                 <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl p-5">
                   <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-1">Vagas</p>
-                  <p className="text-[34px] font-black text-white leading-none tracking-tight">
-                    {event.capacity.toLocaleString("pt-BR")}
-                  </p>
+                  <p className="text-[34px] font-black text-white leading-none tracking-tight">{event.capacity.toLocaleString("pt-BR")}</p>
                   <p className="text-[11.5px] text-[#6b6888] mt-1">disponíveis</p>
                 </div>
               )}
-
               <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl p-5 flex-1">
                 <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-3">Certificado</p>
                 <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/15 flex items-center justify-center mb-3">
                   <Award size={14} className="text-violet-400" />
                 </div>
-                <p className="text-[12.5px] text-[#6b6888] leading-relaxed">
-                  Emitido automaticamente com link verificável
-                </p>
+                <p className="text-[12.5px] text-[#6b6888] leading-relaxed">Emitido automaticamente com link verificável</p>
               </div>
             </div>
           </div>
 
-          {/* ── SUBEVENTOS ── */}
+          {/* SUBEVENTOS */}
           {hasSubEvents && (
             <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl overflow-hidden">
               <div className="px-6 py-4 border-b border-white/[0.05] flex items-center justify-between">
@@ -387,103 +421,82 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
                 </span>
               </div>
 
-              <div className="divide-y divide-white/[0.04]">
-                {subEvents.map((sub) => {
-                  const RoleIcon =
-                    sub.type === "palestra" ? Mic2
-                    : sub.type === "workshop" ? UserCheck
-                    : Calendar;
-                  const time = formatTime(sub.date_start);
-                  const date = sub.date_start ? formatShortDate(sub.date_start) : null;
-                  const isSubEnrolled = subEnrolled[sub.id];
-                  const isSubEnrolling = subEnrolling[sub.id];
-                  const subError = subErrors[sub.id];
+              {loading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 size={24} className="animate-spin text-violet-400" />
+                </div>
+              ) : (
+                <div className="divide-y divide-white/[0.04]">
+                  {subEvents.map((sub) => {
+                    const RoleIcon = sub.type === "palestra" ? Mic2 : sub.type === "workshop" ? UserCheck : Calendar;
+                    const time = formatTime(sub.date_start);
+                    const date = sub.date_start ? formatShortDate(sub.date_start) : null;
+                    const isSubEnrolled = subEnrolled[sub.id];
+                    const isSubEnrolling = subEnrolling[sub.id];
+                    const subError = subErrors[sub.id];
 
-                  return (
-                    <div key={sub.id} className="px-6 py-4 flex items-start gap-4 hover:bg-white/[0.015] transition-colors">
-                      <div className="w-8 h-8 rounded-xl bg-[#1a1629] border border-white/[0.06] flex items-center justify-center shrink-0 mt-0.5">
-                        <RoleIcon size={13} className="text-violet-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13.5px] font-bold text-white leading-snug">{sub.title}</p>
-                        {sub.description && (
-                          <p className="text-[12px] text-[#6b6888] mt-1 leading-relaxed line-clamp-2">
-                            {sub.description}
-                          </p>
-                        )}
-                        <div className="flex items-center flex-wrap gap-3 mt-2">
-                          {date && (
-                            <span className="flex items-center gap-1 text-[11px] text-[#6b6888]">
-                              <Calendar size={9} /> {date}
-                            </span>
+                    return (
+                      <div key={sub.id} className="px-6 py-4 flex items-start gap-4 hover:bg-white/[0.015] transition-colors">
+                        <div className="w-8 h-8 rounded-xl bg-[#1a1629] border border-white/[0.06] flex items-center justify-center shrink-0 mt-0.5">
+                          <RoleIcon size={13} className="text-violet-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13.5px] font-bold text-white leading-snug">{sub.title}</p>
+                          {sub.description && (
+                            <p className="text-[12px] text-[#6b6888] mt-1 leading-relaxed line-clamp-2">{sub.description}</p>
                           )}
-                          {time && (
-                            <span className="flex items-center gap-1 text-[11px] text-violet-400 font-semibold">
-                              <Clock size={9} /> {time}
+                          <div className="flex items-center flex-wrap gap-3 mt-2">
+                            {date && (
+                              <span className="flex items-center gap-1 text-[11px] text-[#6b6888]">
+                                <Calendar size={9} /> {date}
+                              </span>
+                            )}
+                            {time && (
+                              <span className="flex items-center gap-1 text-[11px] text-violet-400 font-semibold">
+                                <Clock size={9} /> {time}
+                              </span>
+                            )}
+                            {sub.location && (
+                              <span className="flex items-center gap-1 text-[11px] text-[#6b6888]">
+                                <MapPin size={9} /> {sub.location}
+                              </span>
+                            )}
+                          </div>
+                          {subError && <p className="text-[11px] text-red-400 font-medium mt-1">{subError}</p>}
+                        </div>
+
+                        <div className="shrink-0 mt-0.5">
+                          {!enrolled && !initialEnrolled ? (
+                            <span className="text-[11px] text-[#3d3860] italic">Inscreva-se no evento</span>
+                          ) : isSubEnrolled ? (
+                            <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400">
+                              <CheckCircle size={11} /> Inscrito
                             </span>
-                          )}
-                          {sub.location && (
-                            <span className="flex items-center gap-1 text-[11px] text-[#6b6888]">
-                              <MapPin size={9} /> {sub.location}
-                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleSubEnroll(sub.id)}
+                              disabled={isSubEnrolling}
+                              className="flex items-center gap-1.5 text-[12px] font-bold text-violet-400 hover:text-violet-300 border border-violet-500/20 hover:border-violet-500/40 bg-violet-500/5 hover:bg-violet-500/10 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isSubEnrolling ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />}
+                              {isSubEnrolling ? "..." : "Participar"}
+                            </button>
                           )}
                         </div>
-                        {subError && (
-                          <p className="text-[11px] text-red-400 font-medium mt-1">{subError}</p>
-                        )}
                       </div>
+                    );
+                  })}
+                </div>
+              )}
 
-                      {/* Botão de inscrição no subevento — só aparece se inscrito no evento principal */}
-                      <div className="shrink-0 mt-0.5">
-                        {!enrolled && !initialEnrolled ? (
-                          <span className="text-[11px] text-[#3d3860] italic">
-                            Inscreva-se no evento
-                          </span>
-                        ) : isSubEnrolled ? (
-                          <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400">
-                            <CheckCircle size={11} /> Inscrito
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => handleSubEnroll(sub.id)}
-                            disabled={isSubEnrolling}
-                            className="flex items-center gap-1.5 text-[12px] font-bold text-violet-400 hover:text-violet-300 border border-violet-500/20 hover:border-violet-500/40 bg-violet-500/5 hover:bg-violet-500/10 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isSubEnrolling
-                              ? <Loader2 size={11} className="animate-spin" />
-                              : <Plus size={11} />}
-                            {isSubEnrolling ? "..." : "Participar"}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Aviso se não inscrito no evento principal */}
               {!enrolled && !initialEnrolled && user && (
                 <div className="px-6 py-3 border-t border-white/[0.05] flex items-center gap-2 bg-[#0f0d1a]">
                   <Lock size={11} className="text-[#3d3860] shrink-0" />
-                  <p className="text-[11.5px] text-[#3d3860]">
-                    Inscreva-se no evento principal para participar das atividades
-                  </p>
+                  <p className="text-[11.5px] text-[#3d3860]">Inscreva-se no evento principal para participar das atividades</p>
                 </div>
               )}
             </div>
           )}
-
-          {/* ── FOOTER ── */}
-          <div className="flex items-center justify-center gap-1.5 pt-2 pb-4">
-            <span className="text-[11px] text-[#2e2c42]">Powered by</span>
-            <div className="flex items-center gap-1">
-              <div className="w-3.5 h-3.5 rounded bg-gradient-to-br from-violet-600 to-violet-400 flex items-center justify-center">
-                
-              </div>
-              <span className="text-[11px] font-black text-[#3d3860]">e-cert</span>
-            </div>
-          </div>
-
         </div>
       </div>
     </div>

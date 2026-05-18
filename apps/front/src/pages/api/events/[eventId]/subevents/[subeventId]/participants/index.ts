@@ -13,7 +13,7 @@ export const GET: APIRoute = async ({ params, request }) => {
   console.log("🔍 Search:", search);
 
   const baseUrl = import.meta.env.API_URL || "https://ecert.duckdns.org";
-  const apiUrl = `${baseUrl}/events/${eventId}/participants/subevent/${subeventId}${search ? `?search=${search}` : ''}`;
+  const apiUrl = `${baseUrl}/events/${eventId}/participants/subevent/${subeventId}`;
 
   try {
     const response = await fetch(apiUrl, {

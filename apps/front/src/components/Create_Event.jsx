@@ -189,7 +189,7 @@ const handleSubmit = async () => {
   }
 };
 
-  // Tela de sucesso
+ 
 //   if (status === "success") {
 //   // Recupera o eventId do estado ou do localStorage
 //   const eventId = window.__createdEventId || localStorage.getItem('lastCreatedEventId');
@@ -241,7 +241,7 @@ const handleSubmit = async () => {
     if (value) {
       const year = value.split('-')[0];
       if (year && year.length > 4) {
-        return; // Não permite ano com mais de 4 dígitos
+        return; 
       }
     }
     set(field, value);

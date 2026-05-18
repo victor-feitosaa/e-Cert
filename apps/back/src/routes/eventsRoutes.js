@@ -9,6 +9,7 @@ import {
   inviteModerator,
   getModerators,
   deleteModerator,
+  getAllEvents,
 } from '../controllers/eventsController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { isEventOwner } from '../middleware/eventMiddleware.js';
@@ -21,6 +22,7 @@ const router = express.Router();
 // Rotas públicas
 router.get('/', getEvents);
 router.get('/:id', getEventById);
+router.get('/get/all', getAllEvents); 
 
 // Proteger todas as rotas abaixo
 router.use(protect);

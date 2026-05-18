@@ -7,9 +7,13 @@ class EventService {
 
     }
 
+    async getAll() {
+        return await EventRepository.getAll()
+    }
+
     async getUpcomingAndCount(queryParams) {
 
-        const { page = 1, limit = 10, upcoming = 'true' } = queryParams;
+        const { page = 1, limit = 100, upcoming = 'true' } = queryParams;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
         const whereClause = {
@@ -26,7 +30,7 @@ class EventService {
 
 
     async getLoggedUserEvents(queryParams, id) {
-        const { page = 1, limit = 10 } = queryParams;
+        const { page = 1, limit = 100 } = queryParams;
         const skip = (parseInt(page) - 1) * parseInt(limit);
         
         
