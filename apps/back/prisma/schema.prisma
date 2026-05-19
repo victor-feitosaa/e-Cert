@@ -25,6 +25,7 @@ model User {
   receveidPermissions EventPermission[] @relation("GrantedUser")
   eventParticipations EventParticipant[]
   subEventParticipations SubeventParticipant[]
+  sectionParticipations SectionParticipant[]
   certificates        Certificate[]
 }
 
@@ -81,13 +82,33 @@ model Section {
   date_start DateTime
   date_end   DateTime
   location   String?
+  capacity   Int?
   subEventId String
   subEvent   SubEvent @relation(fields: [subEventId], references: [id], onDelete: Cascade)
+
+  participants SectionParticipant[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([subEventId])
+}
+
+
+model SectionParticipant {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId    String
+  sectionId String
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sectionId])  
+  @@index([sectionId])
+  @@index([userId])
 }
 
 // ── Participantes ─────────────────────────────────────────────────────────────

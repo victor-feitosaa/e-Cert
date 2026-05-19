@@ -79,8 +79,9 @@ export const createSection = async (req, res) => {
 export const getSections = async (req, res) => {
   try {
     const { subEventId } = req.params
+    const userId = req.user.id  
 
-    const sections = await sectionService.getAllBySubEventId(subEventId)
+    const sections = await sectionService.getAllBySubEventId(subEventId, userId)
 
     res.status(200).json({
       status: 'success',
@@ -251,3 +252,97 @@ export const deleteAllSectionsFromSubEvent = async (req, res) => {
     })
   }
 }
+
+export const enrollInSection = async (req, res) => {
+  try {
+    const { subEventId, id } = req.params  // id = sectionId
+    const userId = req.user.id
+
+    // Verificar se o subEvento existe
+    const subEvent = await subEventService.findById(subEventId)
+    if (!subEvent) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'SubEvento não encontrado'
+      })
+    }
+
+    // Verificar se o usuário está inscrito no evento principal
+    const enrolledInEvent = await prisma.eventParticipant.findFirst({
+      where: {
+        userId: userId,
+        eventId: subEvent.eventId
+      }
+    })
+
+    if (!enrolledInEvent) {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Você precisa estar inscrito no evento principal primeiro'
+      })
+    }
+
+    const participant = await sectionService.enrollInSection(id, userId)
+
+    res.status(201).json({
+      status: 'success',
+      data: { participant }
+    })
+
+  } catch (error) {
+    console.error('Erro ao inscrever na seção:', error)
+    
+    if (error.message === 'Esta seção está lotada') {
+      return res.status(409).json({
+        status: 'fail',
+        message: error.message
+      })
+    }
+    
+    if (error.message === 'Usuário já está inscrito nesta seção') {
+      return res.status(409).json({
+        status: 'fail',
+        message: error.message
+      })
+    }
+    
+    res.status(500).json({
+      status: 'error',
+      message: 'Erro ao inscrever na seção'
+    })
+  }
+}
+
+export const leaveSection = async (req, res) => {
+  try {
+    const { subEventId, id } = req.params  // id = sectionId
+    const userId = req.user.id
+
+    await sectionService.leaveSection(id, userId)
+
+    res.status(204).send()
+
+  } catch (error) {
+    console.error('Erro ao sair da seção:', error)
+    res.status(500).json({
+      status: 'error',
+      message: error.message || 'Erro ao sair da seção'
+    })
+  }
+}
+
+export const checkSectionEnrollment = async (req, res) => {
+  try {
+    const { subEventId, id } = req.params  // id = sectionId
+    const userId = req.user.id
+
+    const isEnrolled = await sectionService.checkEnrollment(id, userId)
+
+    res.status(200).json({ enrolled: isEnrolled })
+
+  } catch (error) {
+    console.error('Erro ao verificar inscrição na seção:', error)
+    res.status(500).json({ enrolled: false, error: error.message })
+  }
+}
+

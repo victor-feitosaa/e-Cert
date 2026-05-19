@@ -13,6 +13,7 @@ import userRoutes from "./routes/userRoutes.js"
 import testeRoutes from "./routes/testeRoutes.js"
 import sectionRoutes from './routes/sectionRoutes.js'
 import participantRoutes from './routes/participantRoutes.js'
+import myParticipationsRoutes from './routes/myParticipationsRoutes.js';
 
 config();
 connectDB();
@@ -40,6 +41,7 @@ app.use("/auth", authRoutes);
 app.use("/subevents", subEventsRoutes);
 app.use("/user", userRoutes);
 app.use("/testes", testeRoutes);
+app.use('/participants', myParticipationsRoutes);
 app.use('/events/:eventId/subevents/:subEventId/sections', sectionRoutes)
 app.use('/events/:eventId/participants', participantRoutes)
 

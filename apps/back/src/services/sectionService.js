@@ -3,14 +3,12 @@ import SectionRepository from '../repository/SectionRepository.js'
 import subEventService from './subEventService.js'
 
 const sectionService = {
-  async create(title, date_start, date_end, location, subEventId) {
-    // Validar se o subEvento existe
+  async create(title, date_start, date_end, location, capacity, subEventId) {
     const subEvent = await subEventService.findById(subEventId)
     if (!subEvent) {
       throw new Error('SubEvento não encontrado')
     }
 
-    // Validar datas
     if (new Date(date_start) > new Date(date_end)) {
       throw new Error('Data de início não pode ser maior que data de término')
     }
@@ -20,6 +18,7 @@ const sectionService = {
       date_start: new Date(date_start),
       date_end: new Date(date_end),
       location: location || null,
+      capacity: capacity ? parseInt(capacity) : null,
       subEventId
     })
 
@@ -34,14 +33,32 @@ const sectionService = {
     return section
   },
 
-  async getAllBySubEventId(subEventId) {
-    // Verificar se o subEvento existe
+  async getAllBySubEventId(subEventId, userId = null) {
     const subEvent = await subEventService.findById(subEventId)
     if (!subEvent) {
       throw new Error('SubEvento não encontrado')
     }
 
     const sections = await SectionRepository.findAllBySubEventId(subEventId)
+    
+    // Se userId fornecido, adiciona informação se usuário está inscrito
+    if (userId) {
+      const userParticipations = await SectionRepository.getUserParticipationsBySubEvent(subEventId, userId)
+      const participationMap = {}
+      userParticipations.forEach(p => {
+        participationMap[p.sectionId] = p.isEnrolled
+      })
+      
+      return sections.map(section => ({
+        ...section,
+        isEnrolled: participationMap[section.id] || false,
+        enrolledCount: section._count?.participants || 0,
+        availableSpots: section.capacity 
+          ? Math.max(0, section.capacity - (section._count?.participants || 0))
+          : null
+      }))
+    }
+    
     return sections
   },
 
@@ -71,7 +88,10 @@ const sectionService = {
       dataToUpdate.location = updates.location?.trim() || null
     }
 
-    // Validar datas se ambas foram fornecidas
+    if (updates.capacity !== undefined) {
+      dataToUpdate.capacity = updates.capacity ? parseInt(updates.capacity) : null
+    }
+
     const finalDateStart = dataToUpdate.date_start || existingSection.date_start
     const finalDateEnd = dataToUpdate.date_end || existingSection.date_end
 
@@ -94,7 +114,6 @@ const sectionService = {
   },
 
   async deleteAllBySubEventId(subEventId) {
-    // Verificar se o subEvento existe
     const subEvent = await subEventService.findById(subEventId)
     if (!subEvent) {
       throw new Error('SubEvento não encontrado')
@@ -110,6 +129,44 @@ const sectionService = {
       throw new Error('Data de início não pode ser maior que data de término')
     }
     return true
+  },
+
+  // ── NOVOS MÉTODOS PARA INSCRIÇÃO ──
+  async enrollInSection(sectionId, userId) {
+    const section = await SectionRepository.findById(sectionId)
+    if (!section) {
+      throw new Error('Seção não encontrada')
+    }
+
+    // Verificar capacidade
+    if (section.capacity) {
+      const participantCount = await SectionRepository.countParticipants(sectionId)
+      if (participantCount >= section.capacity) {
+        throw new Error('Esta seção está lotada')
+      }
+    }
+
+    // Verificar se já está inscrito
+    const existing = await SectionRepository.findParticipant(sectionId, userId)
+    if (existing) {
+      throw new Error('Usuário já está inscrito nesta seção')
+    }
+
+    return SectionRepository.addParticipant(sectionId, userId)
+  },
+
+  async leaveSection(sectionId, userId) {
+    const participant = await SectionRepository.findParticipant(sectionId, userId)
+    if (!participant) {
+      throw new Error('Você não está inscrito nesta seção')
+    }
+
+    return SectionRepository.removeParticipant(sectionId, userId)
+  },
+
+  async checkEnrollment(sectionId, userId) {
+    const participant = await SectionRepository.findParticipant(sectionId, userId)
+    return !!participant
   }
 }
 

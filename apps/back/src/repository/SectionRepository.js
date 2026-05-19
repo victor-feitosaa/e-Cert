@@ -9,6 +9,7 @@ const SectionRepository = {
         date_start: data.date_start,
         date_end: data.date_end,
         location: data.location,
+        capacity: data.capacity, // ← NOVO
         subEventId: data.subEventId,
       }
     })
@@ -22,6 +23,17 @@ const SectionRepository = {
           include: {
             event: true
           }
+        },
+        participants: { // ← NOVO
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
         }
       }
     })
@@ -30,7 +42,12 @@ const SectionRepository = {
   async findAllBySubEventId(subEventId) {
     return prisma.section.findMany({
       where: { subEventId },
-      orderBy: { date_start: 'asc' }
+      orderBy: { date_start: 'asc' },
+      include: {
+        _count: { // ← NOVO: conta participantes
+          select: { participants: true }
+        }
+      }
     })
   },
 
@@ -42,6 +59,7 @@ const SectionRepository = {
         date_start: data.date_start,
         date_end: data.date_end,
         location: data.location,
+        capacity: data.capacity, // ← NOVO
       }
     })
   },
@@ -62,6 +80,70 @@ const SectionRepository = {
     return prisma.section.count({
       where: { subEventId }
     })
+  },
+
+  // ── NOVOS MÉTODOS PARA PARTICIPANTES ──
+  async addParticipant(sectionId, userId) {
+    return prisma.sectionParticipant.create({
+      data: {
+        userId,
+        sectionId
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
+    })
+  },
+
+  async removeParticipant(sectionId, userId) {
+    return prisma.sectionParticipant.delete({
+      where: {
+        userId_sectionId: {
+          userId,
+          sectionId
+        }
+      }
+    })
+  },
+
+  async findParticipant(sectionId, userId) {
+    return prisma.sectionParticipant.findUnique({
+      where: {
+        userId_sectionId: {
+          userId,
+          sectionId
+        }
+      }
+    })
+  },
+
+  async countParticipants(sectionId) {
+    return prisma.sectionParticipant.count({
+      where: { sectionId }
+    })
+  },
+
+  async getUserParticipationsBySubEvent(subEventId, userId) {
+    const sections = await prisma.section.findMany({
+      where: { subEventId },
+      include: {
+        participants: {
+          where: { userId },
+          select: { id: true }
+        }
+      }
+    })
+    
+    return sections.map(section => ({
+      sectionId: section.id,
+      isEnrolled: section.participants.length > 0
+    }))
   }
 }
 

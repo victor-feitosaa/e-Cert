@@ -2,7 +2,7 @@ import MyParticipations from "../MyParticipations.jsx";
 
 export default function Participating() {
     return (
-        <section>
+        <section className="min-h-screen">
             <MyParticipations />
         </section>
     )

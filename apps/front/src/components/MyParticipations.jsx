@@ -1,40 +1,76 @@
-import { useState, useMemo } from "react";
+// src/components/MyParticipations.jsx
+import { useState, useEffect, useMemo } from "react";
 import {
   Calendar, MapPin, Clock, Award, Globe,
   ChevronRight, Search, X, Tag, Users,
-  CheckCircle2, CalendarClock, Ticket,
+  CheckCircle2, CalendarClock, Ticket, Loader2
 } from "lucide-react";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr) {
   if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("pt-BR", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return "—";
+    return date.toLocaleDateString("pt-BR", {
+      day: "2-digit", month: "short", year: "numeric",
+    });
+  } catch {
+    return "—";
+  }
 }
 
 function formatTime(dateStr) {
   if (!dateStr) return null;
-  const d = new Date(dateStr);
-  const h = d.getHours().toString().padStart(2, "0");
-  const m = d.getMinutes().toString().padStart(2, "0");
-  return `${h}:${m}`;
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return null;
+    const h = date.getHours().toString().padStart(2, "0");
+    const m = date.getMinutes().toString().padStart(2, "0");
+    return `${h}:${m}`;
+  } catch {
+    return null;
+  }
 }
 
 function isUpcoming(dateStr) {
   if (!dateStr) return false;
-  return new Date(dateStr) > new Date();
+  try {
+    const eventDate = new Date(dateStr);
+    if (isNaN(eventDate.getTime())) return false;
+    return eventDate > new Date();
+  } catch {
+    return false;
+  }
 }
 
 function daysLeft(dateStr) {
-  const diff = new Date(dateStr) - new Date();
-  return Math.ceil(diff / 86400000);
+  if (!dateStr) return null;
+  try {
+    const eventDate = new Date(dateStr);
+    if (isNaN(eventDate.getTime())) return null;
+    const diff = eventDate - new Date();
+    return Math.ceil(diff / 86400000);
+  } catch {
+    return null;
+  }
 }
 
 // ── empty state ───────────────────────────────────────────────────────────────
 
-function Empty({ filtered }) {
+function Empty({ filtered, loading }) {
+  if (loading) {
+    return (
+      <div className="col-span-full flex flex-col items-center justify-center py-24 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-[#13111e] border border-white/[0.06] flex items-center justify-center mx-auto mb-4">
+          <div className="w-6 h-6 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+        </div>
+        <p className="text-[15px] font-bold text-white/40 mb-1">Carregando participações...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="col-span-full flex flex-col items-center justify-center py-24 text-center">
       <div className="w-14 h-14 rounded-2xl bg-[#13111e] border border-white/[0.06] flex items-center justify-center mx-auto mb-4">
@@ -55,22 +91,21 @@ function Empty({ filtered }) {
 // ── event card ────────────────────────────────────────────────────────────────
 
 function EventCard({ event }) {
-  const date = event.date_start || event.date;
-  const upcoming = isUpcoming(date);
+  // Prioriza date_start, depois date, depois createdAt
+  const dateStr = event.date_start || event.date || event.createdAt;
+  const date = formatDate(dateStr);
+  const time = formatTime(dateStr);
+  const upcoming = isUpcoming(dateStr);
   const online = event.location?.toLowerCase().includes("online");
-  const days = upcoming && date ? daysLeft(date) : null;
+  const days = upcoming && dateStr ? daysLeft(dateStr) : null;
 
   return (
     <a
-      href={`/event?id=${event.id}`}
+      href={`/eventPage?id=${event.id}`}
       className="group bg-[#13111e] border border-white/[0.07] hover:border-violet-500/25 rounded-2xl overflow-hidden flex flex-col transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
     >
-      {/* top accent */}
       <div className={`h-0.5 w-full ${upcoming ? "bg-violet-600/60" : "bg-white/[0.06]"}`} />
-
       <div className="p-5 flex flex-col gap-4 flex-1">
-
-        {/* header row */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1.5">
             {event.category && (
@@ -82,28 +117,35 @@ function EventCard({ event }) {
               {event.title}
             </h3>
           </div>
-
-          {/* status pill */}
           {upcoming ? (
             days !== null && days <= 7 ? (
               <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 whitespace-nowrap">
                 {days === 0 ? "Hoje" : `${days}d`}
               </span>
-            ) : (
+            ) : days !== null ? (
               <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 whitespace-nowrap">
                 Próximo
               </span>
+            ) : (
+              <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[#6b6888] whitespace-nowrap">
+                Data indefinida
+              </span>
             )
-          ) : (
+          ) : dateStr ? (
             <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[#6b6888] whitespace-nowrap">
               Concluído
+            </span>
+          ) : (
+            <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[#6b6888] whitespace-nowrap">
+              Sem data
             </span>
           )}
         </div>
 
-        {/* meta */}
         <div className="flex flex-col gap-2">
-          <MetaRow Icon={Calendar} text={formatDate(date)} sub={formatTime(date)} />
+          {date !== "—" && (
+            <MetaRow Icon={Calendar} text={date} sub={time} />
+          )}
           {event.location && (
             <MetaRow Icon={online ? Globe : MapPin} text={event.location} />
           )}
@@ -112,7 +154,6 @@ function EventCard({ event }) {
           )}
         </div>
 
-        {/* description */}
         {event.description && (
           <p className="text-[12.5px] text-[#6b6888] leading-relaxed line-clamp-2 flex-1">
             {event.description}
@@ -120,7 +161,6 @@ function EventCard({ event }) {
         )}
       </div>
 
-      {/* footer */}
       <div className="px-5 py-3 border-t border-white/[0.05] flex items-center justify-between">
         <div className="flex items-center gap-2">
           {event.workload && (
@@ -161,8 +201,6 @@ function MetaRow({ Icon, text, sub }) {
   );
 }
 
-// ── stat card ─────────────────────────────────────────────────────────────────
-
 function Stat({ value, label, Icon }) {
   return (
     <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl p-5">
@@ -175,20 +213,48 @@ function Stat({ value, label, Icon }) {
   );
 }
 
-// ── main ──────────────────────────────────────────────────────────────────────
-
-export default function MyParticipations({ participations = [] }) {
+// ── MAIN ──
+export default function MyParticipations() {
+  const [participations, setParticipations] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all"); // all | upcoming | done
+  const [filter, setFilter] = useState("all");
+
+  // Buscar participações via proxy
+  useEffect(() => {
+    const fetchParticipations = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/participants/my-events", {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const events = data?.data?.events || data?.events || [];
+               
+          setParticipations(events);
+        } else {
+          console.error("Erro na resposta:", res.status);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar participações:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchParticipations();
+  }, []);
 
   const upcoming = participations.filter((e) => isUpcoming(e.date_start || e.date));
-  const done = participations.filter((e) => !isUpcoming(e.date_start || e.date));
+  const done = participations.filter((e) => !isUpcoming(e.date_start || e.date) && (e.date_start || e.date));
+  const noDate = participations.filter((e) => !e.date_start && !e.date);
   const withCert = participations.filter((e) => e.certIssued);
 
   const filtered = useMemo(() => {
     let list = [...participations];
     if (filter === "upcoming") list = list.filter((e) => isUpcoming(e.date_start || e.date));
-    if (filter === "done") list = list.filter((e) => !isUpcoming(e.date_start || e.date));
+    if (filter === "done") list = list.filter((e) => !isUpcoming(e.date_start || e.date) && (e.date_start || e.date));
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -204,15 +270,20 @@ export default function MyParticipations({ participations = [] }) {
 
   const hasFilter = search || filter !== "all";
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64 gap-3">
+        <div className="w-6 h-6 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+        <span className="text-sm text-[#6b6888]">Carregando participações...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="dark">
       <div className="min-h-screen bg-[#0a0a0f] font-['Nunito',sans-serif] text-white">
-
-
-
         <div className="max-w-4xl mx-auto px-4 py-8 space-y-4">
 
-          {/* header */}
           <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl p-6">
             <p className="text-[11px] font-bold text-[#3d3860] uppercase tracking-widest mb-2">Conta</p>
             <h1 className="text-[24px] font-black text-white tracking-tight mb-1">
@@ -223,16 +294,13 @@ export default function MyParticipations({ participations = [] }) {
             </p>
           </div>
 
-          {/* stats bento */}
           <div className="grid grid-cols-3 gap-3">
             <Stat value={participations.length} label="Total de inscrições" Icon={Ticket} />
             <Stat value={upcoming.length} label="Próximos eventos" Icon={CalendarClock} />
             <Stat value={withCert.length} label="Certificados emitidos" Icon={Award} />
           </div>
 
-          {/* search + filters */}
           <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl p-4 flex flex-wrap items-center gap-3">
-            {/* search */}
             <div className="relative flex-1 min-w-[180px]">
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#3d3860] pointer-events-none" />
               <input
@@ -252,7 +320,6 @@ export default function MyParticipations({ participations = [] }) {
               )}
             </div>
 
-            {/* filter tabs */}
             <div className="flex gap-1.5">
               {[
                 { v: "all", l: "Todos" },
@@ -273,21 +340,17 @@ export default function MyParticipations({ participations = [] }) {
               ))}
             </div>
 
-            {/* count */}
             <span className="text-[12px] text-[#3d3860] font-semibold ml-auto">
               {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
             </span>
           </div>
 
-          {/* grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {filtered.length === 0
-              ? <Empty filtered={hasFilter} />
+              ? <Empty filtered={hasFilter} loading={loading} />
               : filtered.map((event) => <EventCard key={event.id} event={event} />)
             }
           </div>
-
-
 
         </div>
       </div>

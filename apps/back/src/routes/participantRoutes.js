@@ -13,6 +13,7 @@ import {
   getSubeventParticipants,
   deleteSubeventParticipant,
   checkSubeventEnrollment,
+  getMyParticipations,
 } from '../controllers/participantController.js'
 
 const router = express.Router({ mergeParams: true })

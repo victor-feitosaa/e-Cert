@@ -266,3 +266,57 @@ export const checkSubeventEnrollment = async (req, res) => {
   }
 };
 
+
+export const getMyParticipations = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const participations = await prisma.eventParticipant.findMany({
+      where: { userId },
+      include: {
+        event: {
+          include: {
+            creator: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        event: {
+          date_start: 'asc'
+        }
+      }
+    });
+
+    const events = participations.map(p => ({
+      id: p.event.id,
+      title: p.event.title,
+      description: p.event.description,
+      date_start: p.event.date_start,
+      date_end: p.event.date_end,
+      location: p.event.location,
+      category: p.event.category,
+      organizer: p.event.creator,
+      isPublic: p.event.isPublic,
+      createdAt: p.createdAt
+    }));
+
+    res.status(200).json({
+      status: 'success',
+      results: events.length,
+      data: { events }
+    });
+
+  } catch (error) {
+    console.error('Erro ao buscar participações:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Erro ao buscar participações'
+    });
+  }
+};

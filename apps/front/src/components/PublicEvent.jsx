@@ -4,63 +4,62 @@ import {
   CheckCircle, Loader2, Share2, ExternalLink,
   Building2, Mic2, UserCheck, ArrowRight, Globe,
   Lock, Tag, LogIn, UserPlus, Plus,
-  ArrowLeft, Home,
+  ArrowLeft, Home, ChevronDown, ChevronUp, XCircle
 } from "lucide-react";
+import Particles from "./Particles";
+import UserMenu from "./UserMenu";
 
 export default function PublicEvent({ eventData, eventId, user = null, isEnrolled: initialEnrolled = false }) {
   const [enrolled, setEnrolled] = useState(initialEnrolled);
   const [enrolling, setEnrolling] = useState(false);
   const [enrollError, setEnrollError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [subEnrolled, setSubEnrolled] = useState({});
-  const [subEnrolling, setSubEnrolling] = useState({});
-  const [subErrors, setSubErrors] = useState({});
+  const [sectionsData, setSectionsData] = useState({});
+  const [expandedSubEvents, setExpandedSubEvents] = useState({});
+  const [sectionEnrolling, setSectionEnrolling] = useState({});
+  const [sectionLeaving, setSectionLeaving] = useState({});
+  const [sectionErrors, setSectionErrors] = useState({});
   const [copied, setCopied] = useState(false);
 
   const event = eventData;
   const subEvents = event?.subEvents || [];
   const hasSubEvents = subEvents.length > 0;
 
-  // Buscar status de inscrição dos subeventos
-  const fetchSubeventStatus = async () => {
-    if (!user || !eventId || subEvents.length === 0) return;
-    
-    setLoading(true);
+  // Buscar seções de um subevento específico
+  const fetchSections = async (subEventId) => {
+    // Usuário não logado pode ver as seções mas não se inscrever
     try {
-      const promises = subEvents.map(async (sub) => {
-        try {
-          const res = await fetch(`/api/events/${eventId}/subevents/${sub.id}/check-enrollment`, {
-            credentials: "include",
-          });
-          if (res.ok) {
-            const data = await res.json();
-            return { id: sub.id, enrolled: data.enrolled };
-          }
-          return { id: sub.id, enrolled: false };
-        } catch {
-          return { id: sub.id, enrolled: false };
-        }
+      const res = await fetch(`/api/events/${eventId}/subevents/${subEventId}/sections`, {
+        credentials: user ? "include" : "omit",
       });
-      
-      const results = await Promise.all(promises);
-      const enrollmentMap = {};
-      results.forEach(({ id, enrolled }) => {
-        enrollmentMap[id] = enrolled;
-      });
-      setSubEnrolled(enrollmentMap);
+      if (res.ok) {
+        const data = await res.json();
+        setSectionsData(prev => ({
+          ...prev,
+          [subEventId]: data.data?.sections || []
+        }));
+      }
     } catch (err) {
-      console.error("Erro ao buscar status dos subeventos:", err);
-    } finally {
-      setLoading(false);
+      console.error("Erro ao buscar seções:", err);
     }
   };
 
-  // Carregar status quando usuário estiver logado e evento carregado
+  // Carregar seções quando o usuário estiver logado ou não
   useEffect(() => {
-    if (user && eventId) {
-      fetchSubeventStatus();
+    if (eventId && subEvents.length > 0) {
+      subEvents.forEach(sub => {
+        fetchSections(sub.id);
+      });
     }
-  }, [user, eventId, subEvents.length]);
+  }, [user, eventId, subEvents]);
+
+  // Toggle expansão do subevento
+  const toggleSubEvent = (subEventId) => {
+    setExpandedSubEvents(prev => ({
+      ...prev,
+      [subEventId]: !prev[subEventId]
+    }));
+  };
 
   /* ── formatters ── */
   const formatDate = (dateStr) => {
@@ -94,6 +93,11 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
 
   /* ── inscrição no evento principal ── */
   const handleEnroll = async () => {
+    if (!user) {
+      goToAuth("register");
+      return;
+    }
+    
     setEnrolling(true);
     setEnrollError(null);
     try {
@@ -108,7 +112,10 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
         throw new Error(data.message || "Erro ao realizar inscrição");
       }
       setEnrolled(true);
-      await fetchSubeventStatus();
+      // Recarregar seções após inscrever no evento
+      subEvents.forEach(sub => {
+        fetchSections(sub.id);
+      });
     } catch (err) {
       setEnrollError(err.message);
     } finally {
@@ -116,12 +123,17 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
     }
   };
 
-  /* ── inscrição em subevento ── */
-  const handleSubEnroll = async (subEventId) => {
-    setSubEnrolling((s) => ({ ...s, [subEventId]: true }));
-    setSubErrors((s) => ({ ...s, [subEventId]: null }));
+  /* ── inscrição em seção ── */
+  const handleSectionEnroll = async (sectionId, subEventId) => {
+    if (!user) {
+      goToAuth("register");
+      return;
+    }
+    
+    setSectionEnrolling((s) => ({ ...s, [sectionId]: true }));
+    setSectionErrors((s) => ({ ...s, [sectionId]: null }));
     try {
-      const res = await fetch(`/api/events/${eventId}/subevents/${subEventId}/participants/`, {
+      const res = await fetch(`/api/events/${eventId}/subevents/${subEventId}/sections/${sectionId}/enroll`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -129,13 +141,36 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || "Erro ao se inscrever");
+        throw new Error(data.message || "Erro ao se inscrever na sessão");
       }
-      setSubEnrolled((s) => ({ ...s, [subEventId]: true }));
+      await fetchSections(subEventId);
     } catch (err) {
-      setSubErrors((s) => ({ ...s, [subEventId]: err.message }));
+      setSectionErrors((s) => ({ ...s, [sectionId]: err.message }));
     } finally {
-      setSubEnrolling((s) => ({ ...s, [subEventId]: false }));
+      setSectionEnrolling((s) => ({ ...s, [sectionId]: false }));
+    }
+  };
+
+  /* ── cancelar inscrição em seção ── */
+  const handleSectionLeave = async (sectionId, subEventId) => {
+    if (!user) return;
+    
+    setSectionLeaving((s) => ({ ...s, [sectionId]: true }));
+    setSectionErrors((s) => ({ ...s, [sectionId]: null }));
+    try {
+      const res = await fetch(`/api/events/${eventId}/subevents/${subEventId}/sections/${sectionId}/leave`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Erro ao cancelar inscrição");
+      }
+      await fetchSections(subEventId);
+    } catch (err) {
+      setSectionErrors((s) => ({ ...s, [sectionId]: err.message }));
+    } finally {
+      setSectionLeaving((s) => ({ ...s, [sectionId]: false }));
     }
   };
 
@@ -266,186 +301,186 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
   }
 
   return (
-    <div className="dark">
-      <div className="min-h-screen dark bg-[#000000] font-['Nunito',sans-serif] text-white">
-        {/* ── NAV CENTRALIZADA ── */}
-        <nav className="sticky top-0 z-50 h-14 flex items-center justify-between px-6 bg-[#0a0a0f]/90 backdrop-blur-md border-b border-white/[0.06]">
-          {/* Esquerda - Logo */}
-          <div className="flex items-center gap-2 w-32">
-            <span className="text-[15px] font-black tracking-tight">
-              e-<span className="text-violet-400">cert</span>
-            </span>
-          </div>
+    <div className="dark relative min-h-screen bg-[#000000] font-['Nunito',sans-serif] text-white">
+      {/* Fundo com partículas */}
+      <div className="fixed inset-0 w-full h-full z-0">
+        <Particles
+          particleCount={150}
+          particleSpread={8}
+          speed={0.05}
+          particleColors={["#8b5cf6", "#a78bfa", "#6d28d9"]}
+          particleBaseSize={80}
+          alphaParticles={true}
+          disableRotation={false}
+          className="w-full h-full"
+        />
+      </div>
 
-          {/* Centro - Compartilhar */}
-          <div className="absolute left-1/2 transform -translate-x-1/2">
-            <button
-              onClick={handleShare}
-              className="flex items-center gap-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 px-3 py-1.5 rounded-full transition-all"
-            >
-              {copied
-                ? <><CheckCircle size={11} className="text-emerald-400" /> Copiado</>
-                : <><Share2 size={11} /> Compartilhar</>}
-            </button>
-          </div>
+      {/* NAV CENTRALIZADA */}
+      <nav className="sticky top-0 z-50 h-14 flex items-center justify-between px-6 bg-[#0a0a0f]/90 backdrop-blur-md border-b border-white/[0.06]">
+  <div className="flex items-center gap-2 w-32">
+    <span className="text-[15px] font-black tracking-tight">
+      e-<span className="text-violet-400">cert</span>
+    </span>
+  </div>
 
-          {/* Direita - Dashboard/Login */}
-          <div className="flex items-center justify-end gap-2 w-32">
-            {user ? (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => window.location.href = "/userDashboard"}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 rounded-full transition-all"
-                >
-                  <Home size={12} />
-                  <span className="hidden sm:inline">Dashboard</span>
-                </button>
-                <div className="w-7 h-7 rounded-full bg-violet-600/20 flex items-center justify-center text-[11px] font-black text-violet-400">
-                  {user.name?.charAt(0).toUpperCase()}
-                </div>
+  <div className="absolute left-1/2 transform -translate-x-1/2">
+    <button
+      onClick={handleShare}
+      className="flex items-center gap-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 px-3 py-1.5 rounded-full transition-all"
+    >
+      {copied
+        ? <><CheckCircle size={11} className="text-emerald-400" /> Copiado</>
+        : <><Share2 size={11} /> Compartilhar</>}
+    </button>
+  </div>
+
+  <div className="flex items-center justify-end gap-2 w-32">
+    {user ? (
+      <UserMenu user={user} />
+    ) : (
+      <button
+        onClick={() => goToAuth("login")}
+        className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 rounded-full transition-all"
+      >
+        <LogIn size={11} /> Entrar
+      </button>
+    )}
+  </div>
+</nav>
+
+      <div className="relative z-10 max-w-4xl mx-auto px-4 py-8 space-y-3">
+        {/* LINHA 1: título + data/local */}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3">
+          <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-2xl p-6">
+            {event.category && (
+              <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-violet-500/10 border border-violet-500/15 text-violet-400 text-[11px] font-bold mb-4 uppercase tracking-wide">
+                <Tag size={9} /> {event.category}
               </div>
-            ) : (
-              <button
-                onClick={() => goToAuth("login")}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 rounded-full transition-all"
-              >
-                <LogIn size={11} /> Entrar
-              </button>
+            )}
+            <h1 className="text-[24px] md:text-[28px] font-black leading-tight tracking-tight text-white mb-3">
+              {event.title}
+            </h1>
+            {event.description && (
+              <p className="text-[#6b6888] text-[13.5px] leading-relaxed line-clamp-3">
+                {event.description}
+              </p>
+            )}
+            {event.creator?.name && (
+              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/[0.06]">
+                <div className="w-6 h-6 rounded-full bg-violet-600/20 flex items-center justify-center text-[10px] font-black text-violet-400">
+                  {event.creator.name.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-[12px] text-[#6b6888]">
+                  por <strong className="text-white/60">{event.creator.name}</strong>
+                </span>
+              </div>
             )}
           </div>
-        </nav>
 
-        <div className="max-w-3xl mx-auto px-4 py-8 space-y-3">
-          {/* LINHA 1: título + data/local */}
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-3">
-            <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl p-6">
-              {event.category && (
-                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-violet-500/10 border border-violet-500/15 text-violet-400 text-[11px] font-bold mb-4 uppercase tracking-wide">
-                  <Tag size={9} /> {event.category}
+          <div className="flex flex-col gap-3">
+            <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-2xl p-5 flex-1">
+              <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-3">Data</p>
+              <div className="flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/15 flex items-center justify-center shrink-0">
+                  <Calendar size={14} className="text-violet-400" />
                 </div>
-              )}
-              <h1 className="text-[24px] md:text-[28px] font-black leading-tight tracking-tight text-white mb-3">
-                {event.title}
-              </h1>
-              {event.description && (
-                <p className="text-[#6b6888] text-[13.5px] leading-relaxed line-clamp-3">
-                  {event.description}
-                </p>
-              )}
-              {event.creator?.name && (
-                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/[0.06]">
-                  <div className="w-6 h-6 rounded-full bg-violet-600/20 flex items-center justify-center text-[10px] font-black text-violet-400">
-                    {event.creator.name.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="text-[12px] text-[#6b6888]">
-                    por <strong className="text-white/60">{event.creator.name}</strong>
-                  </span>
+                <div>
+                  <p className="text-[13px] font-bold text-white leading-snug">
+                    {formatDate(startDate)}
+                  </p>
+                  {formatTime(startDate) && (
+                    <p className="text-[12px] text-[#6b6888] mt-0.5 flex items-center gap-1">
+                      <Clock size={10} /> {formatTime(startDate)}
+                    </p>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl p-5 flex-1">
-                <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-3">Data</p>
+            {event.location && (
+              <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-2xl p-5 flex-1">
+                <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-3">Local</p>
                 <div className="flex items-start gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/15 flex items-center justify-center shrink-0">
-                    <Calendar size={14} className="text-violet-400" />
+                    {isOnline ? <Globe size={14} className="text-violet-400" /> : <MapPin size={14} className="text-violet-400" />}
                   </div>
                   <div>
-                    <p className="text-[13px] font-bold text-white leading-snug">
-                      {formatDate(startDate)}
-                    </p>
-                    {formatTime(startDate) && (
-                      <p className="text-[12px] text-[#6b6888] mt-0.5 flex items-center gap-1">
-                        <Clock size={10} /> {formatTime(startDate)}
-                      </p>
+                    <p className="text-[13px] font-bold text-white leading-snug">{event.location}</p>
+                    {event.locationUrl && (
+                      <a href={event.locationUrl} target="_blank" rel="noopener noreferrer" className="text-[11.5px] text-violet-400 hover:text-violet-300 flex items-center gap-1 mt-1 transition-colors">
+                        Ver mapa <ExternalLink size={9} />
+                      </a>
                     )}
                   </div>
                 </div>
               </div>
+            )}
+          </div>
+        </div>
 
-              {event.location && (
-                <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl p-5 flex-1">
-                  <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-3">Local</p>
-                  <div className="flex items-start gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/15 flex items-center justify-center shrink-0">
-                      {isOnline ? <Globe size={14} className="text-violet-400" /> : <MapPin size={14} className="text-violet-400" />}
-                    </div>
-                    <div>
-                      <p className="text-[13px] font-bold text-white leading-snug">{event.location}</p>
-                      {event.locationUrl && (
-                        <a href={event.locationUrl} target="_blank" rel="noopener noreferrer" className="text-[11.5px] text-violet-400 hover:text-violet-300 flex items-center gap-1 mt-1 transition-colors">
-                          Ver mapa <ExternalLink size={9} />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+        {/* LINHA 2: painel de ação + stats */}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3">
+          {renderActionPanel()}
+          <div className="flex flex-col gap-3">
+            {event.capacity && (
+              <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-2xl p-5">
+                <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-1">Vagas</p>
+                <p className="text-[34px] font-black text-white leading-none tracking-tight">{event.capacity.toLocaleString("pt-BR")}</p>
+                <p className="text-[11.5px] text-[#6b6888] mt-1">disponíveis</p>
+              </div>
+            )}
+            <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-2xl p-5 flex-1">
+              <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-3">Certificado</p>
+              <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/15 flex items-center justify-center mb-3">
+                <Award size={14} className="text-violet-400" />
+              </div>
+              <p className="text-[12.5px] text-[#6b6888] leading-relaxed">Emitido automaticamente com link verificável</p>
             </div>
           </div>
+        </div>
 
-          {/* LINHA 2: painel de ação + stats */}
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-3">
-            {renderActionPanel()}
-            <div className="flex flex-col gap-3">
-              {event.capacity && (
-                <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl p-5">
-                  <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-1">Vagas</p>
-                  <p className="text-[34px] font-black text-white leading-none tracking-tight">{event.capacity.toLocaleString("pt-BR")}</p>
-                  <p className="text-[11.5px] text-[#6b6888] mt-1">disponíveis</p>
+        {/* SUBEVENTOS COM SEÇÕES */}
+        {hasSubEvents && (
+          <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-white/[0.05] flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-violet-600/10 border border-violet-500/15 flex items-center justify-center">
+                  <Calendar size={12} className="text-violet-400" />
                 </div>
-              )}
-              <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl p-5 flex-1">
-                <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-3">Certificado</p>
-                <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/15 flex items-center justify-center mb-3">
-                  <Award size={14} className="text-violet-400" />
-                </div>
-                <p className="text-[12.5px] text-[#6b6888] leading-relaxed">Emitido automaticamente com link verificável</p>
+                <h2 className="text-[14.5px] font-black text-white tracking-tight">Programação</h2>
               </div>
+              <span className="text-[11px] font-bold text-[#3d3860] bg-white/[0.04] border border-white/[0.05] px-2.5 py-1 rounded-lg">
+                {subEvents.length} {subEvents.length === 1 ? "atividade" : "atividades"}
+              </span>
             </div>
-          </div>
 
-          {/* SUBEVENTOS */}
-          {hasSubEvents && (
-            <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/[0.05] flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-violet-600/10 border border-violet-500/15 flex items-center justify-center">
-                    <Calendar size={12} className="text-violet-400" />
-                  </div>
-                  <h2 className="text-[14.5px] font-black text-white tracking-tight">Programação</h2>
-                </div>
-                <span className="text-[11px] font-bold text-[#3d3860] bg-white/[0.04] border border-white/[0.05] px-2.5 py-1 rounded-lg">
-                  {subEvents.length} {subEvents.length === 1 ? "atividade" : "atividades"}
-                </span>
-              </div>
+            <div className="divide-y divide-white/[0.04]">
+              {subEvents.map((sub) => {
+                const sections = sectionsData[sub.id] || [];
+                const isExpanded = expandedSubEvents[sub.id];
+                const time = formatTime(sub.date_start);
+                const date = sub.date_start ? formatShortDate(sub.date_start) : null;
 
-              {loading ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 size={24} className="animate-spin text-violet-400" />
-                </div>
-              ) : (
-                <div className="divide-y divide-white/[0.04]">
-                  {subEvents.map((sub) => {
-                    const RoleIcon = sub.type === "palestra" ? Mic2 : sub.type === "workshop" ? UserCheck : Calendar;
-                    const time = formatTime(sub.date_start);
-                    const date = sub.date_start ? formatShortDate(sub.date_start) : null;
-                    const isSubEnrolled = subEnrolled[sub.id];
-                    const isSubEnrolling = subEnrolling[sub.id];
-                    const subError = subErrors[sub.id];
-
-                    return (
-                      <div key={sub.id} className="px-6 py-4 flex items-start gap-4 hover:bg-white/[0.015] transition-colors">
-                        <div className="w-8 h-8 rounded-xl bg-[#1a1629] border border-white/[0.06] flex items-center justify-center shrink-0 mt-0.5">
-                          <RoleIcon size={13} className="text-violet-400" />
+                return (
+                  <div key={sub.id} className="transition-all">
+                    {/* Cabeçalho do Subevento */}
+                    <div 
+                      className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-white/[0.015] transition-colors"
+                      onClick={() => toggleSubEvent(sub.id)}
+                    >
+                      <div className="flex items-start gap-4 flex-1">
+                        <div className="w-8 h-8 rounded-xl bg-[#1a1629] border border-white/[0.06] flex items-center justify-center shrink-0">
+                          {sub.type === "palestra" ? <Mic2 size={13} className="text-violet-400" /> : 
+                           sub.type === "workshop" ? <UserCheck size={13} className="text-violet-400" /> : 
+                           <Calendar size={13} className="text-violet-400" />}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13.5px] font-bold text-white leading-snug">{sub.title}</p>
+                        <div className="flex-1">
+                          <p className="text-[14px] font-bold text-white leading-snug">{sub.title}</p>
                           {sub.description && (
-                            <p className="text-[12px] text-[#6b6888] mt-1 leading-relaxed line-clamp-2">{sub.description}</p>
+                            <p className="text-[12px] text-[#6b6888] mt-1 line-clamp-1">{sub.description}</p>
                           )}
-                          <div className="flex items-center flex-wrap gap-3 mt-2">
+                          <div className="flex items-center gap-3 mt-1.5">
                             {date && (
                               <span className="flex items-center gap-1 text-[11px] text-[#6b6888]">
                                 <Calendar size={9} /> {date}
@@ -456,48 +491,131 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
                                 <Clock size={9} /> {time}
                               </span>
                             )}
-                            {sub.location && (
-                              <span className="flex items-center gap-1 text-[11px] text-[#6b6888]">
-                                <MapPin size={9} /> {sub.location}
-                              </span>
-                            )}
                           </div>
-                          {subError && <p className="text-[11px] text-red-400 font-medium mt-1">{subError}</p>}
-                        </div>
-
-                        <div className="shrink-0 mt-0.5">
-                          {!enrolled && !initialEnrolled ? (
-                            <span className="text-[11px] text-[#3d3860] italic">Inscreva-se no evento</span>
-                          ) : isSubEnrolled ? (
-                            <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400">
-                              <CheckCircle size={11} /> Inscrito
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => handleSubEnroll(sub.id)}
-                              disabled={isSubEnrolling}
-                              className="flex items-center gap-1.5 text-[12px] font-bold text-violet-400 hover:text-violet-300 border border-violet-500/20 hover:border-violet-500/40 bg-violet-500/5 hover:bg-violet-500/10 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {isSubEnrolling ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />}
-                              {isSubEnrolling ? "..." : "Participar"}
-                            </button>
-                          )}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                      <div className="shrink-0 ml-4">
+                        {isExpanded ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
+                      </div>
+                    </div>
 
-              {!enrolled && !initialEnrolled && user && (
-                <div className="px-6 py-3 border-t border-white/[0.05] flex items-center gap-2 bg-[#0f0d1a]">
-                  <Lock size={11} className="text-[#3d3860] shrink-0" />
-                  <p className="text-[11.5px] text-[#3d3860]">Inscreva-se no evento principal para participar das atividades</p>
-                </div>
-              )}
+                    {/* Seções do Subevento (expansível) */}
+                    {isExpanded && (
+                      <div className="bg-[#0f0d1a] border-t border-white/[0.04]">
+                        {sections.length === 0 ? (
+                          <div className="px-6 py-8 text-center">
+                            <p className="text-[12px] text-[#3d3860]">Nenhuma sessão disponível para este subevento</p>
+                          </div>
+                        ) : (
+                          sections.map((section) => {
+                            const sectionDate = formatShortDate(section.date_start);
+                            const sectionTime = formatTime(section.date_start);
+                            const isEnrolled = section.isEnrolled;
+                            const isFull = section.availableSpots === 0;
+                            const isLoading = sectionEnrolling[section.id];
+                            const isLeaving = sectionLeaving[section.id];
+                            const error = sectionErrors[section.id];
+                            const enrolledCount = section.enrolledCount || 0;
+                            const capacity = section.capacity;
+
+                            return (
+                              <div key={section.id} className="px-6 py-4 ml-8 border-t border-white/[0.04] first:border-t-0 hover:bg-white/[0.005] transition-colors">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="text-[13px] font-semibold text-white">
+                                        {section.title || "Sessão"}
+                                      </p>
+                                      {capacity && (
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                          isFull ? "bg-red-500/10 text-red-400 border border-red-500/20" :
+                                          enrolledCount >= capacity - 5 ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                                          "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                        }`}>
+                                          {enrolledCount}/{capacity} vagas
+                                        </span>
+                                      )}
+                                      {isFull && (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+                                          Esgotado
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-3 mt-1">
+                                      {sectionDate && (
+                                        <span className="flex items-center gap-1 text-[11px] text-[#6b6888]">
+                                          <Calendar size={9} /> {sectionDate}
+                                        </span>
+                                      )}
+                                      {sectionTime && (
+                                        <span className="flex items-center gap-1 text-[11px] text-violet-400">
+                                          <Clock size={9} /> {sectionTime}
+                                        </span>
+                                      )}
+                                      {section.location && (
+                                        <span className="flex items-center gap-1 text-[11px] text-[#6b6888]">
+                                          <MapPin size={9} /> {section.location}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {error && (
+                                      <p className="text-[11px] text-red-400 font-medium mt-1">{error}</p>
+                                    )}
+                                  </div>
+
+                                  <div className="shrink-0">
+                                    {!enrolled && !initialEnrolled ? (
+                                      <span className="text-[11px] text-[#3d3860] italic cursor-pointer hover:text-white" onClick={() => goToAuth("register")}>
+                                        Faça login para se inscrever
+                                      </span>
+                                    ) : isEnrolled ? (
+                                      <button
+                                        onClick={() => handleSectionLeave(section.id, sub.id)}
+                                        disabled={isLeaving}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20"
+                                      >
+                                        {isLeaving ? (
+                                          <Loader2 size={11} className="animate-spin" />
+                                        ) : (
+                                          <XCircle size={11} />
+                                        )}
+                                        Cancelar
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={() => handleSectionEnroll(section.id, sub.id)}
+                                        disabled={isFull || isLoading}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-violet-600 hover:bg-violet-500 text-white"
+                                      >
+                                        {isLoading ? (
+                                          <Loader2 size={11} className="animate-spin" />
+                                        ) : (
+                                          <UserPlus size={11} />
+                                        )}
+                                        {isFull ? "Lotado" : "Participar"}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          )}
-        </div>
+
+            {!enrolled && !initialEnrolled && user && (
+              <div className="px-6 py-3 border-t border-white/[0.05] flex items-center gap-2 bg-[#0f0d1a]">
+                <Lock size={11} className="text-[#3d3860] shrink-0" />
+                <p className="text-[11.5px] text-[#3d3860]">Inscreva-se no evento principal para participar das sessões</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -7,7 +7,10 @@ import {
   getSectionById,
   updateSection,
   deleteSection,
-  deleteAllSectionsFromSubEvent
+  deleteAllSectionsFromSubEvent,
+  enrollInSection,        // ← NOVO
+  leaveSection,           // ← NOVO
+  checkSectionEnrollment  // ← NOVO
 } from '../controllers/sectionController.js'
 
 const router = express.Router({ mergeParams: true })
@@ -17,14 +20,19 @@ router.use(protect)
 
 // Rotas para seções
 router.route('/')
-  .post(createSection)      // Criar seção
-  .get(getSections)          // Listar seções do subevento
-  .delete(deleteAllSectionsFromSubEvent) // Deletar todas as seções
+  .post(createSection)
+  .get(getSections)
+  .delete(deleteAllSectionsFromSubEvent)
 
 router.route('/:id')
-  .get(getSectionById)       // Buscar seção por ID
-  .put(updateSection)        // Atualizar seção
-  .patch(updateSection)      // Atualização parcial
-  .delete(deleteSection)     // Deletar seção
+  .get(getSectionById)
+  .put(updateSection)
+  .patch(updateSection)
+  .delete(deleteSection)
+
+// ── NOVAS ROTAS PARA INSCRIÇÃO ──
+router.post('/:id/enroll', enrollInSection)           // Inscrever em seção
+router.delete('/:id/leave', leaveSection)             // Sair da seção
+router.get('/:id/check', checkSectionEnrollment)      // Verificar inscrição
 
 export default router
