@@ -4,6 +4,7 @@ import Layout from '../layouts/Layout.astro';
 import '../styles/global.css' 
 import Hero from "@/components/sections/Hero.astro"
 import Certificate from '@/components/sections/Certificate.astro';
+import ExploreEvents from '@/components/sections/ExploreEvents';
 
 // landing page
 ---
@@ -11,4 +12,5 @@ import Certificate from '@/components/sections/Certificate.astro';
 <Layout >
 	<Hero />
 	<Certificate />
+	<ExploreEvents client:load />
 </Layout>

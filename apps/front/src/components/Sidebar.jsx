@@ -65,7 +65,7 @@ export default function Sidebar({ activeTab, onTabChange }) {
       <div id="sidebar-footer" className="p-4 space-y-3">
         {/* Botão Criar evento */}
         <a
-          href="/createEvent"
+          href="/create"
           className="w-full font-bold text-white text-sm bg-gradient-to-br from-[#8b5cf6] to-[#9333ea]
             px-6 py-3 rounded-lg inline-flex items-center justify-center gap-2
             shadow-[0_4px_8px_rgba(124,58,237,0.4)] hover:shadow-[0_8px_30px_rgba(124,58,237,0.55)]

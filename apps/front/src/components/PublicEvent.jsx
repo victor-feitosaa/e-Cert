@@ -318,36 +318,42 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
 
       {/* NAV CENTRALIZADA */}
       <nav className="sticky top-0 z-50 h-14 flex items-center justify-between px-6 bg-[#0a0a0f]/90 backdrop-blur-md border-b border-white/[0.06]">
-  <div className="flex items-center gap-2 w-32">
-    <span className="text-[15px] font-black tracking-tight">
-      e-<span className="text-violet-400">cert</span>
-    </span>
-  </div>
+        <div className="flex items-center gap-2 w-32">
+          <span className="text-[15px] font-black tracking-tight">
+            e-<span className="text-violet-400">cert</span>
+          </span>
+        </div>
 
-  <div className="absolute left-1/2 transform -translate-x-1/2">
-    <button
-      onClick={handleShare}
-      className="flex items-center gap-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 px-3 py-1.5 rounded-full transition-all"
-    >
-      {copied
-        ? <><CheckCircle size={11} className="text-emerald-400" /> Copiado</>
-        : <><Share2 size={11} /> Compartilhar</>}
-    </button>
-  </div>
+        <div className="absolute left-1/2 transform -translate-x-1/2">
+          <button
+            onClick={handleShare}
+            className="flex items-center gap-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 px-3 py-1.5 rounded-full transition-all"
+          >
+            {copied ? (
+              <>
+                <CheckCircle size={11} className="text-emerald-400" /> Copiado
+              </>
+            ) : (
+              <>
+                <Share2 size={11} /> Compartilhar
+              </>
+            )}
+          </button>
+        </div>
 
-  <div className="flex items-center justify-end gap-2 w-32">
-    {user ? (
-      <UserMenu user={user} />
-    ) : (
-      <button
-        onClick={() => goToAuth("login")}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 rounded-full transition-all"
-      >
-        <LogIn size={11} /> Entrar
-      </button>
-    )}
-  </div>
-</nav>
+        <div className="flex items-center justify-end gap-2 w-32">
+          {user ? (
+            <UserMenu user={user} />
+          ) : (
+            <button
+              onClick={() => goToAuth("login")}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 rounded-full transition-all"
+            >
+              <LogIn size={11} /> Entrar
+            </button>
+          )}
+        </div>
+      </nav>
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-8 space-y-3">
         {/* LINHA 1: título + data/local */}
@@ -372,7 +378,10 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
                   {event.creator.name.charAt(0).toUpperCase()}
                 </div>
                 <span className="text-[12px] text-[#6b6888]">
-                  por <strong className="text-white/60">{event.creator.name}</strong>
+                  por{" "}
+                  <strong className="text-white/60">
+                    {event.creator.name}
+                  </strong>
                 </span>
               </div>
             )}
@@ -380,7 +389,9 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
 
           <div className="flex flex-col gap-3">
             <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-2xl p-5 flex-1">
-              <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-3">Data</p>
+              <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-3">
+                Data
+              </p>
               <div className="flex items-start gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/15 flex items-center justify-center shrink-0">
                   <Calendar size={14} className="text-violet-400" />
@@ -400,15 +411,28 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
 
             {event.location && (
               <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-2xl p-5 flex-1">
-                <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-3">Local</p>
+                <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-3">
+                  Local
+                </p>
                 <div className="flex items-start gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/15 flex items-center justify-center shrink-0">
-                    {isOnline ? <Globe size={14} className="text-violet-400" /> : <MapPin size={14} className="text-violet-400" />}
+                    {isOnline ? (
+                      <Globe size={14} className="text-violet-400" />
+                    ) : (
+                      <MapPin size={14} className="text-violet-400" />
+                    )}
                   </div>
                   <div>
-                    <p className="text-[13px] font-bold text-white leading-snug">{event.location}</p>
+                    <p className="text-[13px] font-bold text-white leading-snug">
+                      {event.location}
+                    </p>
                     {event.locationUrl && (
-                      <a href={event.locationUrl} target="_blank" rel="noopener noreferrer" className="text-[11.5px] text-violet-400 hover:text-violet-300 flex items-center gap-1 mt-1 transition-colors">
+                      <a
+                        href={event.locationUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11.5px] text-violet-400 hover:text-violet-300 flex items-center gap-1 mt-1 transition-colors"
+                      >
                         Ver mapa <ExternalLink size={9} />
                       </a>
                     )}
@@ -425,17 +449,25 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
           <div className="flex flex-col gap-3">
             {event.capacity && (
               <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-2xl p-5">
-                <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-1">Vagas</p>
-                <p className="text-[34px] font-black text-white leading-none tracking-tight">{event.capacity.toLocaleString("pt-BR")}</p>
+                <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-1">
+                  Vagas
+                </p>
+                <p className="text-[34px] font-black text-white leading-none tracking-tight">
+                  {event.capacity.toLocaleString("pt-BR")}
+                </p>
                 <p className="text-[11.5px] text-[#6b6888] mt-1">disponíveis</p>
               </div>
             )}
             <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-2xl p-5 flex-1">
-              <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-3">Certificado</p>
+              <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-3">
+                Certificado
+              </p>
               <div className="w-8 h-8 rounded-xl bg-violet-600/10 border border-violet-500/15 flex items-center justify-center mb-3">
                 <Award size={14} className="text-violet-400" />
               </div>
-              <p className="text-[12.5px] text-[#6b6888] leading-relaxed">Emitido automaticamente com link verificável</p>
+              <p className="text-[12.5px] text-[#6b6888] leading-relaxed">
+                Emitido automaticamente com link verificável
+              </p>
             </div>
           </div>
         </div>
@@ -448,10 +480,13 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
                 <div className="w-7 h-7 rounded-lg bg-violet-600/10 border border-violet-500/15 flex items-center justify-center">
                   <Calendar size={12} className="text-violet-400" />
                 </div>
-                <h2 className="text-[14.5px] font-black text-white tracking-tight">Programação</h2>
+                <h2 className="text-[14.5px] font-black text-white tracking-tight">
+                  Programação
+                </h2>
               </div>
               <span className="text-[11px] font-bold text-[#3d3860] bg-white/[0.04] border border-white/[0.05] px-2.5 py-1 rounded-lg">
-                {subEvents.length} {subEvents.length === 1 ? "atividade" : "atividades"}
+                {subEvents.length}{" "}
+                {subEvents.length === 1 ? "atividade" : "atividades"}
               </span>
             </div>
 
@@ -460,25 +495,35 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
                 const sections = sectionsData[sub.id] || [];
                 const isExpanded = expandedSubEvents[sub.id];
                 const time = formatTime(sub.date_start);
-                const date = sub.date_start ? formatShortDate(sub.date_start) : null;
+                const date = sub.date_start
+                  ? formatShortDate(sub.date_start)
+                  : null;
 
                 return (
                   <div key={sub.id} className="transition-all">
                     {/* Cabeçalho do Subevento */}
-                    <div 
+                    <div
                       className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-white/[0.015] transition-colors"
                       onClick={() => toggleSubEvent(sub.id)}
                     >
                       <div className="flex items-start gap-4 flex-1">
                         <div className="w-8 h-8 rounded-xl bg-[#1a1629] border border-white/[0.06] flex items-center justify-center shrink-0">
-                          {sub.type === "palestra" ? <Mic2 size={13} className="text-violet-400" /> : 
-                           sub.type === "workshop" ? <UserCheck size={13} className="text-violet-400" /> : 
-                           <Calendar size={13} className="text-violet-400" />}
+                          {sub.type === "palestra" ? (
+                            <Mic2 size={13} className="text-violet-400" />
+                          ) : sub.type === "workshop" ? (
+                            <UserCheck size={13} className="text-violet-400" />
+                          ) : (
+                            <Calendar size={13} className="text-violet-400" />
+                          )}
                         </div>
                         <div className="flex-1">
-                          <p className="text-[14px] font-bold text-white leading-snug">{sub.title}</p>
+                          <p className="text-[14px] font-bold text-white leading-snug">
+                            {sub.title}
+                          </p>
                           {sub.description && (
-                            <p className="text-[12px] text-[#6b6888] mt-1 line-clamp-1">{sub.description}</p>
+                            <p className="text-[12px] text-[#6b6888] mt-1 line-clamp-1">
+                              {sub.description}
+                            </p>
                           )}
                           <div className="flex items-center gap-3 mt-1.5">
                             {date && (
@@ -495,7 +540,17 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
                         </div>
                       </div>
                       <div className="shrink-0 ml-4">
-                        {isExpanded ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
+                        {isExpanded ? (
+                          <ChevronUp
+                            size={16}
+                            className="text-muted-foreground"
+                          />
+                        ) : (
+                          <ChevronDown
+                            size={16}
+                            className="text-muted-foreground"
+                          />
+                        )}
                       </div>
                     </div>
 
@@ -504,11 +559,15 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
                       <div className="bg-[#0f0d1a] border-t border-white/[0.04]">
                         {sections.length === 0 ? (
                           <div className="px-6 py-8 text-center">
-                            <p className="text-[12px] text-[#3d3860]">Nenhuma sessão disponível para este subevento</p>
+                            <p className="text-[12px] text-[#3d3860]">
+                              Nenhuma sessão disponível para este subevento
+                            </p>
                           </div>
                         ) : (
                           sections.map((section) => {
-                            const sectionDate = formatShortDate(section.date_start);
+                            const sectionDate = formatShortDate(
+                              section.date_start,
+                            );
                             const sectionTime = formatTime(section.date_start);
                             const isEnrolled = section.isEnrolled;
                             const isFull = section.availableSpots === 0;
@@ -519,7 +578,10 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
                             const capacity = section.capacity;
 
                             return (
-                              <div key={section.id} className="px-6 py-4 ml-8 border-t border-white/[0.04] first:border-t-0 hover:bg-white/[0.005] transition-colors">
+                              <div
+                                key={section.id}
+                                className="px-6 py-4 ml-8 border-t border-white/[0.04] first:border-t-0 hover:bg-white/[0.005] transition-colors"
+                              >
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 flex-wrap">
@@ -527,11 +589,15 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
                                         {section.title || "Sessão"}
                                       </p>
                                       {capacity && (
-                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                          isFull ? "bg-red-500/10 text-red-400 border border-red-500/20" :
-                                          enrolledCount >= capacity - 5 ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
-                                          "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                        }`}>
+                                        <span
+                                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                            isFull
+                                              ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                                              : enrolledCount >= capacity - 5
+                                                ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                                : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                          }`}
+                                        >
                                           {enrolledCount}/{capacity} vagas
                                         </span>
                                       )}
@@ -559,23 +625,33 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
                                       )}
                                     </div>
                                     {error && (
-                                      <p className="text-[11px] text-red-400 font-medium mt-1">{error}</p>
+                                      <p className="text-[11px] text-red-400 font-medium mt-1">
+                                        {error}
+                                      </p>
                                     )}
                                   </div>
 
                                   <div className="shrink-0">
                                     {!enrolled && !initialEnrolled ? (
-                                      <span className="text-[11px] text-[#3d3860] italic cursor-pointer hover:text-white" onClick={() => goToAuth("register")}>
+                                      <span
+                                        className="text-[11px] text-[#3d3860] italic cursor-pointer hover:text-white"
+                                        onClick={() => goToAuth("register")}
+                                      >
                                         Faça login para se inscrever
                                       </span>
                                     ) : isEnrolled ? (
                                       <button
-                                        onClick={() => handleSectionLeave(section.id, sub.id)}
+                                        onClick={() =>
+                                          handleSectionLeave(section.id, sub.id)
+                                        }
                                         disabled={isLeaving}
                                         className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20"
                                       >
                                         {isLeaving ? (
-                                          <Loader2 size={11} className="animate-spin" />
+                                          <Loader2
+                                            size={11}
+                                            className="animate-spin"
+                                          />
                                         ) : (
                                           <XCircle size={11} />
                                         )}
@@ -583,12 +659,20 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
                                       </button>
                                     ) : (
                                       <button
-                                        onClick={() => handleSectionEnroll(section.id, sub.id)}
+                                        onClick={() =>
+                                          handleSectionEnroll(
+                                            section.id,
+                                            sub.id,
+                                          )
+                                        }
                                         disabled={isFull || isLoading}
                                         className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-violet-600 hover:bg-violet-500 text-white"
                                       >
                                         {isLoading ? (
-                                          <Loader2 size={11} className="animate-spin" />
+                                          <Loader2
+                                            size={11}
+                                            className="animate-spin"
+                                          />
                                         ) : (
                                           <UserPlus size={11} />
                                         )}
@@ -611,7 +695,9 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
             {!enrolled && !initialEnrolled && user && (
               <div className="px-6 py-3 border-t border-white/[0.05] flex items-center gap-2 bg-[#0f0d1a]">
                 <Lock size={11} className="text-[#3d3860] shrink-0" />
-                <p className="text-[11.5px] text-[#3d3860]">Inscreva-se no evento principal para participar das sessões</p>
+                <p className="text-[11.5px] text-[#3d3860]">
+                  Inscreva-se no evento principal para participar das sessões
+                </p>
               </div>
             )}
           </div>
