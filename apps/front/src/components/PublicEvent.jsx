@@ -14,6 +14,8 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
   const [enrolling, setEnrolling] = useState(false);
   const [enrollError, setEnrollError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [participantCount, setParticipantCount] = useState(eventData?.participants || 0);
+  const [capacity, setCapacity] = useState(eventData?.capacity || 0);
   const [sectionsData, setSectionsData] = useState({});
   const [expandedSubEvents, setExpandedSubEvents] = useState({});
   const [sectionEnrolling, setSectionEnrolling] = useState({});
@@ -24,34 +26,68 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
   const event = eventData;
   const subEvents = event?.subEvents || [];
   const hasSubEvents = subEvents.length > 0;
+  const isFull = capacity > 0 && participantCount >= capacity;
+  const availableSpots = capacity - participantCount;
 
-  // Buscar seções de um subevento específico
-  const fetchSections = async (subEventId) => {
-    // Usuário não logado pode ver as seções mas não se inscrever
+  // Buscar contagem de participantes
+  const fetchParticipantCount = async () => {
     try {
-      const res = await fetch(`/api/events/${eventId}/subevents/${subEventId}/sections`, {
-        credentials: user ? "include" : "omit",
+      const res = await fetch(`/api/events/${eventId}/participants/count`, {
+        credentials: "include",
       });
       if (res.ok) {
         const data = await res.json();
-        setSectionsData(prev => ({
-          ...prev,
-          [subEventId]: data.data?.sections || []
-        }));
+        setParticipantCount(data.count || 0);
       }
     } catch (err) {
-      console.error("Erro ao buscar seções:", err);
+      console.error("Erro ao buscar contagem de participantes:", err);
     }
   };
 
-  // Carregar seções quando o usuário estiver logado ou não
+  // Buscar seções com status de inscrição
+  const fetchSectionsWithStatus = async (subEventId) => {
+    try {
+      const endpoint = user 
+        ? `/api/events/${eventId}/subevents/${subEventId}/sections`
+        : `/api/events/${eventId}/subevents/${subEventId}/sections/public`;
+      
+      console.log("🔍 Buscando seções:", endpoint);
+      
+      const res = await fetch(endpoint, {
+        credentials: user ? "include" : "omit",
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        let sections = data.data?.sections || [];
+        
+        if (!user) {
+          sections = sections.map(s => ({ ...s, isEnrolled: false }));
+        }
+        
+        setSectionsData(prev => ({
+          ...prev,
+          [subEventId]: sections
+        }));
+      } else {
+        console.error("❌ Erro ao buscar seções:", res.status);
+      }
+    } catch (err) {
+      console.error("❌ Erro ao buscar seções:", err);
+    }
+  };
+
+  // Carregar contagem e seções
   useEffect(() => {
-    if (eventId && subEvents.length > 0) {
+    if (eventId) {
+      fetchParticipantCount();
+    }
+    if (subEvents.length > 0) {
       subEvents.forEach(sub => {
-        fetchSections(sub.id);
+        fetchSectionsWithStatus(sub.id);
       });
     }
-  }, [user, eventId, subEvents]);
+  }, [eventId, user]);
 
   // Toggle expansão do subevento
   const toggleSubEvent = (subEventId) => {
@@ -98,6 +134,11 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
       return;
     }
     
+    if (isFull) {
+      setEnrollError("Este evento está lotado. Não há mais vagas disponíveis.");
+      return;
+    }
+    
     setEnrolling(true);
     setEnrollError(null);
     try {
@@ -112,9 +153,9 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
         throw new Error(data.message || "Erro ao realizar inscrição");
       }
       setEnrolled(true);
-      // Recarregar seções após inscrever no evento
+      await fetchParticipantCount();
       subEvents.forEach(sub => {
-        fetchSections(sub.id);
+        fetchSectionsWithStatus(sub.id);
       });
     } catch (err) {
       setEnrollError(err.message);
@@ -143,7 +184,7 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message || "Erro ao se inscrever na sessão");
       }
-      await fetchSections(subEventId);
+      await fetchSectionsWithStatus(subEventId);
     } catch (err) {
       setSectionErrors((s) => ({ ...s, [sectionId]: err.message }));
     } finally {
@@ -166,7 +207,7 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message || "Erro ao cancelar inscrição");
       }
-      await fetchSections(subEventId);
+      await fetchSectionsWithStatus(subEventId);
     } catch (err) {
       setSectionErrors((s) => ({ ...s, [sectionId]: err.message }));
     } finally {
@@ -182,6 +223,7 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
 
   const startDate = event?.date_start || event?.date;
   const isOnline = event?.location?.toLowerCase().includes("online");
+  const occupiedPercentage = capacity > 0 ? (participantCount / capacity) * 100 : 0;
 
   /* ── painel lateral direito ── */
   const renderActionPanel = () => {
@@ -273,13 +315,27 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
 
           <button
             onClick={handleEnroll}
-            disabled={enrolling}
-            className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 active:scale-[0.99] text-white font-bold text-[14px] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={enrolling || isFull}
+            className={`w-full py-3 rounded-xl font-bold text-[14px] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed
+              ${isFull 
+                ? "bg-red-500/20 text-red-400 cursor-not-allowed" 
+                : "bg-violet-600 hover:bg-violet-500 active:scale-[0.99] text-white"
+              }`}
           >
-            {enrolling
-              ? <><Loader2 size={14} className="animate-spin" /> Processando...</>
-              : <><span>Confirmar inscrição</span><ArrowRight size={14} /></>}
+            {enrolling ? (
+              <><Loader2 size={14} className="animate-spin" /> Processando...</>
+            ) : isFull ? (
+              <><XCircle size={14} /> Evento lotado</>
+            ) : (
+              <><span>Confirmar inscrição</span><ArrowRight size={14} /></>
+            )}
           </button>
+          
+          {isFull && (
+            <p className="text-center text-[11px] text-red-400/70 mt-3">
+              Todas as vagas foram preenchidas.
+            </p>
+          )}
         </div>
         <div className="px-6 py-3 border-t border-white/[0.05] flex items-center gap-1.5">
           <Lock size={10} className="text-[#3d3860] shrink-0" />
@@ -327,7 +383,7 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
         <div className="absolute left-1/2 transform -translate-x-1/2">
           <button
             onClick={handleShare}
-            className="flex items-center gap-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 px-3 py-1.5 rounded-full transition-all"
+            className="flex cursor-pointer items-center gap-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 px-3 py-1.5 rounded-full transition-all"
           >
             {copied ? (
               <>
@@ -447,15 +503,31 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
         <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3">
           {renderActionPanel()}
           <div className="flex flex-col gap-3">
-            {event.capacity && (
+            {capacity > 0 && (
               <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-2xl p-5">
                 <p className="text-[10px] font-bold text-[#3d3860] uppercase tracking-widest mb-1">
                   Vagas
                 </p>
-                <p className="text-[34px] font-black text-white leading-none tracking-tight">
-                  {event.capacity.toLocaleString("pt-BR")}
+                <p className={`text-[28px] font-black leading-none tracking-tight ${isFull ? "text-red-400" : "text-white"}`}>
+                  {participantCount}/{capacity}
                 </p>
-                <p className="text-[11.5px] text-[#6b6888] mt-1">disponíveis</p>
+                <div className="mt-2">
+                  <div className="flex justify-between text-[11px] text-[#6b6888] mb-1">
+                    <span>Preenchimento</span>
+                    <span className={occupiedPercentage >= 100 ? "text-red-400" : ""}>
+                      {Math.min(Math.round(occupiedPercentage), 100)}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-300 ${isFull ? "bg-red-500" : "bg-gradient-to-r from-violet-500 to-purple-600"}`}
+                      style={{ width: `${Math.min(occupiedPercentage, 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <p className={`text-[11.5px] mt-3 ${isFull ? "text-red-400" : "text-[#6b6888]"}`}>
+                  {isFull ? "Evento lotado!" : `${availableSpots} vaga${availableSpots !== 1 ? "s" : ""} restante${availableSpots !== 1 ? "s" : ""}`}
+                </p>
               </div>
             )}
             <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-2xl p-5 flex-1">
@@ -565,9 +637,7 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
                           </div>
                         ) : (
                           sections.map((section) => {
-                            const sectionDate = formatShortDate(
-                              section.date_start,
-                            );
+                            const sectionDate = formatShortDate(section.date_start);
                             const sectionTime = formatTime(section.date_start);
                             const isEnrolled = section.isEnrolled;
                             const isFull = section.availableSpots === 0;
@@ -632,12 +702,16 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
                                   </div>
 
                                   <div className="shrink-0">
-                                    {!enrolled && !initialEnrolled ? (
+                                    {!user ? (
                                       <span
                                         className="text-[11px] text-[#3d3860] italic cursor-pointer hover:text-white"
                                         onClick={() => goToAuth("register")}
                                       >
                                         Faça login para se inscrever
+                                      </span>
+                                    ) : !enrolled && !initialEnrolled ? (
+                                      <span className="text-[11px] text-[#3d3860] italic">
+                                        Inscreva-se no evento principal
                                       </span>
                                     ) : isEnrolled ? (
                                       <button

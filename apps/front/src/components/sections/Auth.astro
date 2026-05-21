@@ -37,8 +37,17 @@ import { AuthForm} from "../AuthForm";
             />
         </div>
     </div>
+    <nav class="absolute mb-6 top-0 z-50 h-14 w-full flex items-center justify-between px-6 bg-[#0a0a0f]/90 backdrop-blur-md border-b border-white/[0.06]">
+        <div class="flex items-center gap-2 w-32">
+          <a href="/" class="cursor-pointer text-[15px] font-black tracking-tight text-accent-foreground">
+            e-<span class="text-violet-400">cert</span>
+          </a>
+        </div>
+    </nav>
 
-    <div class="z-10 w-1/2">
+    <div class="z-10 w-1/2 mt-10">
+        
+
         <AuthForm client:load/>
     </div>
 

@@ -12,6 +12,7 @@ import Participantes from "./sections/Participantes.jsx";
 import CertificadosAnalytics from "./sections/CertificadosAnalytics.jsx";
 import Exportar from "./sections/Exportar.jsx";
 import EditarEvent from "./sections/EditarEvent.jsx";
+import UserMenu from "../components/UserMenu.jsx"
 
 const NAV_ITEMS = [
     { id: "overview",      Icon: ChartLine,     label: "Overview"     },
@@ -42,6 +43,9 @@ function SiteNav({ onBack }) {
                 <ArrowLeft size={14} strokeWidth={2} />
                 Voltar ao dashboard
             </button>
+
+            
+
         </nav>
     );
 }

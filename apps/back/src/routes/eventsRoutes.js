@@ -10,6 +10,8 @@ import {
   getModerators,
   deleteModerator,
   getAllEvents,
+  getEventParticipants,
+  getEventParticipantCount,
 } from '../controllers/eventsController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { isEventOwner } from '../middleware/eventMiddleware.js';
@@ -23,6 +25,7 @@ const router = express.Router();
 router.get('/', getEvents);
 router.get('/:id', getEventById);
 router.get('/get/all', getAllEvents); 
+router.get('/:id/participants/count', getEventParticipantCount);
 
 // Proteger todas as rotas abaixo
 router.use(protect);
@@ -34,6 +37,7 @@ router.post('/', createEvent);
 // Rotas que requerem ser dono do evento
 router.put('/:id', hasRole, updateEvent);
 router.delete('/:id', isEventOwner, deleteEvent);
+router.get('/:id/eventParticipants', isEventOwner, getEventParticipants); 
 
 // Convidar Moderador
 router.get('/:id/moderators', isEventOwner, getModerators);

@@ -5,7 +5,7 @@ import subEventService from '../services/subEventService.js'
 
 export const createSection = async (req, res) => {
   try {
-    // ✅ Apenas subEventId vem da URL
+    
     const { subEventId } = req.params
     const { title, date_start, date_end, location } = req.body
     const userId = req.user.id
@@ -59,6 +59,7 @@ export const createSection = async (req, res) => {
       new Date(date_start),
       new Date(date_end),
       location,
+      null, //MUDAR DEPOIS  
       subEventId
     )
 
@@ -79,7 +80,7 @@ export const createSection = async (req, res) => {
 export const getSections = async (req, res) => {
   try {
     const { subEventId } = req.params
-    const userId = req.user.id  
+    const userId = req.user?.id  
 
     const sections = await sectionService.getAllBySubEventId(subEventId, userId)
 
@@ -131,6 +132,96 @@ export const getSectionById = async (req, res) => {
     })
   }
 }
+
+
+
+export const getPublicSections = async (req, res) => {
+  try {
+    const { subEventId } = req.params;
+    
+    console.log("🔍 getPublicSections - subEventId:", subEventId);
+
+    if (!subEventId) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'subEventId é obrigatório'
+      });
+    }
+
+    const sections = await prisma.section.findMany({
+      where: { subEventId },
+      orderBy: { date_start: 'asc' },
+      include: {
+        _count: {
+          select: { participants: true }
+        }
+      }
+    });
+
+    console.log(`✅ Encontradas ${sections.length} seções`);
+
+    const publicSections = sections.map(section => ({
+      id: section.id,
+      title: section.title,
+      date_start: section.date_start,
+      date_end: section.date_end,
+      location: section.location,
+      capacity: section.capacity,
+      enrolledCount: section._count.participants,
+      availableSpots: section.capacity ? section.capacity - section._count.participants : null
+    }));
+
+    res.status(200).json({
+      status: 'success',
+      data: { sections: publicSections }
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar seções públicas:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Erro ao buscar seções públicas'
+    });
+  }
+};
+
+
+export const getUserSectionStatus = async (req, res) => {
+  try {
+    const { subEventId } = req.params;
+    const userId = req.user.id;
+
+    console.log("🔍 Buscando status do usuário para subevento:", subEventId);
+    console.log("👤 Usuário:", userId);
+
+    const sections = await prisma.section.findMany({
+      where: { subEventId },
+      include: {
+        participants: {
+          where: { userId },
+          select: { id: true }
+        }
+      }
+    });
+
+    const enrolledSections = sections
+      .filter(section => section.participants.length > 0)
+      .map(section => section.id);
+
+    console.log("✅ Seções inscritas:", enrolledSections);
+
+    res.status(200).json({
+      enrolledSections
+    });
+
+  } catch (error) {
+    console.error('Erro ao buscar status das seções:', error);
+    res.status(500).json({ 
+      enrolledSections: [],
+      error: error.message 
+    });
+  }
+};
 
 export const updateSection = async (req, res) => {
   try {
@@ -346,3 +437,22 @@ export const checkSectionEnrollment = async (req, res) => {
   }
 }
 
+export const getSectionParticipants = async (req, res) => {
+  try {
+    const { subEventId, id } = req.params  // id = sectionId
+    const userId = req.user.id
+    const participants = await sectionService.getParticipants(id, userId)
+
+    res.status(200).json({
+      status: 'success',
+      results: participants.length,
+      data: { participants }
+    })
+  } catch (error) {
+    console.error('Erro ao buscar participantes da seção:', error)
+    res.status(500).json({
+      status: 'error',
+      message: 'Erro ao buscar participantes da seção'
+    })
+  }
+}

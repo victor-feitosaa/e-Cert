@@ -8,31 +8,31 @@ import {
   updateSection,
   deleteSection,
   deleteAllSectionsFromSubEvent,
-  enrollInSection,        // ← NOVO
-  leaveSection,           // ← NOVO
-  checkSectionEnrollment  // ← NOVO
+  enrollInSection,
+  leaveSection,
+  checkSectionEnrollment,
+  getPublicSections,
+  getUserSectionStatus
 } from '../controllers/sectionController.js'
 
 const router = express.Router({ mergeParams: true })
 
-// Todas as rotas de seção requerem autenticação
+// ✅ Rota pública (NÃO usa protect)
+router.get('/public', getPublicSections)
+
+// Rotas protegidas
 router.use(protect)
 
-// Rotas para seções
-router.route('/')
-  .post(createSection)
-  .get(getSections)
-  .delete(deleteAllSectionsFromSubEvent)
-
-router.route('/:id')
-  .get(getSectionById)
-  .put(updateSection)
-  .patch(updateSection)
-  .delete(deleteSection)
-
-// ── NOVAS ROTAS PARA INSCRIÇÃO ──
-router.post('/:id/enroll', enrollInSection)           // Inscrever em seção
-router.delete('/:id/leave', leaveSection)             // Sair da seção
-router.get('/:id/check', checkSectionEnrollment)      // Verificar inscrição
+router.get('/', getSections)
+router.post('/', createSection)
+router.get('/:id', getSectionById)
+router.put('/:id', updateSection)
+router.patch('/:id', updateSection)
+router.delete('/:id', deleteSection)
+router.delete('/', deleteAllSectionsFromSubEvent)
+router.post('/:id/enroll', enrollInSection)
+router.delete('/:id/leave', leaveSection)
+router.get('/:id/check', checkSectionEnrollment)
+router.get('/user-status', getUserSectionStatus)
 
 export default router

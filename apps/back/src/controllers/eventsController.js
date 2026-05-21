@@ -372,6 +372,49 @@ export const deleteEvent = async (req, res) => {
   }
 };
 
+export const getEventParticipants = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const participants = await eventService.getEventParticipants(id);
+    res.status(200).json({
+      status: 'success',
+      results: participants.length,
+      data: {
+        participants
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar participantes do evento:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Erro interno ao buscar participantes do evento',
+    });
+  }
+};
+
+// src/controllers/eventController.js
+export const getEventParticipantCount = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const count = await prisma.eventParticipant.count({
+      where: { eventId: id }
+    });
+    
+    res.status(200).json({
+      status: 'success',
+      count
+    });
+  } catch (error) {
+    console.error('Erro ao buscar contagem:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Erro ao buscar contagem de participantes'
+    });
+  }
+};
+
+
 
 export const getModerators = async (req, res) => {
 

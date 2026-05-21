@@ -3,6 +3,11 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../config/db.js';
 
 export const protect = async (req, res, next) => {
+
+    if (req.method === 'GET' && req.path.includes('/public')) {
+    return next();
+  }
+
   try {
     let token;
 

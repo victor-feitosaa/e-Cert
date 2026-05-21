@@ -153,6 +153,22 @@ class EventRepository {
             where:{id} ,
         })
     }
+
+    async getEventParticipants(eventId) {
+        const participants = await prisma.eventParticipant.findMany({
+            where: { eventId },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+        return participants;
+    }
 }
 
 export default new EventRepository();

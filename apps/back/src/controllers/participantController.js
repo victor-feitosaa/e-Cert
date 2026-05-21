@@ -16,34 +16,59 @@ const isManager = async (userId, eventId, createdBy) => {
 
 // ── Event Participants ────────────────────────────────────────────────────────
 
+
 export const addEventParticipant = async (req, res) => {
   try {
-    const { eventId } = req.params
-    const requesterId = req.user.id
+    const { eventId } = req.params;
+    const requesterId = req.user.id;
 
-    const event = await eventService.getById(eventId)
+    const event = await eventService.getById(eventId);
     if (!event) {
-      return res.status(404).json({ status: 'fail', message: 'Evento não encontrado' })
+      return res.status(404).json({ status: 'fail', message: 'Evento não encontrado' });
     }
 
-    const manager = await isManager(requesterId, eventId, event.createdBy)
+    
+    if (event.capacity) {
+      const currentCount = await prisma.eventParticipant.count({
+        where: { eventId }
+      });
+      
+      if (currentCount >= event.capacity) {
+        return res.status(409).json({
+          status: 'fail',
+          message: 'Evento lotado! Não há mais vagas disponíveis.'
+        });
+      }
+    }
 
-    // Managers podem especificar outro userId no body; usuário comum só se inscreve
-    const targetUserId = manager && req.body.userId ? req.body.userId : requesterId
+    const manager = await isManager(requesterId, eventId, event.createdBy);
+    const targetUserId = manager && req.body.userId ? req.body.userId : requesterId;
 
-    const participant = await participantService.addEventParticipant(eventId, targetUserId)
+    // Verificar se já está inscrito
+    const existing = await prisma.eventParticipant.findFirst({
+      where: { userId: targetUserId, eventId }
+    });
 
-    res.status(201).json({ status: 'success', data: { participant } })
+    if (existing) {
+      return res.status(409).json({
+        status: 'fail',
+        message: 'Usuário já está inscrito neste evento'
+      });
+    }
+
+    const participant = await participantService.addEventParticipant(eventId, targetUserId);
+
+    res.status(201).json({ status: 'success', data: { participant } });
 
   } catch (error) {
-    const alreadyEnrolled = error.message.includes('já está inscrito')
-    console.error('Erro ao adicionar participante:', error)
+    const alreadyEnrolled = error.message.includes('já está inscrito');
+    console.error('Erro ao adicionar participante:', error);
     res.status(alreadyEnrolled ? 409 : 500).json({
       status: alreadyEnrolled ? 'fail' : 'error',
       message: error.message || 'Erro ao adicionar participante'
-    })
+    });
   }
-}
+};
 
 export const checkEventEnrollment = async (req, res) => {
   try {

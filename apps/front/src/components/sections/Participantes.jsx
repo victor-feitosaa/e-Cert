@@ -266,6 +266,8 @@ function AddParticipantModal({ onClose, onSubmit, loading }) {
 
 /* ─── MODAL REMOVER PARTICIPANTE ─── */
 function RemoveParticipantModal({ participant, onClose, onConfirm, loading }) {
+  const name = participant?.name || "Participante";
+  
   return (
     <Modal onClose={onClose} danger>
       <div className="flex items-center gap-3 mb-4">
@@ -278,7 +280,7 @@ function RemoveParticipantModal({ participant, onClose, onConfirm, loading }) {
         </div>
       </div>
       <p className="text-sm text-gray-400 leading-relaxed mb-6 p-3 bg-white/[0.02] border border-white/5 rounded-lg">
-        Você está prestes a remover <strong className="text-white">{participant?.name}</strong> do evento.
+        Você está prestes a remover <strong className="text-white">{name}</strong> do evento.
       </p>
       <div className="flex justify-end gap-2.5">
         <button onClick={onClose} className="px-4 py-2 text-sm cursor-pointer font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
@@ -374,24 +376,24 @@ function MemberRow({ member, isOrganizer, canManage, onRemove }) {
 /* ─── PARTICIPANT ROW ─── */
 function ParticipantRow({ participant, canManage, onRemove }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const name = participant.name;
-  const email = participant.email;
-  const initial = name[0].toUpperCase();
-  const joined = participant.createdAt
+  
+  
+  const name = participant?.user.name || "Participante";
+  const email = participant?.email || "";
+  const initial = name[0]?.toUpperCase() || "P"; 
+  const joined = participant?.createdAt
     ? new Date(participant.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
     : "—";
 
   return (
-    <div
-      className="flex items-center justify-between px-4 py-3 rounded-lg border-b border-white/[0.04] hover:bg-purple-500/[0.03] transition-colors"
-    >
+    <div className="flex items-center justify-between px-4 py-3 rounded-lg border-b border-white/[0.04] hover:bg-purple-500/[0.03] transition-colors">
       <div className="flex items-center gap-3 min-w-0 flex-1">
         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shrink-0 text-white font-bold text-xs shadow-md">
           {initial}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-[#e2e0f0] truncate">{name}</p>
-          <p className="text-xs text-[#6b6888] truncate">{email}</p>
+          {email && <p className="text-xs text-[#6b6888] truncate">{email}</p>}
         </div>
       </div>
 
@@ -645,8 +647,8 @@ export default function ParticipantesTab({ eventId, eventData }) {
     (m.job || m.roleDescription || "").toLowerCase().includes(q);
   
   const matchesParticipant = (p) =>
-    p.name.toLowerCase().includes(q) ||
-    p.email.toLowerCase().includes(q);
+  (p?.name?.toLowerCase() || "").includes(q) ||
+  (p?.email?.toLowerCase() || "").includes(q);;
 
   const filteredModerators = moderators.filter(matchesTeam);
   const filteredTeamMembers = teamMembers.filter(matchesTeam);

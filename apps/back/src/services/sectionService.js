@@ -167,7 +167,13 @@ const sectionService = {
   async checkEnrollment(sectionId, userId) {
     const participant = await SectionRepository.findParticipant(sectionId, userId)
     return !!participant
+  },
+
+  async getSectionParticipants(sectionId) {
+    const participants = await SectionRepository.getSectionParticipants(sectionId)
+    return participants
   }
+
 }
 
 export default sectionService

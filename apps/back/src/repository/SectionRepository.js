@@ -144,6 +144,21 @@ const SectionRepository = {
       sectionId: section.id,
       isEnrolled: section.participants.length > 0
     }))
+  },
+
+  async getSectionParticipants(sectionId) {
+    return prisma.sectionParticipant.findMany({
+      where: { sectionId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
+    })
   }
 }
 

@@ -49,6 +49,10 @@ class EventService {
         return await EventRepository.delete(id);
     }
 
+    async getEventParticipants(eventId) {
+        return await EventRepository.getEventParticipants(eventId);
+    }
+
 
 }
 
