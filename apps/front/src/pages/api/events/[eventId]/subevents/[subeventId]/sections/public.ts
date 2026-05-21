@@ -3,11 +3,11 @@ export const prerender = false;
 import type { APIRoute } from "astro";
 
 export const GET: APIRoute = async ({ params }) => {
-  const { subeventId } = params;
+  const { eventId,subeventId } = params;
 
   const baseUrl = import.meta.env.API_URL || "http://localhost:5001";
   
-  const apiUrl = `${baseUrl}/subevents/${subeventId}/sections/public`;
+  const apiUrl = `${baseUrl}/events/${eventId}/subevents/${subeventId}/sections/public`;
 
   try {
     const response = await fetch(apiUrl, {
