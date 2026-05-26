@@ -1,198 +1,254 @@
+// src/controllers/eventsTeamController.js
 import { prisma } from "../config/db.js"
 import eventMemberService from "../services/eventMemberService.js";
 import eventService from "../services/eventService.js";
 
+// ── CRIAR MEMBRO MANUAL (legado) ──
 export const createTeamMember = async (req, res) => {
-
     try {
-        
-        const {name,  role, job} = req.body;
-
+        const { name, role, job } = req.body;
         const userId = req.user.id;
-
-        const {id} = req.params;
+        const { id: eventId } = req.params;
     
-        const event = await eventService.getById(id);
+        const event = await eventService.getById(eventId);
     
         if (!event) {
             return res.status(404).json({
                 status: "fail",
                 message: "Evento não encontrado"
             });
-        };
-    
+        }
 
-        if (!userId) {
-            return res.status(404).json({
-                status: "fail",
-                message: "User não validado"
-            })
-        };
-    
         if (!name?.trim()) {
-            return res.status(404).json({
+            return res.status(400).json({
                 status: "fail",
                 message: "É obrigatório informar um nome"
-            })
-        };
+            });
+        }
     
         if (!job?.trim()) {
-            return res.status(404).json({
+            return res.status(400).json({
                 status: "fail",
                 message: "É obrigatório informar uma função"
-            })
-        };
+            });
+        }
     
         const team = await eventMemberService.create(name, role, job, event.id, userId);
     
         res.status(201).json({
-            status: "sucess",
-            message: "Membro adicionado ao time: ",
-            data: {team}
+            status: "success",
+            message: "Membro adicionado à equipe",
+            data: { team }
         });
 
-
     } catch (error) {
-        console.log("Erro ao criar mwmbro ", error);
+        console.log("Erro ao criar membro ", error);
         res.status(500).json({
-            status: "fail",
+            status: "error",
             message: "Erro ao criar membro"
         });
     }
-
 }
 
-export const getMyTeam = async (req, res) => {
+// ── CONVIDAR MEMBRO POR E-MAIL ──
+export const inviteTeamMemberByEmail = async (req, res) => {
     try {
-        const {id} = req.params;
+        const { id: eventId } = req.params;
+        const { email, job } = req.body;
+        const userId = req.user.id;
 
-        const team = await eventMemberService.getMembersByEvent(id);
-
-        if (!team) {
+        // Validar evento
+        const event = await eventService.getById(eventId);
+        if (!event) {
             return res.status(404).json({
-                status: "fail",
-                message: "Time não encontrado",
+                status: 'fail',
+                message: 'Evento não encontrado'
+            });
+        }
+
+        // Verificar permissão (apenas criador pode convidar)
+        if (event.createdBy !== userId) {
+            return res.status(403).json({
+                status: 'fail',
+                message: 'Apenas o criador do evento pode convidar membros para a equipe'
+            });
+        }
+
+        // Validações
+        if (!email?.trim()) {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'E-mail é obrigatório'
+            });
+        }
+
+        if (!email.includes('@')) {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'E-mail inválido'
+            });
+        }
+
+        if (!job?.trim()) {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'Função é obrigatória'
+            });
+        }
+
+        const result = await eventMemberService.inviteByEmail(eventId, email, job, userId);
+
+        res.status(201).json({
+            status: 'success',
+            message: result.isNewUser 
+                ? `Convite enviado para ${email}. Uma conta foi criada com senha temporária.`
+                : `Usuário ${email} foi adicionado à equipe do evento.`,
+            data: { teamMember: result.teamMember }
+        });
+
+    } catch (error) {
+        console.error('Erro ao convidar membro da equipe:', error);
+        
+        if (error.message === 'Evento não encontrado') {
+            return res.status(404).json({
+                status: 'fail',
+                message: error.message
             });
         }
         
+        if (error.message === 'Usuário já é membro da equipe deste evento') {
+            return res.status(409).json({
+                status: 'fail',
+                message: error.message
+            });
+        }
+        
+        res.status(500).json({
+            status: 'error',
+            message: 'Erro ao convidar membro da equipe'
+        });
+    }
+}
+
+// ── LISTAR MEMBROS ──
+export const getMyTeam = async (req, res) => {
+    try {
+        const { id: eventId } = req.params;
+
+        const team = await eventMemberService.getMembersByEvent(eventId);
+
         res.status(200).json({
-            status: 'sucess',
-            data: {
-                team,
-            },
+            status: 'success',
+            data: { team }
         });
         
     } catch (error) {
         console.log('Erro ao buscar time: ', error);
         return res.status(500).json({
-            status: 'fail',
-            message: 'Erro interno ao buscar time',
+            status: 'error',
+            message: 'Erro interno ao buscar time'
         });
-    };
-
+    }
 }
 
-export const updateMember = async (req,res) => {
-
+// ── ATUALIZAR MEMBRO ──
+export const updateMember = async (req, res) => {
     try {
-
-        const {memberId} = req.params;
+        const { memberId } = req.params;
         const updates = req.body;
         const userId = req.user.id;
 
         const existingMember = await eventMemberService.getMemberById(memberId);
 
-        if(!existingMember) {
+        if (!existingMember) {
             return res.status(404).json({
                 status: 'fail',
-                message: 'Membro não encontrado',
+                message: 'Membro não encontrado'
             });
         }
 
-        if (existingMember.userId !== userId) {
+        // Verificar permissão
+        const event = await eventService.getById(existingMember.eventId);
+        
+        if (event.createdBy !== userId && existingMember.userId !== userId) {
             return res.status(403).json({
                 status: 'fail',
-                message: 'Você não tem permissão para atualizar os dados deste membro'
+                message: 'Você não tem permissão para atualizar este membro'
             });
         }
 
         const dataToUpdate = {};
 
-        if(updates.name !== undefined) dataToUpdate.name = updates.name.trim();
-        if (updates.job !== undefined)dataToUpdate.job = updates.job.trim();
-        if (updates.role !== undefined)dataToUpdate.role = updates.role.trim();
+        if (updates.name !== undefined) dataToUpdate.name = updates.name.trim();
+        if (updates.job !== undefined) dataToUpdate.job = updates.job.trim();
+        if (updates.role !== undefined) dataToUpdate.role = updates.role;
 
         const eventMember = await eventMemberService.update(memberId, dataToUpdate);
 
         res.status(200).json({
-            status: 'sucess',
-            data: {
-                eventMember,
-            },
+            status: 'success',
+            data: { eventMember }
         });
         
     } catch (error) {
-        console.log("Erro ao atualizar membro do time: ", error);
-
+        console.log("Erro ao atualizar membro: ", error);
         
         if (error.code === 'P2025') {
             return res.status(404).json({
                 status: 'fail', 
-                message: 'Membro não encontrado',
-            });
-        }
-
-        res.status(500).json({
-            status: 'fail',
-            message: 'Erro interno ao atualizar membro'
-        })
-    }
-
-}
-
-export const deleteMember = async (req,res) => {
-    try {
-        
-        const {memberId} = req.params;
-        const userId = req.user.id;
-
-        const existingMember = await eventMemberService.getMemberById(memberId)
-
-        if (!existingMember){
-            return res.status(404).json({
-                status: 'fail',
-                message: 'Membro não encontrado',
-            });
-        }
-
-        if (existingMember.userId !== userId) {
-            return res.status(403).json({
-                status: 'fail',
-                message: 'Você não tem permissão para deletar este membro'
-            });
-        }
-
-        await eventMemberService.delete(memberId);
-
-        res.status(200).json({
-            status: 'sucess',
-            message: 'Membro deletado.'
-        })
-
-    } catch (error) {
-            console.error('Erro ao deletar membro: ', error);
-
-        if (error.code === 'P2025') {
-            return res.status(404).json({
-                status: 'fail', 
-                message: 'membro não encontrado',
+                message: 'Membro não encontrado'
             });
         }
 
         res.status(500).json({
             status: 'error',
-            message: 'Erro interno ao deletar membro',
+            message: 'Erro interno ao atualizar membro'
         });
-    
+    }
+}
+
+// ── REMOVER MEMBRO ──
+export const deleteMember = async (req, res) => {
+    try {
+        const { memberId } = req.params;
+        const userId = req.user.id;
+
+        const existingMember = await eventMemberService.getMemberById(memberId);
+
+        if (!existingMember) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'Membro não encontrado'
+            });
+        }
+
+        // Verificar permissão (apenas criador do evento)
+        const event = await eventService.getById(existingMember.eventId);
+        
+        if (event.createdBy !== userId) {
+            return res.status(403).json({
+                status: 'fail',
+                message: 'Você não tem permissão para remover este membro'
+            });
+        }
+
+        await eventMemberService.delete(memberId);
+
+        res.status(204).send();
+
+    } catch (error) {
+        console.error('Erro ao remover membro: ', error);
+
+        if (error.code === 'P2025') {
+            return res.status(404).json({
+                status: 'fail', 
+                message: 'Membro não encontrado'
+            });
+        }
+
+        res.status(500).json({
+            status: 'error',
+            message: 'Erro interno ao remover membro'
+        });
     }
 }

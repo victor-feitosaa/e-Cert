@@ -316,7 +316,7 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
           <button
             onClick={handleEnroll}
             disabled={enrolling || isFull}
-            className={`w-full py-3 rounded-xl font-bold text-[14px] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed
+            className={`w-full py-3 cursor-pointer rounded-xl font-bold text-[14px] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed
               ${isFull 
                 ? "bg-red-500/20 text-red-400 cursor-not-allowed" 
                 : "bg-violet-600 hover:bg-violet-500 active:scale-[0.99] text-white"

@@ -1,4 +1,4 @@
-// EditarEvent.jsx
+// sections/EditarEvent.jsx
 import { useState, useEffect } from "react";
 import { CalendarDays, ClipboardList, Cog, Globe, Lock, AlertTriangle, Save } from "lucide-react";
 
@@ -10,22 +10,18 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
     const [error, setError] = useState("");
     const [deleting, setDeleting] = useState(false);
 
-    // Função para validar se o ano tem no máximo 4 dígitos
     const validateYear = (value) => {
         if (!value) return true;
         const year = value.split('-')[0];
         return !(year && year.length > 4);
     };
 
-    // Função para formatar data garantindo que não exceda 4 dígitos no ano
     const formatDateForInput = (isoString) => {
         if (!isoString) return "";
         const date = new Date(isoString);
         const day = date.getDate().toString().padStart(2, "0");
         const month = `${date.getMonth() + 1}`.padStart(2, "0");
         const year = date.getFullYear().toString();
-        
-        // Se o ano tiver mais de 4 dígitos, usa ano atual
         const validYear = year.length > 4 ? new Date().getFullYear().toString() : year;
         return `${validYear}-${month}-${day}`;
     };
@@ -36,11 +32,8 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
         return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
     }
 
-    // Validador de data com ano máximo de 4 dígitos
     const handleDateChange = (field, value) => {
-        if (!validateYear(value)) {
-            return; // Impede a mudança se o ano tiver mais de 4 dígitos
-        }
+        if (!validateYear(value)) return;
         setForm(f => ({ ...f, [field]: value }));
     };
 
@@ -63,7 +56,6 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
             const ev = response.data?.event || response.event || response.data;
             if (!ev) throw new Error("Dados do evento não encontrados");
 
-            console.log("Dados do evento:", ev);
             setForm({
                 title: ev.title || "",
                 description: ev.description || "",
@@ -97,7 +89,6 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
         setError("");
         setSuccess(false);
 
-        // Validar anos das datas antes de enviar
         if (form.date_start && !validateYear(form.date_start)) {
             setError("Ano da data de início não pode ter mais de 4 dígitos");
             setSaving(false);
@@ -119,8 +110,6 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
             date_end: form.date_end && form.time_end ? `${form.date_end}T${form.time_end}:00` : null,
             isPublic: Boolean(form.isPublic),
         };
-
-        console.log("Payload enviado:", payload);
 
         try {
             const res = await fetch(`/api/events/${eventId}`, {
@@ -154,9 +143,7 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
     };
 
     const handleDelete = async () => {
-        if (!confirm("Tem certeza que deseja cancelar este evento? Esta ação não pode ser desfeita.")) {
-            return;
-        }
+        if (!confirm("Tem certeza que deseja cancelar este evento? Esta ação não pode ser desfeita.")) return;
 
         setDeleting(true);
         setError("");
@@ -187,18 +174,18 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
     if (loading) {
         return (
             <div className="flex justify-center items-center h-64 gap-3">
-                <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                <span className="text-sm text-muted-foreground">Carregando evento...</span>
+                <div className="w-6 h-6 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+                <span className="text-sm text-[#6b6888]">Carregando evento...</span>
             </div>
         );
     }
 
     if (error && !form) {
         return (
-            <div className="bg-red-400/10 border border-red-400/20 rounded-md p-6 text-center">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6 text-center">
                 <AlertTriangle className="mx-auto mb-3 text-red-400" size={24} />
                 <p className="text-sm text-red-400 mb-4">{error}</p>
-                <button onClick={fetchEventData} className="px-4 py-2 bg-primary rounded-md text-white text-sm hover:opacity-90 transition-opacity">
+                <button onClick={fetchEventData} className="px-4 py-2 bg-purple-600 rounded-lg text-white text-sm hover:opacity-90 transition-opacity">
                     Tentar novamente
                 </button>
             </div>
@@ -210,34 +197,34 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
     return (
         <section>
             <form onSubmit={handleSubmit} className="flex gap-6">
-                {/* ── ESQUERDA ── */}
-                <div className="w-1/2 bg-sidebar border border-border rounded-md">
-                    <div className="flex p-4 items-center gap-2 border-b border-border">
-                        <ClipboardList size={20} className="text-primary" />
-                        <h3 className="font-extrabold">Informações principais</h3>
+                {/* ESQUERDA */}
+                <div className="w-1/2 bg-[#13111e] border border-white/[0.07] rounded-xl">
+                    <div className="flex p-4 items-center gap-2 border-b border-white/[0.06]">
+                        <ClipboardList size={20} className="text-purple-400" />
+                        <h3 className="font-extrabold text-white">Informações principais</h3>
                     </div>
 
                     <fieldset className="flex flex-col gap-1 p-4">
-                        <label className="text-sm font-bold">Nome do evento</label>
-                        <input type="text" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.title} onChange={set("title")} required />
+                        <label className="text-sm font-bold text-[#6b6888]">Nome do evento</label>
+                        <input type="text" className="p-3 border rounded-lg text-sm border-white/[0.06] bg-[#0f0d1a] text-white outline-none focus:border-purple-500/40 transition-colors" value={form.title} onChange={set("title")} required />
                     </fieldset>
 
                     <fieldset className="flex flex-col gap-1 p-4">
-                        <label className="text-sm font-bold">Descrição</label>
-                        <textarea className="p-3 resize-none h-40 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors leading-relaxed" value={form.description} onChange={set("description")} />
+                        <label className="text-sm font-bold text-[#6b6888]">Descrição</label>
+                        <textarea className="p-3 resize-none h-40 border rounded-lg text-sm border-white/[0.06] bg-[#0f0d1a] text-white outline-none focus:border-purple-500/40 transition-colors leading-relaxed" value={form.description} onChange={set("description")} />
                     </fieldset>
 
                     <fieldset className="flex flex-col gap-1 p-4">
-                        <label className="text-sm font-bold">Local</label>
-                        <input type="text" className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" value={form.location} onChange={set("location")} />
+                        <label className="text-sm font-bold text-[#6b6888]">Local</label>
+                        <input type="text" className="p-3 border rounded-lg text-sm border-white/[0.06] bg-[#0f0d1a] text-white outline-none focus:border-purple-500/40 transition-colors" value={form.location} onChange={set("location")} />
                     </fieldset>
 
                     <fieldset className="flex flex-col gap-1 p-4">
-                        <label className="text-sm font-bold">Categoria</label>
+                        <label className="text-sm font-bold text-[#6b6888]">Categoria</label>
                         <select
                             value={form.category || "tecnologia"}
                             onChange={set("category")}
-                            className="w-full px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none cursor-pointer"
+                            className="w-full px-4 py-2.5 rounded-lg text-sm bg-[#0f0d1a] border border-white/[0.06] focus:border-purple-500/40 outline-none cursor-pointer text-white"
                         >
                             <option value="tecnologia">Tecnologia</option>
                             <option value="negocios">Negócios</option>
@@ -250,10 +237,10 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                     </fieldset>
 
                     <fieldset className="flex flex-col gap-1 p-4">
-                        <label className="text-sm font-bold">Capacidade</label>
+                        <label className="text-sm font-bold text-[#6b6888]">Capacidade</label>
                         <input 
                             type="number" 
-                            className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" 
+                            className="p-3 border rounded-lg text-sm border-white/[0.06] bg-[#0f0d1a] text-white outline-none focus:border-purple-500/40 transition-colors" 
                             value={form.capacity || ""} 
                             onChange={set("capacity")} 
                             min="0"
@@ -261,29 +248,29 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                     </fieldset>
                 </div>
 
-                {/* ── DIREITA ── */}
+                {/* DIREITA */}
                 <div className="w-1/2 flex flex-col gap-4">
-                    <div className="bg-sidebar border border-border rounded-md">
-                        <div className="flex p-4 items-center gap-2 border-b border-border">
-                            <CalendarDays size={20} className="text-primary" />
-                            <h3 className="font-extrabold">Data & Horário</h3>
+                    <div className="bg-[#13111e] border border-white/[0.07] rounded-xl">
+                        <div className="flex p-4 items-center gap-2 border-b border-white/[0.06]">
+                            <CalendarDays size={20} className="text-purple-400" />
+                            <h3 className="font-extrabold text-white">Data & Horário</h3>
                         </div>
                         <div className="flex">
                             <fieldset className="flex flex-col gap-1 p-4 w-1/2">
-                                <label className="text-sm font-bold">Data de início</label>
+                                <label className="text-sm font-bold text-[#6b6888]">Data de início</label>
                                 <input 
                                     type="date" 
-                                    className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" 
+                                    className="p-3 border rounded-lg text-sm border-white/[0.06] bg-[#0f0d1a] text-white outline-none focus:border-purple-500/40 transition-colors" 
                                     value={form.date_start || ""} 
                                     onChange={(e) => handleDateChange("date_start", e.target.value)} 
                                     required 
                                 />
                             </fieldset>
                             <fieldset className="flex flex-col gap-1 p-4 w-1/2">
-                                <label className="text-sm font-bold">Horário</label>
+                                <label className="text-sm font-bold text-[#6b6888]">Horário</label>
                                 <input 
                                     type="time" 
-                                    className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" 
+                                    className="p-3 border rounded-lg text-sm border-white/[0.06] bg-[#0f0d1a] text-white outline-none focus:border-purple-500/40 transition-colors" 
                                     value={form.time_start || ""} 
                                     onChange={set("time_start")} 
                                 />
@@ -291,20 +278,20 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                         </div>
                         <div className="flex">
                             <fieldset className="flex flex-col gap-1 p-4 w-1/2">
-                                <label className="text-sm font-bold">Data de Término</label>
+                                <label className="text-sm font-bold text-[#6b6888]">Data de Término</label>
                                 <input 
                                     type="date" 
-                                    className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" 
+                                    className="p-3 border rounded-lg text-sm border-white/[0.06] bg-[#0f0d1a] text-white outline-none focus:border-purple-500/40 transition-colors" 
                                     value={form.date_end || ""} 
                                     onChange={(e) => handleDateChange("date_end", e.target.value)} 
                                     required 
                                 />
                             </fieldset>
                             <fieldset className="flex flex-col gap-1 p-4 w-1/2">
-                                <label className="text-sm font-bold">Horário</label>
+                                <label className="text-sm font-bold text-[#6b6888]">Horário</label>
                                 <input 
                                     type="time" 
-                                    className="p-3 border rounded-md text-sm border-border bg-transparent outline-none focus:border-primary transition-colors" 
+                                    className="p-3 border rounded-lg text-sm border-white/[0.06] bg-[#0f0d1a] text-white outline-none focus:border-purple-500/40 transition-colors" 
                                     value={form.time_end || ""} 
                                     onChange={set("time_end")} 
                                 />
@@ -312,20 +299,20 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                         </div>
                     </div>
 
-                    <div className="bg-sidebar border border-border rounded-md flex-1">
-                        <div className="flex p-4 items-center gap-2 border-b border-border">
-                            <Cog size={20} className="text-primary" />
-                            <h3 className="font-extrabold">Configurações</h3>
+                    <div className="bg-[#13111e] border border-white/[0.07] rounded-xl flex-1">
+                        <div className="flex p-4 items-center gap-2 border-b border-white/[0.06]">
+                            <Cog size={20} className="text-purple-400" />
+                            <h3 className="font-extrabold text-white">Configurações</h3>
                         </div>
 
-                        <div className="p-4 border-b border-border">
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Visibilidade</p>
+                        <div className="p-4 border-b border-white/[0.06]">
+                            <p className="text-xs font-bold text-[#6b6888] uppercase tracking-widest mb-3">Visibilidade</p>
                             <div className="grid grid-cols-2 gap-2">
                                 <button 
                                     type="button" 
                                     onClick={() => togglePublic(true)}
                                     className={`flex flex-col items-start gap-1 px-4 py-3 rounded-lg border text-left transition-all text-sm font-bold cursor-pointer
-                                        ${form.isPublic === true ? "bg-emerald-400/10 border-emerald-400/25 text-emerald-400" : "border-border text-muted-foreground hover:border-primary/30"}`}
+                                        ${form.isPublic === true ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "border-white/[0.06] text-[#6b6888] hover:border-purple-500/30"}`}
                                 >
                                     <div className="flex items-center gap-1.5"><Globe size={12} /> Público</div>
                                     <span className="text-xs font-normal opacity-60">Visível para todos</span>
@@ -334,7 +321,7 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                                     type="button" 
                                     onClick={() => togglePublic(false)}
                                     className={`flex flex-col items-start gap-1 px-4 py-3 rounded-lg border text-left transition-all text-sm font-bold cursor-pointer
-                                        ${form.isPublic === false ? "bg-amber-400/10 border-amber-400/25 text-amber-400" : "border-border text-muted-foreground hover:border-primary/30"}`}
+                                        ${form.isPublic === false ? "bg-amber-500/10 border-amber-500/20 text-amber-400" : "border-white/[0.06] text-[#6b6888] hover:border-purple-500/30"}`}
                                 >
                                     <div className="flex items-center gap-1.5"><Lock size={12} /> Privado</div>
                                     <span className="text-xs font-normal opacity-60">Somente convidados</span>
@@ -343,12 +330,12 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                         </div>
 
                         <div className="p-4">
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Zona de risco</p>
+                            <p className="text-xs font-bold text-[#6b6888] uppercase tracking-widest mb-3">Zona de risco</p>
                             <button 
                                 type="button" 
                                 onClick={handleDelete}
                                 disabled={deleting}
-                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-red-400 bg-red-400/10 border border-red-400/20 hover:bg-red-400/20 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {deleting ? (
                                     <>
@@ -366,18 +353,18 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                     </div>
 
                     {error && (
-                        <p className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-md px-4 py-3">
+                        <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
                             <AlertTriangle size={13} className="inline mr-2" />
                             {error}
                         </p>
                     )}
                     {success && (
-                        <p className="text-sm text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-md px-4 py-3">
+                        <p className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-3">
                             ✓ Evento atualizado com sucesso!
                         </p>
                     )}
 
-                    <button type="submit" disabled={saving} className="w-full flex items-center justify-center gap-2 py-3 rounded-md text-sm font-bold text-white bg-primary hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer">
+                    <button type="submit" disabled={saving} className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-purple-600 to-purple-700 hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer">
                         {saving ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Save size={14} />}
                         {saving ? "Salvando..." : "Salvar alterações"}
                     </button>

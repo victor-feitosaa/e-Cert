@@ -3,7 +3,7 @@ import { useState, useCallback } from "react";
 import {
   Calendar, ChartLine, Download, GraduationCap, Pen, Users,
   Globe, Lock, Clock, MapPin, User, ArrowLeft, FileText,
-  CalendarDays, Layers
+  CalendarDays, Layers, Sparkles, ChevronRight
 } from "lucide-react";
 
 import Overview from "./sections/Overview.jsx";
@@ -12,25 +12,24 @@ import Participantes from "./sections/Participantes.jsx";
 import CertificadosAnalytics from "./sections/CertificadosAnalytics.jsx";
 import Exportar from "./sections/Exportar.jsx";
 import EditarEvent from "./sections/EditarEvent.jsx";
-import UserMenu from "../components/UserMenu.jsx"
 
 const NAV_ITEMS = [
-    { id: "overview",      Icon: ChartLine,     label: "Overview"     },
-    { id: "subeventos",    Icon: Calendar,      label: "Subeventos"   },
-    { id: "participantes", Icon: Users,         label: "Membros"      },
-    { id: "certificados",  Icon: GraduationCap, label: "Certificados" },
-    { id: "exportar",      Icon: Download,      label: "Exportar"     },
-    { id: "editar",        Icon: Pen,           label: "Editar"       },
+    { id: "overview",      Icon: ChartLine,     label: "Visão Geral"   },
+    { id: "subeventos",    Icon: Calendar,      label: "Sub-eventos"   },
+    { id: "participantes", Icon: Users,         label: "Equipe"        },
+    { id: "certificados",  Icon: GraduationCap, label: "Certificados"  },
+    { id: "exportar",      Icon: Download,      label: "Exportar"      },
+    { id: "editar",        Icon: Pen,           label: "Editar"        },
 ];
 
 /* ── Site Navbar ─────────────────────────────── */
 function SiteNav({ onBack }) {
     return (
-        <nav className="fixed top-0 left-0 right-0 z-50 h-14 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border-soft">
+        <nav className="fixed top-0 left-0 right-0 z-50 h-14 flex items-center justify-between px-6 bg-[#0A0A0F]/90 backdrop-blur-xl border-b border-white/[0.06]">
             {/* Logo */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
 
-                <span className="font-extrabold text-accent-foreground tracking-tight ">
+                <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white to-violet-300 bg-clip-text text-transparent">
                     e-<span className="text-violet-400">cert</span>
                 </span>
             </div>
@@ -38,14 +37,11 @@ function SiteNav({ onBack }) {
             {/* Back button */}
             <button
                 onClick={onBack}
-                className="flex cursor-pointer items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold text-accent-foreground border border-border-soft bg-transparent hover:text-primary hover:border-violet-500/40 hover:bg-violet-500/5 transition-all duration-150"
+                className="flex cursor-pointer items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold text-[#6b6888] border border-white/[0.08] bg-transparent hover:text-white hover:border-violet-500/40 hover:bg-violet-500/5 transition-all duration-150"
             >
                 <ArrowLeft size={14} strokeWidth={2} />
                 Voltar ao dashboard
             </button>
-
-            
-
         </nav>
     );
 }
@@ -55,7 +51,7 @@ function EventHeader({ eventData, date, time }) {
     const subEventCount = eventData.subEvents?.length ?? 0;
 
     return (
-        <div className="relative overflow-hidden rounded-xl border border-border-soft bg-background mb-6">
+        <div className="relative overflow-hidden rounded-xl border border-white/[0.07] bg-[#13111e]/80 backdrop-blur-sm mb-6">
             {/* Top accent line */}
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/60 to-transparent" />
             {/* Subtle background glow */}
@@ -75,11 +71,11 @@ function EventHeader({ eventData, date, time }) {
                             </div>
                         )}
 
-                        <h1 className="text-3xl font-extrabold text-primary leading-tight tracking-tight truncate">
+                        <h1 className="text-2xl md:text-3xl font-extrabold text-white leading-tight tracking-tight truncate">
                             {eventData.title}
                         </h1>
 
-                        <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-accent-foreground">
+                        <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#6b6888]">
                             <span className="flex items-center gap-1.5">
                                 <CalendarDays size={12} className="text-violet-400 shrink-0" />
                                 {date}
@@ -90,18 +86,18 @@ function EventHeader({ eventData, date, time }) {
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <MapPin size={12} className="text-violet-400 shrink-0" />
-                                {eventData.location}
+                                {eventData.location || "Não informado"}
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <User size={12} className="text-violet-400 shrink-0" />
-                                Por <span className="text-primary font-semibold ml-1">{eventData.creator?.name}</span>
+                                Por <span className="text-violet-400 font-semibold ml-1">{eventData.creator?.name}</span>
                             </span>
                         </div>
                     </div>
 
                     {/* Right — stat chip */}
                     <div className="flex gap-3 shrink-0">
-                        <StatChip Icon={Layers} value={subEventCount} label="subeventos" />
+                        <StatChip Icon={Layers} value={subEventCount} label="sub-eventos" />
                     </div>
                 </div>
             </div>
@@ -111,10 +107,10 @@ function EventHeader({ eventData, date, time }) {
 
 function StatChip({ Icon, value, label }) {
     return (
-        <div className="flex flex-col items-center justify-center gap-1 px-4 py-3 rounded-lg bg-violet-500/5 border border-violet-500/15 min-w-[72px]">
+        <div className="flex flex-col items-center justify-center gap-1 px-4 py-2.5 rounded-lg bg-violet-500/10 border border-violet-500/20 min-w-[70px]">
             <Icon size={13} className="text-violet-400" strokeWidth={1.8} />
-            <span className="text-lg font-extrabold text-primary leading-none">{value}</span>
-            <span className="text-[10px] font-semibold text-accent-foreground uppercase tracking-wide">{label}</span>
+            <span className="text-xl font-extrabold text-violet-400 leading-none">{value}</span>
+            <span className="text-[10px] font-bold text-[#6b6888] uppercase tracking-wide">{label}</span>
         </div>
     );
 }
@@ -177,7 +173,7 @@ export default function AnalyticTabs({ eventData: initialEventData, apiURL, cook
     };
 
     return (
-        <div className="flex flex-col text-accent-foreground">
+        <div className="min-h-screen bg-[#0A0A0F]">
             <SiteNav onBack={handleBack} />
 
             <div className="pt-14">
@@ -185,36 +181,40 @@ export default function AnalyticTabs({ eventData: initialEventData, apiURL, cook
                     <EventHeader eventData={eventData} date={date} time={time} />
                 </div>
 
-                <section className="mx-6 bg-background border border-border-soft py-2 px-4 rounded-xl">
-                    <div className="border-b border-sidebar mb-6">
-                        <div className="flex gap-2">
-                            {NAV_ITEMS.map(({ id, Icon, label }) => {
-                                const isActive = activeTab === id;
-                                return (
-                                    <button
-                                        key={id}
-                                        onClick={() => setActiveTab(id)}
-                                        className={`
-                                            flex cursor-pointer items-center gap-2 px-6 py-3 text-sm font-medium
-                                            transition-all duration-200 border-b-2 -mb-[1px]
-                                            ${isActive
-                                                ? "border-primary text-primary"
-                                                : "border-transparent text-accent-foreground hover:text-primary hover:border-accent"
-                                            }
-                                        `}
-                                    >
-                                        <Icon size={18} />
-                                        <span>{label}</span>
-                                    </button>
-                                );
-                            })}
+                <div className="px-6 pb-6">
+                    <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-xl overflow-hidden">
+                        {/* Tabs */}
+                        <div className="border-b border-white/[0.06] px-4">
+                            <div className="flex gap-1 overflow-x-auto scrollbar-custom">
+                                {NAV_ITEMS.map(({ id, Icon, label }) => {
+                                    const isActive = activeTab === id;
+                                    return (
+                                        <button
+                                            key={id}
+                                            onClick={() => setActiveTab(id)}
+                                            className={`
+                                                flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium
+                                                transition-all duration-200 border-b-2 -mb-[1px] whitespace-nowrap
+                                                ${isActive
+                                                    ? "border-violet-500 text-violet-400"
+                                                    : "border-transparent text-[#6b6888] hover:text-white hover:border-white/[0.14]"
+                                                }
+                                            `}
+                                        >
+                                            <Icon size={16} />
+                                            <span>{label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6">
+                            {renderContent()}
                         </div>
                     </div>
-
-                    <div className="mt-6">
-                        {renderContent()}
-                    </div>
-                </section>
+                </div>
             </div>
         </div>
     );
