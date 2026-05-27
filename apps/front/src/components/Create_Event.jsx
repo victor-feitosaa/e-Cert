@@ -429,7 +429,6 @@ export default function CreateEvent({ onBack }) {
 
   const handleBack = () => {
     if (step === 0) {
-      // reset tudo e volta
       window.location.href = "/userDashboard";
     } else {
       prev();
@@ -646,8 +645,8 @@ export default function CreateEvent({ onBack }) {
           })}
         </div>
 
-        {/* Card principal */}
-        <div className="bg-sidebar border border-border rounded-xl p-6 md:p-8">
+        {/* Card principal - agora com bg-[#11101B] igual ao CreateSubEvent */}
+        <div className="bg-[#11101B] border border-border rounded-xl p-6 md:p-8 animate-in fade-in slide-in-from-bottom-6 duration-400">
           {/* STEP 0 - INFORMAÇÕES DO EVENTO */}
           {step === 0 && (
             <div className="space-y-5">
@@ -659,7 +658,10 @@ export default function CreateEvent({ onBack }) {
                   type="text"
                   value={form.name}
                   onChange={(e) => set("name", e.target.value)}
-                  className={`w-full px-4 py-2.5 rounded-lg text-sm bg-background border ${errors.name ? "border-red-400/50" : "border-border"} focus:border-primary outline-none`}
+                  placeholder="ex: Tech Summit Brasil 2025"
+                  className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${
+                    errors.name ? "border-red-400/50" : "border-border"
+                  } focus:border-primary outline-none placeholder:text-accent-foreground/40`}
                 />
                 {errors.name && (
                   <p className="text-xs text-red-400 mt-1">{errors.name}</p>
@@ -674,7 +676,10 @@ export default function CreateEvent({ onBack }) {
                   value={form.description}
                   onChange={(e) => set("description", e.target.value)}
                   rows={4}
-                  className={`w-full px-4 py-2.5 rounded-lg text-sm bg-background border resize-y ${errors.description ? "border-red-400/50" : "border-border"} focus:border-primary outline-none`}
+                  placeholder="Descreva o evento, programação e público-alvo..."
+                  className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border resize-y ${
+                    errors.description ? "border-red-400/50" : "border-border"
+                  } focus:border-primary outline-none placeholder:text-accent-foreground/40`}
                 />
                 {errors.description && (
                   <p className="text-xs text-red-400 mt-1">
@@ -694,7 +699,9 @@ export default function CreateEvent({ onBack }) {
                     onChange={(e) =>
                       handleDateChange("date_start", e.target.value)
                     }
-                    className={`w-full px-4 py-2.5 rounded-lg text-sm bg-background border ${errors.date_start ? "border-red-400/50" : "border-border"} focus:border-primary outline-none`}
+                    className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${
+                      errors.date_start ? "border-red-400/50" : "border-border"
+                    } focus:border-primary outline-none`}
                   />
                   {errors.date_start && (
                     <p className="text-xs text-red-400 mt-1">
@@ -710,7 +717,9 @@ export default function CreateEvent({ onBack }) {
                     type="time"
                     value={form.time_start}
                     onChange={(e) => set("time_start", e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-lg text-sm bg-background border ${errors.time_start ? "border-red-400/50" : "border-border"} focus:border-primary outline-none`}
+                    className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${
+                      errors.time_start ? "border-red-400/50" : "border-border"
+                    } focus:border-primary outline-none`}
                   />
                   {errors.time_start && (
                     <p className="text-xs text-red-400 mt-1">
@@ -731,7 +740,9 @@ export default function CreateEvent({ onBack }) {
                     onChange={(e) =>
                       handleDateChange("date_end", e.target.value)
                     }
-                    className={`w-full px-4 py-2.5 rounded-lg text-sm bg-background border ${errors.date_end ? "border-red-400/50" : "border-border"} focus:border-primary outline-none`}
+                    className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${
+                      errors.date_end ? "border-red-400/50" : "border-border"
+                    } focus:border-primary outline-none`}
                   />
                   {errors.date_end && (
                     <p className="text-xs text-red-400 mt-1">
@@ -747,7 +758,9 @@ export default function CreateEvent({ onBack }) {
                     type="time"
                     value={form.time_end}
                     onChange={(e) => set("time_end", e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-lg text-sm bg-background border ${errors.time_end ? "border-red-400/50" : "border-border"} focus:border-primary outline-none`}
+                    className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${
+                      errors.time_end ? "border-red-400/50" : "border-border"
+                    } focus:border-primary outline-none`}
                   />
                   {errors.time_end && (
                     <p className="text-xs text-red-400 mt-1">
@@ -765,7 +778,10 @@ export default function CreateEvent({ onBack }) {
                   type="text"
                   value={form.location}
                   onChange={(e) => set("location", e.target.value)}
-                  className={`w-full px-4 py-2.5 rounded-lg text-sm bg-background border ${errors.location ? "border-red-400/50" : "border-border"} focus:border-primary outline-none`}
+                  placeholder="ex: Centro de Convenções Frei Caneca, SP"
+                  className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${
+                    errors.location ? "border-red-400/50" : "border-border"
+                  } focus:border-primary outline-none placeholder:text-accent-foreground/40`}
                 />
                 {errors.location && (
                   <p className="text-xs text-red-400 mt-1">{errors.location}</p>
@@ -780,7 +796,7 @@ export default function CreateEvent({ onBack }) {
                   <select
                     value={form.category}
                     onChange={(e) => set("category", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                    className="w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border border-border focus:border-primary outline-none"
                   >
                     <option value="tecnologia">Tecnologia</option>
                     <option value="negocios">Negócios</option>
@@ -799,7 +815,8 @@ export default function CreateEvent({ onBack }) {
                     type="number"
                     value={form.capacity}
                     onChange={(e) => set("capacity", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                    placeholder="ex: 200"
+                    className="w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
                   />
                 </div>
               </div>
@@ -812,7 +829,8 @@ export default function CreateEvent({ onBack }) {
                   type="url"
                   value={form.locationUrl}
                   onChange={(e) => set("locationUrl", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                  placeholder="https://..."
+                  className="w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
                 />
               </div>
             </div>
@@ -837,7 +855,7 @@ export default function CreateEvent({ onBack }) {
                       return (
                         <div
                           key={member.id}
-                          className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border"
+                          className="flex items-center justify-between p-3 rounded-lg bg-[#11101B] border border-border"
                         >
                           <div className="flex items-center gap-3">
                             <Mail size={14} className="text-purple-400" />
@@ -854,7 +872,7 @@ export default function CreateEvent({ onBack }) {
                           </div>
                           <button
                             onClick={() => removeTeamMember(member.id)}
-                            className="p-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                            className="p-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 cursor-pointer"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -878,7 +896,11 @@ export default function CreateEvent({ onBack }) {
                         setErrors((prev) => ({ ...prev, teamMemberEmail: "" }));
                       }}
                       placeholder="E-mail do membro"
-                      className={`w-full pl-10 pr-4 py-2.5 rounded-lg text-sm bg-background border ${errors.teamMemberEmail ? "border-red-400/50" : "border-border"} focus:border-primary outline-none`}
+                      className={`w-full pl-10 pr-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${
+                        errors.teamMemberEmail
+                          ? "border-red-400/50"
+                          : "border-border"
+                      } focus:border-primary outline-none placeholder:text-accent-foreground/40`}
                     />
                   </div>
                   {errors.teamMemberEmail && (
@@ -896,7 +918,11 @@ export default function CreateEvent({ onBack }) {
                         setErrors((prev) => ({ ...prev, teamMemberJob: "" }));
                       }}
                       placeholder="Função (ex: Organizador, Coordenador)"
-                      className={`w-full px-4 py-2.5 rounded-lg text-sm bg-background border ${errors.teamMemberJob ? "border-red-400/50" : "border-border"} focus:border-primary outline-none`}
+                      className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${
+                        errors.teamMemberJob
+                          ? "border-red-400/50"
+                          : "border-border"
+                      } focus:border-primary outline-none placeholder:text-accent-foreground/40`}
                     />
                     {errors.teamMemberJob && (
                       <p className="text-xs text-red-400 mt-1">
@@ -908,7 +934,7 @@ export default function CreateEvent({ onBack }) {
 
                 <button
                   onClick={addTeamMember}
-                  className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
+                  className="w-full mt-3 flex cursor-pointer items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
                 >
                   <Send size={14} /> Adicionar membro
                 </button>
@@ -949,7 +975,7 @@ export default function CreateEvent({ onBack }) {
                     {subevents.map((sub, idx) => (
                       <div
                         key={idx}
-                        className="p-3 rounded-lg bg-background/50 border border-border"
+                        className="p-3 rounded-lg bg-[#11101B] border border-border"
                       >
                         <div className="flex justify-between items-start">
                           <div>
@@ -978,13 +1004,13 @@ export default function CreateEvent({ onBack }) {
                           <div className="flex gap-1">
                             <button
                               onClick={() => editSubevent(idx)}
-                              className="p-1.5 rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
+                              className="p-1.5 rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 cursor-pointer"
                             >
                               <Edit2 size={14} />
                             </button>
                             <button
                               onClick={() => removeSubevent(idx)}
-                              className="p-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                              className="p-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 cursor-pointer"
                             >
                               <Trash2 size={14} />
                             </button>
@@ -1014,7 +1040,11 @@ export default function CreateEvent({ onBack }) {
                         }))
                       }
                       placeholder="Nome do subevento *"
-                      className={`w-full px-4 py-2.5 rounded-lg text-sm bg-background border ${errors.subeventName ? "border-red-400/50" : "border-border"} focus:border-primary outline-none`}
+                      className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${
+                        errors.subeventName
+                          ? "border-red-400/50"
+                          : "border-border"
+                      } focus:border-primary outline-none placeholder:text-accent-foreground/40`}
                     />
                     {errors.subeventName && (
                       <p className="text-xs text-red-400">
@@ -1032,7 +1062,7 @@ export default function CreateEvent({ onBack }) {
                       }
                       placeholder="Descrição (opcional)"
                       rows={2}
-                      className="w-full px-4 py-2.5 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none resize-y"
+                      className="w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border border-border focus:border-primary outline-none resize-y placeholder:text-accent-foreground/40"
                     />
 
                     <div className="grid grid-cols-2 gap-3">
@@ -1046,7 +1076,11 @@ export default function CreateEvent({ onBack }) {
                           }))
                         }
                         placeholder="Local *"
-                        className={`px-4 py-2.5 rounded-lg text-sm bg-background border ${errors.subeventLocation ? "border-red-400/50" : "border-border"} focus:border-primary outline-none`}
+                        className={`px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${
+                          errors.subeventLocation
+                            ? "border-red-400/50"
+                            : "border-border"
+                        } focus:border-primary outline-none placeholder:text-accent-foreground/40`}
                       />
                       <input
                         type="number"
@@ -1058,7 +1092,11 @@ export default function CreateEvent({ onBack }) {
                           }))
                         }
                         placeholder="Capacidade *"
-                        className={`px-4 py-2.5 rounded-lg text-sm bg-background border ${errors.subeventCapacity ? "border-red-400/50" : "border-border"} focus:border-primary outline-none`}
+                        className={`px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${
+                          errors.subeventCapacity
+                            ? "border-red-400/50"
+                            : "border-border"
+                        } focus:border-primary outline-none placeholder:text-accent-foreground/40`}
                       />
                     </div>
                     {(errors.subeventLocation || errors.subeventCapacity) && (
@@ -1077,7 +1115,7 @@ export default function CreateEvent({ onBack }) {
                           {newSubevent.sections.map((section) => (
                             <div
                               key={section.id}
-                              className="flex justify-between items-center p-2 rounded-lg bg-background/30 border border-border/50"
+                              className="flex justify-between items-center p-2 rounded-lg bg-[#11101B] border border-border/50"
                             >
                               <span className="text-xs text-accent-foreground/60">
                                 {section.title && `${section.title} - `}
@@ -1088,7 +1126,7 @@ export default function CreateEvent({ onBack }) {
                                 onClick={() =>
                                   removeSectionFromSubevent(section.id)
                                 }
-                                className="text-red-400"
+                                className="text-red-400 cursor-pointer"
                               >
                                 <Trash2 size={12} />
                               </button>
@@ -1107,7 +1145,7 @@ export default function CreateEvent({ onBack }) {
                             }))
                           }
                           placeholder="Título (opcional)"
-                          className="col-span-2 px-3 py-1.5 rounded-lg text-xs bg-background border border-border focus:border-primary outline-none"
+                          className="col-span-2 px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
                         />
                         <input
                           type="date"
@@ -1115,7 +1153,7 @@ export default function CreateEvent({ onBack }) {
                           onChange={(e) =>
                             handleDateChange("date_start", e.target.value, true)
                           }
-                          className="px-3 py-1.5 rounded-lg text-xs bg-background border border-border focus:border-primary outline-none"
+                          className="px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none"
                         />
                         <input
                           type="time"
@@ -1126,7 +1164,7 @@ export default function CreateEvent({ onBack }) {
                               time_start: e.target.value,
                             }))
                           }
-                          className="px-3 py-1.5 rounded-lg text-xs bg-background border border-border focus:border-primary outline-none"
+                          className="px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none"
                         />
                         <input
                           type="date"
@@ -1134,7 +1172,7 @@ export default function CreateEvent({ onBack }) {
                           onChange={(e) =>
                             handleDateChange("date_end", e.target.value, true)
                           }
-                          className="px-3 py-1.5 rounded-lg text-xs bg-background border border-border focus:border-primary outline-none"
+                          className="px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none"
                         />
                         <input
                           type="time"
@@ -1145,7 +1183,7 @@ export default function CreateEvent({ onBack }) {
                               time_end: e.target.value,
                             }))
                           }
-                          className="px-3 py-1.5 rounded-lg text-xs bg-background border border-border focus:border-primary outline-none"
+                          className="px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none"
                         />
                         <input
                           type="text"
@@ -1157,12 +1195,12 @@ export default function CreateEvent({ onBack }) {
                             }))
                           }
                           placeholder="Local específico (opcional)"
-                          className="col-span-2 px-3 py-1.5 rounded-lg text-xs bg-background border border-border focus:border-primary outline-none"
+                          className="col-span-2 px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
                         />
                       </div>
                       <button
                         onClick={addSectionToSubevent}
-                        className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
+                        className="w-full flex cursor-pointer items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
                       >
                         <Plus size={12} /> Adicionar seção
                       </button>
@@ -1189,7 +1227,7 @@ export default function CreateEvent({ onBack }) {
                           {newSubevent.teamMembers.map((member) => (
                             <div
                               key={member.id}
-                              className="flex justify-between items-center p-1.5 rounded-lg bg-background/30"
+                              className="flex justify-between items-center p-1.5 rounded-lg bg-[#11101B] border border-border/50"
                             >
                               <span className="text-xs text-accent-foreground/60">
                                 {member.email} - {member.job}
@@ -1198,7 +1236,7 @@ export default function CreateEvent({ onBack }) {
                                 onClick={() =>
                                   removeMemberFromSubevent(member.id)
                                 }
-                                className="text-red-400"
+                                className="text-red-400 cursor-pointer"
                               >
                                 <Trash2 size={10} />
                               </button>
@@ -1215,7 +1253,7 @@ export default function CreateEvent({ onBack }) {
                               selectExistingMember(e.target.value)
                             }
                             value=""
-                            className="w-full px-3 py-1.5 rounded-lg text-xs bg-background border border-border focus:border-primary outline-none"
+                            className="w-full px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none"
                           >
                             <option value="">
                               -- Selecionar da equipe principal --
@@ -1241,7 +1279,7 @@ export default function CreateEvent({ onBack }) {
                             }))
                           }
                           placeholder="E-mail"
-                          className="flex-1 px-3 py-1.5 rounded-lg text-xs bg-background border border-border focus:border-primary outline-none"
+                          className="flex-1 px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
                         />
                         <input
                           type="text"
@@ -1254,11 +1292,11 @@ export default function CreateEvent({ onBack }) {
                             }))
                           }
                           placeholder="Função"
-                          className="flex-1 px-3 py-1.5 rounded-lg text-xs bg-background border border-border focus:border-primary outline-none"
+                          className="flex-1 px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
                         />
                         <button
                           onClick={addMemberToSubevent}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20"
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 cursor-pointer"
                         >
                           <UserPlus size={12} />
                         </button>
@@ -1274,7 +1312,7 @@ export default function CreateEvent({ onBack }) {
 
                     <button
                       onClick={saveSubevent}
-                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-purple-600 to-purple-700 hover:opacity-90 transition-all"
+                      className="w-full flex cursor-pointer items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-purple-600 to-purple-700 hover:opacity-90 transition-all"
                     >
                       {activeSubeventIndex !== null
                         ? "Atualizar subevento"
@@ -1298,34 +1336,34 @@ export default function CreateEvent({ onBack }) {
                   Evento Principal
                 </div>
                 <div className="space-y-2">
-                  <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
+                  <div className="flex gap-3 p-3 rounded-lg bg-[#11101B] border border-border">
                     <ClipboardList
                       size={18}
                       className="text-accent-foreground/40"
                     />
                     <div>
-                      <div className="text-[10px] uppercase">Nome</div>
-                      <div className="text-sm">{form.name}</div>
+                      <div className="text-[10px] uppercase text-accent-foreground/40">Nome</div>
+                      <div className="text-sm text-accent-foreground">{form.name}</div>
                     </div>
                   </div>
-                  <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
+                  <div className="flex gap-3 p-3 rounded-lg bg-[#11101B] border border-border">
                     <CalendarDays
                       size={18}
                       className="text-accent-foreground/40"
                     />
                     <div>
-                      <div className="text-[10px] uppercase">Data</div>
-                      <div className="text-sm">
+                      <div className="text-[10px] uppercase text-accent-foreground/40">Data</div>
+                      <div className="text-sm text-accent-foreground">
                         {form.date_start} {form.time_start} → {form.date_end}{" "}
                         {form.time_end}
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-3 p-3 rounded-lg bg-background/50 border border-border">
+                  <div className="flex gap-3 p-3 rounded-lg bg-[#11101B] border border-border">
                     <MapPin size={18} className="text-accent-foreground/40" />
                     <div>
-                      <div className="text-[10px] uppercase">Local</div>
-                      <div className="text-sm">{form.location}</div>
+                      <div className="text-[10px] uppercase text-accent-foreground/40">Local</div>
+                      <div className="text-sm text-accent-foreground">{form.location}</div>
                     </div>
                   </div>
                 </div>
@@ -1342,7 +1380,7 @@ export default function CreateEvent({ onBack }) {
                         key={m.id}
                         className="text-xs text-accent-foreground/60"
                       >
-                      {m.email} - {m.job}
+                        {m.email} - {m.job}
                       </div>
                     ))}
                   </div>
@@ -1358,7 +1396,7 @@ export default function CreateEvent({ onBack }) {
                     {subevents.map((sub, idx) => (
                       <div
                         key={idx}
-                        className="p-3 rounded-lg bg-background/50 border border-border"
+                        className="p-3 rounded-lg bg-[#11101B] border border-border"
                       >
                         <div className="font-bold text-accent-foreground">
                           {sub.name}
@@ -1405,7 +1443,7 @@ export default function CreateEvent({ onBack }) {
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
             <button
               onClick={handleBack}
-              className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium text-accent-foreground/60 border border-border hover:text-accent-foreground hover:border-primary/30"
+              className="flex cursor-pointer items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium text-accent-foreground/60 border border-border hover:text-accent-foreground hover:border-primary/30 transition-all"
             >
               <ArrowLeft size={14} /> {step === 0 ? "Cancelar" : "Anterior"}
             </button>
@@ -1420,7 +1458,7 @@ export default function CreateEvent({ onBack }) {
             {step < STEP_LABELS.length - 1 ? (
               <button
                 onClick={next}
-                className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg"
+                className="flex cursor-pointer items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg transition-all"
               >
                 Próximo <ArrowRight size={14} />
               </button>
@@ -1428,7 +1466,7 @@ export default function CreateEvent({ onBack }) {
               <button
                 onClick={handleSubmit}
                 disabled={creatingEvent}
-                className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg disabled:opacity-50"
+                className="flex cursor-pointer items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] shadow-md hover:shadow-lg transition-all disabled:opacity-50"
               >
                 {creatingEvent ? (
                   <>

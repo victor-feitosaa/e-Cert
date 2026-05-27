@@ -375,9 +375,9 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
       {/* NAV CENTRALIZADA */}
       <nav className="sticky top-0 z-50 h-14 flex items-center justify-between px-6 bg-[#0a0a0f]/90 backdrop-blur-md border-b border-white/[0.06]">
         <div className="flex items-center gap-2 w-32">
-          <span className="text-[15px] font-black tracking-tight">
+          <a href="/" className="text-[15px] font-black tracking-tight">
             e-<span className="text-violet-400">cert</span>
-          </span>
+          </a>
         </div>
 
         <div className="absolute left-1/2 transform -translate-x-1/2">
