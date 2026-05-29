@@ -40,6 +40,12 @@ class ParticipantService {
     return ParticipantRepository.countEventParticipants(eventId)
   }
 
+  async isEventParticipant(eventId, userId) {
+    const participant = await ParticipantRepository.findEventParticipantByUserId(eventId, userId)
+    return !!participant
+  }
+    
+
   // ── SubEvent Participants ───────────────────────────────────────────────────
 
   async addSubeventParticipant(subEventId, userId) {

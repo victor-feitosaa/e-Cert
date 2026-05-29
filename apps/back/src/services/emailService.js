@@ -17,7 +17,7 @@ class EmailService {
             from: 'mail.cert.e@gmail.com',
             to: email,
             subject,
-            text
+            html: text
         };
 
         return this.createTransport().sendMail(mailOptions, (error, info) => {

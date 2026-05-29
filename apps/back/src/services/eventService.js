@@ -54,6 +54,14 @@ class EventService {
     }
 
 
+    async createAttendance(eventId, userId) {
+        return await EventRepository.createAttendance(eventId, userId);
+    }
+
+    async confirmAttendance(eventId, userId) {
+        return await EventRepository.confirmAttendance(eventId, userId);
+    };
+
 }
 
 export default new EventService();

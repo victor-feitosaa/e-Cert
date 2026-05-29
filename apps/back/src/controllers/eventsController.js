@@ -2,6 +2,7 @@ import { prisma } from '../config/db.js';
 import eventRoleService from '../services/eventRoleService.js';
 import EventRoleService from '../services/eventRoleService.js';
 import eventService from '../services/eventService.js';
+import participantService from '../services/participantService.js';
 
 
 // Helper para validação de datas
@@ -372,6 +373,59 @@ export const deleteEvent = async (req, res) => {
   }
 };
 
+// ================== PARTICIPANTES E MODERADORES ==================
+
+//Confirmação de presença do participante no evento
+export const confirmAttendance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const  userId  = req.user.id; 
+
+    //confirmar se o evento existe e não foi encerrado
+    const event = await eventService.getById(id);
+
+    if (!event) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Evento não encontrado'
+      });
+    }
+    if (new Date(event.date_end) < new Date()) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Evento já ocorreu, não é possível confirmar presença'
+      });
+    }
+
+    //confirmar se o usuário é participante do evento
+    const isParticipant = await participantService.isEventParticipant(id, userId);
+
+    if (!isParticipant) {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Você não é participante deste evento'
+      });
+    }
+
+    
+
+    const attendance = await eventService.confirmAttendance(id, userId);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        attendance
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao confirmar presença:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Erro interno ao confirmar presença'
+    });
+  }
+};
+
 export const getEventParticipants = async (req, res) => {
   try {
     const { id } = req.params;
@@ -392,7 +446,7 @@ export const getEventParticipants = async (req, res) => {
   }
 };
 
-// src/controllers/eventController.js
+
 export const getEventParticipantCount = async (req, res) => {
   try {
     const { id } = req.params;

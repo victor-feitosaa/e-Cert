@@ -169,6 +169,31 @@ class EventRepository {
         });
         return participants;
     }
+
+
+    async createAttendance(eventId, userId) {
+        return await prisma.eventAttendance.create({
+            data: {
+                userId,
+                eventId
+            }
+        });
+    }
+
+
+    async confirmAttendance(eventId, userId) {
+        return await prisma.eventAttendance.update({
+            where: {
+                userId_eventId: {
+                    userId,
+                    eventId
+                }
+            },
+            data: {
+                attended: true
+            }
+        });
+    }
 }
 
 export default new EventRepository();

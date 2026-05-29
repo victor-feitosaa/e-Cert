@@ -12,6 +12,7 @@ import {
   getAllEvents,
   getEventParticipants,
   getEventParticipantCount,
+  confirmAttendance,
 } from '../controllers/eventsController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { isEventOwner } from '../middleware/eventMiddleware.js';
@@ -43,6 +44,8 @@ router.use(protect);
 // Rotas do usuário autenticado
 router.get('/my/events', getMyEvents);
 router.post('/', createEvent);
+
+router.post("/:id/confirmAttendance", confirmAttendance);
 
 // ──────────────────────────────────────────────
 // ROTAS QUE REQUEREM SER DONO DO EVENTO

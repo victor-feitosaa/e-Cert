@@ -26,6 +26,8 @@ model User {
   eventParticipations EventParticipant[]
   subEventParticipations SubeventParticipant[]
   sectionParticipations SectionParticipant[]
+  eventAttendances    EventAttendance[]
+  sectionAttendances  SectionAttendance[]
   certificates        Certificate[]
 }
 
@@ -43,6 +45,8 @@ model Event {
   updatedAt   DateTime  @updatedAt
   location    String?
   isPublic    Boolean   @default(true)
+
+  attendances EventAttendance[]
 
   createdBy        String
   creator          User              @relation("EventCreator", fields: [createdBy], references: [id], onDelete: Cascade)
@@ -87,6 +91,7 @@ model Section {
   subEvent   SubEvent @relation(fields: [subEventId], references: [id], onDelete: Cascade)
 
   participants SectionParticipant[]
+  attendances SectionAttendance[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -146,6 +151,42 @@ model SubeventParticipant {
   @@index([userId])
 }
 
+// Confirmação de presença e emissão de certificado dependem de participação registrada, não de inscrição — evita confusão entre inscritos e participantes efetivos
+
+model EventAttendance {
+  id        String   @id @default(uuid())
+  attended   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId  String
+  eventId String
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])  
+  @@index([eventId])
+  @@index([userId])
+}
+
+model SectionAttendance {
+  id        String   @id @default(uuid())
+  attended   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId    String
+  sectionId String
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sectionId])  
+  @@index([sectionId])
+  @@index([userId])
+}
+
 // ── Certificados ──────────────────────────────────────────────────────────────
 
 model Certificate {
@@ -157,7 +198,7 @@ model Certificate {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  userId     String            // ← novo: vínculo com o dono do certificado
+  userId     String           
   eventId    String?
   subEventId String?
 

@@ -58,6 +58,9 @@ export const addEventParticipant = async (req, res) => {
 
     const participant = await participantService.addEventParticipant(eventId, targetUserId);
 
+    // Se o participante for adicionado com sucesso, criar confirmação de presença = false;
+    await eventService.createAttendance(eventId, targetUserId);
+
     res.status(201).json({ status: 'success', data: { participant } });
 
   } catch (error) {
