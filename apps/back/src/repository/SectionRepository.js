@@ -159,6 +159,29 @@ const SectionRepository = {
         }
       }
     })
+  },
+
+  async createAttendance(sectionId, userId) {
+    return prisma.sectionAttendance.create({
+      data: {
+        userId,
+        sectionId
+      }
+    })
+  },
+
+  async confirmAttendance(sectionId, userId) {
+    return prisma.sectionAttendance.update({
+      where: {
+        userId_sectionId: {
+          userId,
+          sectionId
+        }
+      },
+      data: {
+        attended: true
+      }
+    })
   }
 }
 

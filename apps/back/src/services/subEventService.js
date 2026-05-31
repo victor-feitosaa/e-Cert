@@ -26,9 +26,15 @@ class SubEventService {
         return await SubEventRepository.getAllSubEventsOfEvent(id);
     }
 
+    async getEventBySubEventId(subEventId) {
+        return await SubEventRepository.getEventBySubEventId(subEventId);
+    }
+
     async findById (id) {
         return await SubEventRepository.findById(id);
     }
+
+   
 
 }
 

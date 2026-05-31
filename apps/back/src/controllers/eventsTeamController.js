@@ -130,6 +130,36 @@ export const inviteTeamMemberByEmail = async (req, res) => {
     }
 }
 
+// Dar permissão para um membro
+export const grantCheckInPermission = async (req, res) => {
+    try {
+        const { memberId } = req.params;
+        const userId = req.user.id;
+        const member = await eventMemberService.getMemberById(memberId);
+
+        if (!member) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'Membro não encontrado'
+            });
+        }
+
+        const updatedMember = await eventMemberService.grantPermission(memberId, 'CHECKIN');
+
+        res.status(200).json({
+            status: 'success',
+            data: { updatedMember }
+        });
+
+    } catch (error) {
+        console.error('Erro ao conceder permissão de check-in:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Erro interno ao conceder permissão de check-in'
+        });
+    }
+}
+
 // ── LISTAR MEMBROS ──
 export const getMyTeam = async (req, res) => {
     try {

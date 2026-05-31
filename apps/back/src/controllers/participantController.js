@@ -176,14 +176,11 @@ export const addSubeventParticipant = async (req, res) => {
   try {
     const { subEventId } = req.params
     const requesterId = req.user.id
-
-    console.log("🔍 Buscando subevento:", subEventId)
-
-    // ✅ Buscar o subevento com include do evento
+    
     const subEvent = await prisma.subEvent.findUnique({
       where: { id: subEventId },
       include: {
-        event: true  // Inclui os dados do evento pai
+        event: true  
       }
     })
 
@@ -194,10 +191,7 @@ export const addSubeventParticipant = async (req, res) => {
       })
     }
 
-    console.log("✅ Subevento encontrado:", subEvent.id)
-    console.log("📌 Event ID do subevento:", subEvent.eventId)
-
-    // ✅ Verificar se o evento existe (usando o eventId do subevento)
+   
     const event = await eventService.getById(subEvent.eventId)
     if (!event) {
       return res.status(404).json({ 
@@ -228,6 +222,7 @@ export const addSubeventParticipant = async (req, res) => {
     }
 
     const participant = await participantService.addSubeventParticipant(subEventId, targetUserId)
+
 
     res.status(201).json({ 
       status: 'success', 

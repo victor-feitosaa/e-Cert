@@ -3,6 +3,8 @@ import EventMemberRepository from "../repository/EventMemberRepository.js";
 import UserRepository from "../repository/UserRepository.js";
 import emailService from "./emailService.js";
 import { prisma } from "../config/db.js";
+import EventRepository from "../repository/EventRepository.js";
+import EventRoleRepository from "../repository/EventRoleRepository.js";
 
 class EventMemberService {
 
@@ -26,12 +28,21 @@ class EventMemberService {
         return await EventMemberRepository.getMemberById(id);
     }
 
+    async isEnrolled(eventId, userId) {
+       try {
+    const enrollment = await EventMemberRepository.findMemberByUserAndEvent(userId, eventId);
+    
+    return !!enrollment; // Retorna true se encontrou, false se não
+  } catch (error) {
+    console.error('Erro ao verificar inscrição:', error);
+    return false;
+  }
+    };
+
     // ── CONVITE POR E-MAIL ──
     async inviteByEmail(eventId, email, job, granterId) {
         // Verificar se o evento existe
-        const event = await prisma.event.findUnique({
-            where: { id: eventId }
-        });
+        const event = await EventRepository.getById(eventId);
         
         if (!event) {
             throw new Error('Evento não encontrado');
@@ -74,6 +85,15 @@ class EventMemberService {
         );
 
         return { teamMember, isNewUser, user };
+    }
+
+    // Dar permissão de check-in para um membro
+    async grantPermission(memberId, permission) {
+        const member = await EventMemberRepository.getMemberById(memberId);
+        if (!member) {
+            throw new Error('Membro não encontrado');
+        }
+        return await EventRoleRepository.grantPermission(member.userId, member.eventId, permission);
     }
 }
 

@@ -2,6 +2,9 @@
 import { prisma } from '../config/db.js'
 import sectionService from '../services/sectionService.js'
 import subEventService from '../services/subEventService.js'
+import eventMemberService from '../services/eventMemberService.js'
+import participantService from '../services/participantService.js'
+import eventService from '../services/eventService.js'
 
 export const createSection = async (req, res) => {
   try {
@@ -349,6 +352,8 @@ export const enrollInSection = async (req, res) => {
     const { subEventId, id } = req.params  // id = sectionId
     const userId = req.user.id
 
+    console.log("Inscrevendo usuário na seção:", { subEventId, sectionId: id, userId });
+
     // Verificar se o subEvento existe
     const subEvent = await subEventService.findById(subEventId)
     if (!subEvent) {
@@ -358,13 +363,36 @@ export const enrollInSection = async (req, res) => {
       })
     }
 
-    // Verificar se o usuário está inscrito no evento principal
-    const enrolledInEvent = await prisma.eventParticipant.findFirst({
-      where: {
-        userId: userId,
-        eventId: subEvent.eventId
-      }
-    })
+    console.log("SubEvento encontrado:", subEvent);
+    console.log("ID DO EVENTO PRINCIPAL:", subEvent.eventId);
+
+    // VERIFICAÇÃO CRÍTICA: se eventId existe
+    if (!subEvent.eventId) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Subevento não está vinculado a nenhum evento principal'
+      });
+    }
+
+    // Buscar o evento principal - CORREÇÃO: garantir que o ID seja uma string válida
+    const eventId = subEvent.eventId;
+    console.log("Buscando evento com ID:", eventId);
+    
+    const event = await eventService.getById(eventId);
+    
+    if (!event) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Evento principal não encontrado'
+      });
+    }
+
+    console.log("Evento principal encontrado:", event.id);
+
+    // Verificar se o usuário está inscrito no EVENTO PRINCIPAL
+    const enrolledInEvent = await participantService.isEventParticipant(eventId, userId);
+
+    console.log("Inscrito no evento principal:", enrolledInEvent);
 
     if (!enrolledInEvent) {
       return res.status(403).json({
@@ -373,7 +401,39 @@ export const enrollInSection = async (req, res) => {
       })
     }
 
+    // Verificar capacidade da seção
+    const section = await sectionService.getById(id);
+    if (!section) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Seção não encontrada'
+      });
+    }
+
+    if (section.capacity) {
+      const enrolledCount = await sectionService.getEnrolledCount(id);
+      if (enrolledCount >= section.capacity) {
+        return res.status(409).json({
+          status: 'fail',
+          message: 'Esta seção está lotada'
+        });
+      }
+    }
+
+    // Verificar se já está inscrito
+    const alreadyEnrolled = await sectionService.checkEnrollment(id, userId);
+    if (alreadyEnrolled) {
+      return res.status(409).json({
+        status: 'fail',
+        message: 'Usuário já está inscrito nesta seção'
+      });
+    }
+
+    // Inscrever na seção
     const participant = await sectionService.enrollInSection(id, userId)
+
+    // Criar attendance (presença)
+    await sectionService.createAttendance(id, userId);
 
     res.status(201).json({
       status: 'success',
@@ -381,7 +441,7 @@ export const enrollInSection = async (req, res) => {
     })
 
   } catch (error) {
-    console.error('Erro ao inscrever na seção:', error)
+    console.error('❌ Erro ao inscrever na seção:', error)
     
     if (error.message === 'Esta seção está lotada') {
       return res.status(409).json({
@@ -399,10 +459,72 @@ export const enrollInSection = async (req, res) => {
     
     res.status(500).json({
       status: 'error',
-      message: 'Erro ao inscrever na seção'
+      message: error.message || 'Erro ao inscrever na seção'
     })
   }
 }
+
+export const confirmAttendance = async (req, res) => {
+  try {
+    const { subEventId, id } = req.params 
+    const userId = req.user.id
+
+    console.log("Confirmando presença na seção:", { subEventId, sectionId: id, userId });
+
+    const subEvent = await subEventService.findById(subEventId)
+    if (!subEvent) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'SubEvento não encontrado'
+      })
+    }
+
+    const event = await eventService.getById(subEvent.eventId)
+    if (!event) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Evento não encontrado'
+      })
+    }
+    
+    const isEnrolledInEvent = await participantService.isEventParticipant(event.id, userId);
+    if (!isEnrolledInEvent) {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Você precisa estar inscrito no evento principal para confirmar presença'
+      })
+    }
+
+
+    if (!await sectionService.checkEnrollment(id, userId)) {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Você precisa estar inscrito nesta seção para confirmar presença'
+      })
+    }
+    if (new Date() < new Date()) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'A confirmação de presença só pode ser feita durante ou após a seção'
+      })
+    }
+
+    const attendance = await sectionService.confirmAttendance(id, userId)
+
+    res.status(201).json({
+      status: 'success',
+      data: { attendance }
+    })
+
+  } catch (error) {
+    console.error('Erro ao confirmar presença na seção:', error)
+    res.status(500).json({
+      status: 'error',
+      message: 'Erro ao confirmar presença na seção'
+    })
+  }
+}
+
 
 export const leaveSection = async (req, res) => {
   try {

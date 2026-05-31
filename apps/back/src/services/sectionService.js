@@ -172,6 +172,14 @@ const sectionService = {
   async getSectionParticipants(sectionId) {
     const participants = await SectionRepository.getSectionParticipants(sectionId)
     return participants
+  },
+
+  async createAttendance(sectionId, userId) {
+    return SectionRepository.createAttendance(sectionId, userId)
+  },
+
+  async confirmAttendance(sectionId, userId) {
+    return SectionRepository.confirmAttendance(sectionId, userId)
   }
 
 }

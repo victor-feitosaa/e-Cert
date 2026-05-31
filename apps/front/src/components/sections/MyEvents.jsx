@@ -2,11 +2,10 @@
 import { useState } from "react";
 import { 
   Calendar, Filter, Search, Grid3x3, List, Award, Users, 
-  MapPin, Clock, ChevronRight, Tag, Sparkles, Globe, Lock,
-  Eye, CalendarDays, TrendingUp, Activity, Home, LogIn, UserPlus,
-  Laptop, Briefcase, Palette, Share2, Book, Heart, Music, MoreHorizontal
+  MapPin, Clock, ChevronRight, Sparkles, TrendingUp,
+  Laptop, Briefcase, Palette, Book, Heart, Music, MoreHorizontal,
+  Crown, Shield, Mic2, Star, Briefcase as BriefcaseIcon, X
 } from "lucide-react";
-import Particles from "../Particles";
 
 const CATEGORIES = {
   tecnologia: { name: "Tecnologia", icon: Laptop, color: "#60a5fa", bg: "rgba(96,165,250,0.1)" },
@@ -16,6 +15,58 @@ const CATEGORIES = {
   saude: { name: "Saúde", icon: Heart, color: "#fb923c", bg: "rgba(251,146,60,0.1)" },
   cultura: { name: "Cultura", icon: Music, color: "#a78bfa", bg: "rgba(167,139,250,0.1)" },
   outro: { name: "Outro", icon: MoreHorizontal, color: "#94a3b8", bg: "rgba(148,163,184,0.1)" }
+};
+
+// Configuração de roles do usuário no evento
+const USER_ROLES = {
+  ORGANIZER: { 
+    label: "Organizador", 
+    icon: Crown, 
+    color: "text-yellow-400", 
+    bg: "bg-yellow-500/10", 
+    border: "border-yellow-500/20",
+    canAccessAdmin: true
+  },
+  MODERATOR: { 
+    label: "Moderador", 
+    icon: Shield, 
+    color: "text-purple-400", 
+    bg: "bg-purple-500/10", 
+    border: "border-purple-500/20",
+    canAccessAdmin: true
+  },
+  SPEAKER: { 
+    label: "Palestrante", 
+    icon: Mic2, 
+    color: "text-blue-400", 
+    bg: "bg-blue-500/10", 
+    border: "border-blue-500/20",
+    canAccessAdmin: false
+  },
+  STAFF: { 
+    label: "Staff", 
+    icon: Users, 
+    color: "text-cyan-400", 
+    bg: "bg-cyan-500/10", 
+    border: "border-cyan-500/20",
+    canAccessAdmin: false
+  },
+  VOLUNTEER: { 
+    label: "Voluntário", 
+    icon: Star, 
+    color: "text-emerald-400", 
+    bg: "bg-emerald-500/10", 
+    border: "border-emerald-500/20",
+    canAccessAdmin: false
+  },
+  OTHER: { 
+    label: "Membro", 
+    icon: BriefcaseIcon, 
+    color: "text-gray-400", 
+    bg: "bg-gray-500/10", 
+    border: "border-gray-500/20",
+    canAccessAdmin: false
+  }
 };
 
 function formatDate(dateString) {
@@ -60,6 +111,14 @@ function EventCard({ event, viewMode = "list" }) {
   const isUpcoming = daysLeft > 0;
   const isPast = daysLeft < 0;
   
+  // Determinar a role do usuário neste evento
+  const userRole = event.userRole || (event.isOwner ? "ORGANIZER" : "OTHER");
+  const roleConfig = USER_ROLES[userRole] || USER_ROLES.OTHER;
+  const RoleIcon = roleConfig.icon;
+  
+  // Verificar se pode acessar a página de admin
+  const canAccessAdmin = roleConfig.canAccessAdmin;
+  
   const occupied = event.participants && event.capacity
     ? pct(event.participants, event.capacity)
     : null;
@@ -67,7 +126,11 @@ function EventCard({ event, viewMode = "list" }) {
   const occColor = occupied >= 90 ? "#f87171" : occupied >= 70 ? "#fbbf24" : "#34d399";
 
   const handleClick = () => {
-    window.location.href = `/eventPageAdm?id=${event.id}`;
+    if (canAccessAdmin) {
+      window.location.href = `/eventPageAdm?id=${event.id}`;
+    } else {
+      window.location.href = `/eventPage?id=${event.id}`;
+    }
   };
 
   // Modo Grid
@@ -80,9 +143,18 @@ function EventCard({ event, viewMode = "list" }) {
         <div className="h-1 w-full" style={{ background: category.color }} />
         <div className="p-5">
           <div className="flex items-start justify-between gap-2 mb-3">
-            <h3 className="font-bold text-white text-base leading-snug line-clamp-2 flex-1">
-              {event.title || "Sem título"}
-            </h3>
+            <div className="flex-1">
+              <h3 className="font-bold text-white text-base leading-snug line-clamp-2">
+                {event.title || "Sem título"}
+              </h3>
+              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold mt-2 ${roleConfig.color} ${roleConfig.bg} ${roleConfig.border}`}>
+                <RoleIcon size={10} />
+                {roleConfig.label}
+                {event.userJob && (
+                  <span className="text-[9px] opacity-70 ml-0.5">({event.userJob})</span>
+                )}
+              </span>
+            </div>
             <div className="flex items-center gap-1 px-2 py-1 rounded-full shrink-0" style={{ background: category.bg }}>
               <CategoryIcon size={12} style={{ color: category.color }} />
               <span className="text-[10px] font-medium hidden sm:inline" style={{ color: category.color }}>{category.name}</span>
@@ -157,6 +229,13 @@ function EventCard({ event, viewMode = "list" }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-semibold text-white truncate">{event.title ?? "Sem título"}</p>
+            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${roleConfig.color} ${roleConfig.bg} ${roleConfig.border}`}>
+              <RoleIcon size={10} />
+              {roleConfig.label}
+              {event.userJob && (
+                <span className="text-[9px] opacity-70 ml-0.5">({event.userJob})</span>
+              )}
+            </span>
             <span className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ color: category.color, background: category.bg }}>
               {category.name}
             </span>
@@ -204,6 +283,9 @@ function EventCard({ event, viewMode = "list" }) {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
+          {canAccessAdmin && (
+            <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" title="Acesso administrativo" />
+          )}
           {isUpcoming && daysLeft > 0 && (
             <span className="text-[11px] font-bold px-2 py-1 rounded-full" style={{
               color: daysLeft <= 7 ? "#fbbf24" : "#34d399",
@@ -250,16 +332,11 @@ export default function MyEvents({ userData, eventsData }) {
   const [viewMode, setViewMode] = useState("list");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [copied, setCopied] = useState(false);
+  const [filterRole, setFilterRole] = useState("all");
 
   const events = eventsData?.data?.events ?? [];
+  const stats = eventsData?.stats ?? { total: 0, organizer: 0, moderator: 0, member: 0 };
   const userName = userData?.data?.data?.name ?? "Usuário";
-
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const filterEvents = () => {
     let filtered = events;
@@ -272,41 +349,23 @@ export default function MyEvents({ userData, eventsData }) {
     }
     
     if (filterStatus === "upcoming") {
-      filtered = filtered.filter(event => new Date(event.date) > new Date());
+      filtered = filtered.filter(event => new Date(event.date || event.date_start) > new Date());
     } else if (filterStatus === "past") {
-      filtered = filtered.filter(event => new Date(event.date) < new Date());
+      filtered = filtered.filter(event => new Date(event.date || event.date_start) < new Date());
+    }
+    
+    if (filterRole !== "all") {
+      filtered = filtered.filter(event => event.userRole === filterRole);
     }
     
     return filtered;
   };
 
   const filteredEvents = filterEvents();
-  const upcomingEvents = events.filter(e => new Date(e.date) > new Date()).length;
-  const totalParticipants = events.reduce((sum, e) => sum + (e.participants || 0), 0);
-  const totalCertificates = events.reduce((sum, e) => sum + (e.totalCerts || 0), 0);
-
-  const goToAuth = (mode = "register") => {
-    const redirect = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.href = `/login?redirect=${redirect}&mode=${mode}`;
-  };
+  const upcomingEvents = events.filter(e => new Date(e.date || e.date_start) > new Date()).length;
 
   return (
     <div className="dark relative min-h-screen p-6 bg-[#0A0A0F] font-['Nunito',sans-serif] text-white">
-      {/* Fundo com partículas
-      <div className="fixed inset-0 w-full h-full z-0">
-        <Particles
-          particleCount={150}
-          particleSpread={8}
-          speed={0.05}
-          particleColors={["#8b5cf6", "#a78bfa", "#6d28d9"]}
-          particleBaseSize={80}
-          alphaParticles={true}
-          disableRotation={false}
-          className="w-full h-full"
-        />
-      </div> */}
-
-
       <div className="relative z-10 max-w-5xl mx-auto px-6 py-8 space-y-4">
         {/* Header Bento */}
         <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-2xl p-6">
@@ -322,11 +381,13 @@ export default function MyEvents({ userData, eventsData }) {
           </p>
         </div>
 
-        {/* Stats Bento Grid */}
-        <div className="grid grid-cols-3 gap-3">
-          <StatCard value={events.length} label="Total de eventos" Icon={Calendar} />
-          <StatCard value={upcomingEvents} label="Próximos eventos" Icon={TrendingUp} trend="novos" />
-          <StatCard value={totalCertificates} label="Certificados emitidos" Icon={Award} />
+        {/* Stats Bento Grid - 5 cards agora */}
+        <div className="grid grid-cols-5 gap-3">
+          <StatCard value={stats.total || events.length} label="Total de eventos" Icon={Calendar} />
+          <StatCard value={upcomingEvents} label="Próximos eventos" Icon={TrendingUp} />
+          <StatCard value={stats.organizer || 0} label="Como organizador" Icon={Crown} />
+          <StatCard value={stats.moderator || 0} label="Como moderador" Icon={Shield} />
+          <StatCard value={stats.member || 0} label="Como membro" Icon={Users} />
         </div>
 
         {/* Saudação Bento */}
@@ -340,7 +401,7 @@ export default function MyEvents({ userData, eventsData }) {
                 Olá, <span className="text-violet-400">{userName}</span>!
               </h2>
               <p className="text-[12px] text-[#6b6888]">
-                Você tem <strong className="text-white">{events.length}</strong> evento{events.length !== 1 ? "s" : ""} no total
+                Você está envolvido em <strong className="text-white">{stats.total || events.length}</strong> evento{events.length !== 1 ? "s" : ""}
               </p>
             </div>
           </div>
@@ -376,6 +437,28 @@ export default function MyEvents({ userData, eventsData }) {
                   onClick={() => setFilterStatus(v)}
                   className={`text-[12px] font-bold px-3 py-1.5 rounded-lg border transition-all ${
                     filterStatus === v
+                      ? "bg-violet-600/10 border-violet-500/20 text-violet-400"
+                      : "bg-transparent border-white/[0.06] text-[#6b6888] hover:text-white hover:border-white/[0.14]"
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+
+            {/* Filtro por Role */}
+            <div className="flex gap-1.5">
+              {[
+                { v: "all", l: "Todas funções" },
+                { v: "ORGANIZER", l: "Organizador" },
+                { v: "MODERATOR", l: "Moderador" },
+                { v: "OTHER", l: "Membro" },
+              ].map(({ v, l }) => (
+                <button
+                  key={v}
+                  onClick={() => setFilterRole(v)}
+                  className={`text-[12px] font-bold px-3 py-1.5 rounded-lg border transition-all ${
+                    filterRole === v
                       ? "bg-violet-600/10 border-violet-500/20 text-violet-400"
                       : "bg-transparent border-white/[0.06] text-[#6b6888] hover:text-white hover:border-white/[0.14]"
                   }`}
@@ -422,12 +505,12 @@ export default function MyEvents({ userData, eventsData }) {
                 <Calendar size={22} className="text-[#3d3860]" />
               </div>
               <p className="text-[15px] font-bold text-white/40 mb-1">
-                {searchTerm || filterStatus !== "all" ? "Nenhum resultado" : "Nenhum evento criado"}
+                {searchTerm || filterStatus !== "all" || filterRole !== "all" ? "Nenhum resultado" : "Nenhum evento"}
               </p>
               <p className="text-[13px] text-[#3d3860]">
-                {searchTerm || filterStatus !== "all" 
+                {searchTerm || filterStatus !== "all" || filterRole !== "all" 
                   ? "Tente outros termos ou remova os filtros." 
-                  : "Crie seu primeiro evento para começar"}
+                  : "Você não está participando de nenhum evento ainda"}
               </p>
             </div>
           ) : (

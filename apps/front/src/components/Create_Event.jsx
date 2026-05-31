@@ -498,59 +498,109 @@ export default function CreateEvent({ onBack }) {
       }
 
       // 3. Criar subeventos e seus membros/seções
-      for (const subevent of subevents) {
-        const subRes = await fetch(`/api/events/${createdEventId}/subevents`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            title: subevent.name,
-            description: subevent.description,
-            location: subevent.location,
-            capacity: parseInt(subevent.capacity),
-          }),
-        });
-        if (!subRes.ok) continue;
-        const subData = await subRes.json();
-        const subeventId = subData?.data?.subEvent?.id || subData?.id;
-        if (!subeventId) continue;
+      // 3. Criar subeventos e seus membros/seções
+for (const subevent of subevents) {
+  console.log("📝 Criando subevento:", subevent.name);
+  
+  const subRes = await fetch(`/api/events/${createdEventId}/subevents`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({
+      title: subevent.name,
+      description: subevent.description,
+      location: subevent.location,
+      capacity: parseInt(subevent.capacity),
+    }),
+  });
 
-        // Seções
-        for (const section of subevent.sections) {
-          await fetch(
-            `/api/events/${createdEventId}/subevents/${subeventId}/sections`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify({
-                title: section.title,
-                date_start: `${section.date_start}T${section.time_start}:00.000Z`,
-                date_end: `${section.date_end}T${section.time_end}:00.000Z`,
-                location: section.location,
-              }),
-            },
-          ).catch((err) => console.error("Erro na seção:", err));
-        }
+  console.log("📊 Resposta da criação do subevento - Status:", subRes.status);
+  
+  if (!subRes.ok) {
+    const errorText = await subRes.text();
+    console.error("❌ Erro ao criar subevento:", errorText);
+    continue; // Pula este subevento e continua com o próximo
+  }
+  
+  const subData = await subRes.json();
+  console.log("📦 Resposta completa:", JSON.stringify(subData, null, 2));
+  
+  // Tentar diferentes formas de extrair o ID
+  let subeventId = null;
+  
+  // Opção 1: data.subEvent.id
+  if (subData?.data?.subEvent?.id) {
+    subeventId = subData.data.subEvent.id;
+  }
+  // Opção 2: data.subevent.id
+  else if (subData?.data?.subevent?.id) {
+    subeventId = subData.data.subevent.id;
+  }
+  // Opção 3: subevent.id
+  else if (subData?.subevent?.id) {
+    subeventId = subData.subevent.id;
+  }
+  // Opção 4: id direto
+  else if (subData?.id) {
+    subeventId = subData.id;
+  }
+  // Opção 5: data.id
+  else if (subData?.data?.id) {
+    subeventId = subData.data.id;
+  }
+  
+  console.log("🔑 ID extraído do subevento:", subeventId);
+  
+  if (!subeventId) {
+    console.error("❌ Não foi possível extrair o ID do subevento. Estrutura:", subData);
+    continue;
+  }
 
-        // Membros do subevento
-        for (const member of subevent.teamMembers) {
-          await fetch(
-            `/api/events/${createdEventId}/subevents/${subeventId}/team/invite`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify({ email: member.email, job: member.job }),
-            },
-          ).catch((err) =>
-            console.error(
-              `Erro ao convidar ${member.email} para subevento:`,
-              err,
-            ),
-          );
-        }
+  // Seções
+  console.log(`📅 Adicionando ${subevent.sections.length} seções ao subevento ${subeventId}`);
+  for (const section of subevent.sections) {
+    const sectionRes = await fetch(
+      `/api/events/${createdEventId}/subevents/${subeventId}/sections`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          title: section.title,
+          date_start: `${section.date_start}T${section.time_start}:00.000Z`,
+          date_end: `${section.date_end}T${section.time_end}:00.000Z`,
+          location: section.location,
+        }),
       }
+    );
+    
+    if (!sectionRes.ok) {
+      console.error(`❌ Erro na seção ${section.title}:`, await sectionRes.text());
+    } else {
+      console.log(`✅ Seção ${section.title || section.id} criada com sucesso`);
+    }
+  }
+
+  // Membros do subevento
+  console.log(`👥 Convidando ${subevent.teamMembers.length} membros para o subevento ${subeventId}`);
+  for (const member of subevent.teamMembers) {
+    const memberRes = await fetch(
+      `/api/events/${createdEventId}/subevents/${subeventId}/team/invite`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email: member.email, job: member.job }),
+      }
+    );
+    
+    if (!memberRes.ok) {
+      console.error(`❌ Erro ao convidar ${member.email}:`, await memberRes.text());
+    } else {
+      console.log(`✅ Convite enviado para ${member.email}`);
+    }
+  }
+}
 
       window.location.href = `/eventPageAdm?id=${createdEventId}`;
     } catch (err) {

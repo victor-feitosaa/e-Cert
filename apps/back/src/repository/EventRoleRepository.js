@@ -70,6 +70,23 @@ class EventRoleRepository {
         });
     }
 
+    async grantPermission(userId, eventId, role, grantedBy = null) {
+        // Verificar se o usuário já tem a permissão
+        const existingPermission = await this.findUserByEventAndRole(userId, eventId, role);
+        if (existingPermission) {
+            return existingPermission; // Já tem a permissão, retorna sem criar nova
+        }
+
+        return prisma.eventPermission.create({
+            data: {
+                userId,
+                eventId,
+                role,
+                grantedBy: grantedBy ? grantedBy : userId
+            }
+        });
+    }
+
 }
 
 export default new EventRoleRepository();

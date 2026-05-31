@@ -54,9 +54,20 @@ class SubEventRepository {
     async findById(id){
         return prisma.subEvent.findUnique({
             where: { id },
-            select: { createdBy: true },
+            select: { createdBy: true, eventId: true, id: true, location: true, title: true, description: true, capacity: true, createdAt: true },
         })
     }
+
+
+    async getEventBySubEventId(subEventId) {
+        return prisma.subEvent.findUnique({
+            where: { id: subEventId },
+            include: {
+                event: true
+            }
+        })
+    }
+    
 }
 
 export default new SubEventRepository();

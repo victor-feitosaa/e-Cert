@@ -12,12 +12,12 @@ import {
   leaveSection,
   checkSectionEnrollment,
   getPublicSections,
-  getUserSectionStatus
+  getUserSectionStatus,
+  confirmAttendance
 } from '../controllers/sectionController.js'
 
 const router = express.Router({ mergeParams: true })
 
-// ✅ Rota pública (NÃO usa protect)
 router.get('/public', getPublicSections)
 
 // Rotas protegidas
@@ -34,5 +34,6 @@ router.post('/:id/enroll', enrollInSection)
 router.delete('/:id/leave', leaveSection)
 router.get('/:id/check', checkSectionEnrollment)
 router.get('/user-status', getUserSectionStatus)
+router.post('/:id/confirmAttendance', confirmAttendance)
 
 export default router

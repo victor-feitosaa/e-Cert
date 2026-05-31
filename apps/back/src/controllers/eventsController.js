@@ -191,34 +191,83 @@ export const getEvents = async (req, res) => {
   }
 };
 
-export const getMyEvents = async (req, res) => {
-  try {
-    const id = req.user.id;
-    const { page = 1, limit = 100 } = req.query;
 
-    const [events, total] = await eventService.getLoggedUserEvents(req.query, id);
-   
-    
-    res.status(200).json({
-      status: 'success',
-      results: events.length,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / parseInt(limit)),
-      },
-      data: {
-        events,
-      },
-    });
-  } catch (error) {
-    console.error('Erro ao buscar eventos do usuário:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Erro interno ao buscar seus eventos',
-    });
-  }
+//listar eventos do usuário autenticado (criados, moderados ou equipe)
+
+export const getMyEvents = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { page = 1, limit = 100 } = req.query;
+        
+        // Buscar TODOS os eventos do usuário usando o método correto
+        const [events, total] = await eventService.getAllUserEventsWithPagination(req.query, userId);
+        
+        // Buscar estatísticas do usuário
+        const stats = await eventService.getUserEventStats(userId);
+        
+        // Processar eventos para adicionar role correta
+        const processedEvents = events.map(event => {
+            const isCreator = event.createdBy === userId;
+            const teamMember = event.eventTeam?.[0];
+            const permission = event.eventPermissions?.[0];
+            
+            let userRole = 'OTHER';
+            let userJob = null;
+            
+            if (isCreator) {
+                userRole = 'ORGANIZER';
+            } else if (permission?.role === 'MODERATOR' || teamMember?.role === 'MODERATOR') {
+                userRole = 'MODERATOR';
+                userJob = teamMember?.job || 'Moderador';
+            } else if (teamMember) {
+                // Mapear outras roles do eventTeam
+                const teamRole = teamMember.role;
+                if (teamRole === 'SPEAKER') userRole = 'SPEAKER';
+                else if (teamRole === 'STAFF') userRole = 'STAFF';
+                else if (teamRole === 'VOLUNTEER') userRole = 'VOLUNTEER';
+                else userRole = 'OTHER';
+                userJob = teamMember.job;
+            } else {
+                userRole = 'OTHER';
+            }
+            
+            return {
+                ...event,
+                participants: event._count?.participants || 0,
+                totalSubEvents: event._count?.subEvents || 0,
+                totalCerts: event._count?.certificates || 0,
+                userRole: userRole,
+                userJob: userJob,
+                isOwner: isCreator,
+            };
+        });
+        
+        res.status(200).json({
+            status: 'success',
+            results: processedEvents.length,
+            stats: {
+                total: stats.total,
+                organizer: stats.organizerCount,
+                moderator: stats.moderatorCount,
+                member: stats.memberCount,
+            },
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / parseInt(limit)),
+            },
+            data: {
+                events: processedEvents,
+            },
+        });
+    } catch (error) {
+        console.error('Erro ao buscar eventos do usuário:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Erro interno ao buscar seus eventos',
+        });
+    }
 };
 
 export const getEventById = async (req, res) => {

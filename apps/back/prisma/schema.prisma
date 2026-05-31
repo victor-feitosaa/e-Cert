@@ -228,6 +228,7 @@ enum SystemRole {
 enum EventRole {
   ORGANIZER
   MODERATOR
+  CHECKIN
   ATTENDEE
 }
 

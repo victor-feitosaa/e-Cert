@@ -6,7 +6,7 @@ export const POST: APIRoute = async ({ params, request }) => {
   const { eventId, subeventId, sectionId } = params;
 
   const baseUrl = import.meta.env.API_URL || "http://localhost:5001";
-  // ✅ URL correta com o padrão do app.js
+  
   const apiUrl = `${baseUrl}/events/${eventId}/subevents/${subeventId}/sections/${sectionId}/enroll`;
 
   console.log("🟢 POST Section Enroll - URL:", apiUrl);
