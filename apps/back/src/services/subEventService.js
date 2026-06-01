@@ -1,9 +1,11 @@
+import EventRepository from "../repository/EventRepository.js";
 import  SubEventRepository  from "../repository/SubEventRepository.js"
 
 class SubEventService {
     
     async create (title, description, location, capacity, eventId, creator) {
 
+        
         const subEvent = await SubEventRepository.create(title, description, location, capacity, eventId, creator);
 
         if (!subEvent) {

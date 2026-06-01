@@ -65,6 +65,10 @@ class EventService {
         return EventRepository.getEventParticipants(eventId);
     }
 
+    async createAttendance(eventId, userId) {
+        return EventRepository.createAttendance(eventId, userId);
+    }
+
     async confirmAttendance(eventId, userId) {
         // Verificar se já existe registro de presença
         const existingAttendance = await prisma.eventAttendance.findUnique({

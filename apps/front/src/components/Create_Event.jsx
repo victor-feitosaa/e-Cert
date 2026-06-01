@@ -238,6 +238,7 @@ export default function CreateEvent({ onBack }) {
     setNewSubeventMember({ email: "", job: "", fromExisting: false });
   };
 
+  // ========== SEÇÕES COM VALIDAÇÃO DE PERÍODO DO EVENTO PRINCIPAL ==========
   const addSectionToSubevent = () => {
     if (
       !newSection.date_start ||
@@ -256,6 +257,36 @@ export default function CreateEvent({ onBack }) {
       !validateYear(newSection.date_end)
     )
       return;
+
+    // Validação de período dentro do evento principal
+    if (form.date_start && form.date_end && form.time_start && form.time_end) {
+      const eventStartDateTime = new Date(`${form.date_start}T${form.time_start}`);
+      const eventEndDateTime = new Date(`${form.date_end}T${form.time_end}`);
+      const sectionStartDateTime = new Date(`${newSection.date_start}T${newSection.time_start}`);
+      const sectionEndDateTime = new Date(`${newSection.date_end}T${newSection.time_end}`);
+
+      if (sectionStartDateTime < eventStartDateTime) {
+        setErrors((prev) => ({
+          ...prev,
+          sectionError: `A data/hora de início da seção não pode ser anterior a ${form.date_start} ${form.time_start}`,
+        }));
+        return;
+      }
+      if (sectionEndDateTime > eventEndDateTime) {
+        setErrors((prev) => ({
+          ...prev,
+          sectionError: `A data/hora de término da seção não pode ser posterior a ${form.date_end} ${form.time_end}`,
+        }));
+        return;
+      }
+      if (sectionStartDateTime > sectionEndDateTime) {
+        setErrors((prev) => ({
+          ...prev,
+          sectionError: "A data/hora de início não pode ser maior que a data/hora de término",
+        }));
+        return;
+      }
+    }
 
     setNewSubevent((prev) => ({
       ...prev,
@@ -498,109 +529,67 @@ export default function CreateEvent({ onBack }) {
       }
 
       // 3. Criar subeventos e seus membros/seções
-      // 3. Criar subeventos e seus membros/seções
-for (const subevent of subevents) {
-  console.log("📝 Criando subevento:", subevent.name);
-  
-  const subRes = await fetch(`/api/events/${createdEventId}/subevents`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({
-      title: subevent.name,
-      description: subevent.description,
-      location: subevent.location,
-      capacity: parseInt(subevent.capacity),
-    }),
-  });
+      for (const subevent of subevents) {
+        console.log("📝 Criando subevento:", subevent.name);
+        
+        const subRes = await fetch(`/api/events/${createdEventId}/subevents`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            title: subevent.name,
+            description: subevent.description,
+            location: subevent.location,
+            capacity: parseInt(subevent.capacity),
+          }),
+        });
 
-  console.log("📊 Resposta da criação do subevento - Status:", subRes.status);
-  
-  if (!subRes.ok) {
-    const errorText = await subRes.text();
-    console.error("❌ Erro ao criar subevento:", errorText);
-    continue; // Pula este subevento e continua com o próximo
-  }
-  
-  const subData = await subRes.json();
-  console.log("📦 Resposta completa:", JSON.stringify(subData, null, 2));
-  
-  // Tentar diferentes formas de extrair o ID
-  let subeventId = null;
-  
-  // Opção 1: data.subEvent.id
-  if (subData?.data?.subEvent?.id) {
-    subeventId = subData.data.subEvent.id;
-  }
-  // Opção 2: data.subevent.id
-  else if (subData?.data?.subevent?.id) {
-    subeventId = subData.data.subevent.id;
-  }
-  // Opção 3: subevent.id
-  else if (subData?.subevent?.id) {
-    subeventId = subData.subevent.id;
-  }
-  // Opção 4: id direto
-  else if (subData?.id) {
-    subeventId = subData.id;
-  }
-  // Opção 5: data.id
-  else if (subData?.data?.id) {
-    subeventId = subData.data.id;
-  }
-  
-  console.log("🔑 ID extraído do subevento:", subeventId);
-  
-  if (!subeventId) {
-    console.error("❌ Não foi possível extrair o ID do subevento. Estrutura:", subData);
-    continue;
-  }
+        if (!subRes.ok) {
+          const errorText = await subRes.text();
+          console.error("❌ Erro ao criar subevento:", errorText);
+          continue;
+        }
+        
+        const subData = await subRes.json();
+        let subeventId = subData?.data?.subEvent?.id || subData?.id;
+        if (!subeventId) {
+          console.error("❌ Não foi possível extrair o ID do subevento");
+          continue;
+        }
 
-  // Seções
-  console.log(`📅 Adicionando ${subevent.sections.length} seções ao subevento ${subeventId}`);
-  for (const section of subevent.sections) {
-    const sectionRes = await fetch(
-      `/api/events/${createdEventId}/subevents/${subeventId}/sections`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          title: section.title,
-          date_start: `${section.date_start}T${section.time_start}:00.000Z`,
-          date_end: `${section.date_end}T${section.time_end}:00.000Z`,
-          location: section.location,
-        }),
+        // Seções
+        for (const section of subevent.sections) {
+          await fetch(
+            `/api/events/${createdEventId}/subevents/${subeventId}/sections`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                title: section.title,
+                date_start: `${section.date_start}T${section.time_start}:00.000Z`,
+                date_end: `${section.date_end}T${section.time_end}:00.000Z`,
+                location: section.location,
+              }),
+            }
+          ).catch((err) => console.error("Erro na seção:", err));
+        }
+
+        // Membros do subevento
+        for (const member of subevent.teamMembers) {
+          await fetch(
+            `/api/events/${createdEventId}/subevents/${subeventId}/team/invite`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ email: member.email, job: member.job }),
+            }
+          ).catch((err) =>
+            console.error(`Erro ao convidar ${member.email} para subevento:`, err),
+          );
+        }
       }
-    );
-    
-    if (!sectionRes.ok) {
-      console.error(`❌ Erro na seção ${section.title}:`, await sectionRes.text());
-    } else {
-      console.log(`✅ Seção ${section.title || section.id} criada com sucesso`);
-    }
-  }
-
-  // Membros do subevento
-  console.log(`👥 Convidando ${subevent.teamMembers.length} membros para o subevento ${subeventId}`);
-  for (const member of subevent.teamMembers) {
-    const memberRes = await fetch(
-      `/api/events/${createdEventId}/subevents/${subeventId}/team/invite`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email: member.email, job: member.job }),
-      }
-    );
-    
-    if (!memberRes.ok) {
-      console.error(`❌ Erro ao convidar ${member.email}:`, await memberRes.text());
-    } else {
-      console.log(`✅ Convite enviado para ${member.email}`);
-    }
-  }
-}
 
       window.location.href = `/eventPageAdm?id=${createdEventId}`;
     } catch (err) {
@@ -624,6 +613,15 @@ for (const subevent of subevents) {
       label: roleConfig.label,
     };
   };
+
+  // Helper para formatar data para input date
+  const formatDateForInput = (dateStr) => {
+    if (!dateStr) return "";
+    return dateStr;
+  };
+
+  // Verificar se as datas do evento principal estão preenchidas
+  const hasEventDates = form.date_start && form.date_end && form.time_start && form.time_end;
 
   return (
     <div className="dark min-h-screen bg-background">
@@ -695,11 +693,12 @@ for (const subevent of subevents) {
           })}
         </div>
 
-        {/* Card principal - agora com bg-[#11101B] igual ao CreateSubEvent */}
+        {/* Card principal */}
         <div className="bg-[#11101B] border border-border rounded-xl p-6 md:p-8 animate-in fade-in slide-in-from-bottom-6 duration-400">
           {/* STEP 0 - INFORMAÇÕES DO EVENTO */}
           {step === 0 && (
             <div className="space-y-5">
+              {/* ... (código existente do step 0, igual ao original) ... */}
               <div>
                 <label className="block text-sm font-bold text-accent-foreground mb-1.5">
                   Nome do evento <span className="text-primary">*</span>
@@ -889,6 +888,7 @@ for (const subevent of subevents) {
           {/* STEP 1 - EQUIPE DO EVENTO PRINCIPAL */}
           {step === 1 && (
             <div className="space-y-5">
+              {/* ... (código existente do step 1, igual ao original) ... */}
               <div>
                 <label className="block text-sm font-bold text-accent-foreground mb-1.5">
                   Membros da Equipe
@@ -1012,6 +1012,11 @@ for (const subevent of subevents) {
                   Adicione as atividades que compõem seu evento. Cada subevento
                   pode ter múltiplas seções (horários).
                 </p>
+                {hasEventDates && (
+                  <div className="text-xs text-amber-400/80 mb-2">
+                    ⚠️ As seções devem estar entre {form.date_start} {form.time_start} e {form.date_end} {form.time_end}.
+                  </div>
+                )}
 
                 {errors.subevents && (
                   <p className="text-xs text-red-400 mb-3">
@@ -1203,7 +1208,10 @@ for (const subevent of subevents) {
                           onChange={(e) =>
                             handleDateChange("date_start", e.target.value, true)
                           }
-                          className="px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none"
+                          min={form.date_start || ""}
+                          max={form.date_end || ""}
+                          disabled={!hasEventDates}
+                          className="px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none disabled:opacity-50"
                         />
                         <input
                           type="time"
@@ -1214,7 +1222,8 @@ for (const subevent of subevents) {
                               time_start: e.target.value,
                             }))
                           }
-                          className="px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none"
+                          disabled={!hasEventDates}
+                          className="px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none disabled:opacity-50"
                         />
                         <input
                           type="date"
@@ -1222,7 +1231,10 @@ for (const subevent of subevents) {
                           onChange={(e) =>
                             handleDateChange("date_end", e.target.value, true)
                           }
-                          className="px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none"
+                          min={form.date_start || ""}
+                          max={form.date_end || ""}
+                          disabled={!hasEventDates}
+                          className="px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none disabled:opacity-50"
                         />
                         <input
                           type="time"
@@ -1233,7 +1245,8 @@ for (const subevent of subevents) {
                               time_end: e.target.value,
                             }))
                           }
-                          className="px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none"
+                          disabled={!hasEventDates}
+                          className="px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none disabled:opacity-50"
                         />
                         <input
                           type="text"
@@ -1250,10 +1263,16 @@ for (const subevent of subevents) {
                       </div>
                       <button
                         onClick={addSectionToSubevent}
-                        className="w-full flex cursor-pointer items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
+                        disabled={!hasEventDates}
+                        className="w-full flex cursor-pointer items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Plus size={12} /> Adicionar seção
                       </button>
+                      {!hasEventDates && (
+                        <p className="text-xs text-red-400 mt-1">
+                          Preencha as datas e horários do evento principal antes de adicionar seções.
+                        </p>
+                      )}
                       {errors.sectionError && (
                         <p className="text-xs text-red-400 mt-1">
                           {errors.sectionError}

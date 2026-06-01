@@ -431,7 +431,7 @@ export const confirmAttendance = async (req, res) => {
     const  userId  = req.user.id; 
 
     //confirmar se o evento existe e não foi encerrado
-    const event = await eventService.getById(id);
+    const event = await eventService.getById(id);p
 
     if (!event) {
       return res.status(404).json({

@@ -13,8 +13,7 @@ export const createSection = async (req, res) => {
     const { title, date_start, date_end, location } = req.body
     const userId = req.user.id
 
-    console.log("📝 Criando seção para subEventId:", subEventId)
-
+    
     // Verificar se o subEvento existe
     const subEvent = await subEventService.findById(subEventId)
     
@@ -55,6 +54,39 @@ export const createSection = async (req, res) => {
         message: 'Data de início não pode ser maior que data de término'
       })
     }
+
+    // Validar se as datas estão dentro do período do evento principal
+  const event = await eventService.getById(subEvent.eventId);
+      if (!event) {
+        return res.status(404).json({
+          status: 'fail',
+          message: 'Evento principal não encontrado'
+        });
+      }
+
+      // Verificar se o evento possui datas definidas
+      if (!event.date_start || !event.date_end) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Evento principal não possui período definido. Defina as datas do evento primeiro.'
+        });
+      }
+
+      const eventStart = new Date(event.date_start);
+      const eventEnd = new Date(event.date_end);
+      const sectionStart = new Date(date_start);
+      const sectionEnd = new Date(date_end);
+
+      // Permitir datas iguais aos limites (>= e <=)
+      if (sectionStart < eventStart || sectionEnd > eventEnd) {
+        return res.status(400).json({
+          status: 'fail',
+          message: `As datas da seção devem estar entre ${eventStart.toLocaleDateString()} e ${eventEnd.toLocaleDateString()}`
+        });
+      }
+    
+
+
 
     // Criar seção
     const section = await sectionService.create(
@@ -142,8 +174,7 @@ export const getPublicSections = async (req, res) => {
   try {
     const { subEventId } = req.params;
     
-    console.log("🔍 getPublicSections - subEventId:", subEventId);
-
+    
     if (!subEventId) {
       return res.status(400).json({
         status: 'fail',

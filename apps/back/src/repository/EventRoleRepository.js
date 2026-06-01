@@ -1,3 +1,4 @@
+// src/repository/EventRoleRepository.js
 import { prisma } from '../config/db.js'
 
 class EventRoleRepository {
@@ -8,7 +9,6 @@ class EventRoleRepository {
                 userId_eventId: {
                     userId,
                     eventId
-
                 }
             }
         });
@@ -31,9 +31,7 @@ class EventRoleRepository {
                 }
             }
         });
-
     }
-
 
     async findModeratorsByEvent(eventId) {
         return prisma.eventPermission.findMany({
@@ -50,8 +48,7 @@ class EventRoleRepository {
     }
 
     async findUserByEventAndRole(userId, eventId, role) {
-
-        return  prisma.eventPermission.findFirst({
+        return prisma.eventPermission.findFirst({
             where: {
                 userId: userId,
                 eventId: eventId,
@@ -71,12 +68,10 @@ class EventRoleRepository {
     }
 
     async grantPermission(userId, eventId, role, grantedBy = null) {
-        // Verificar se o usuário já tem a permissão
         const existingPermission = await this.findUserByEventAndRole(userId, eventId, role);
         if (existingPermission) {
-            return existingPermission; // Já tem a permissão, retorna sem criar nova
+            return existingPermission;
         }
-
         return prisma.eventPermission.create({
             data: {
                 userId,
@@ -87,6 +82,26 @@ class EventRoleRepository {
         });
     }
 
+    //Verifica se o usuário tem qualquer tipo de vínculo com o evento (permissão ou equipe)
+    async findAnyEventAssociation(userId, eventId) {
+        // Primeiro verifica em event_permissions
+        const permission = await prisma.eventPermission.findFirst({
+            where: {
+                userId: userId,
+                eventId: eventId
+            }
+        });
+        if (permission) return permission;
+
+        // Depois verifica em event_teams
+        const team = await prisma.eventTeam.findFirst({
+            where: {
+                userId: userId,
+                eventId: eventId
+            }
+        });
+        return team;
+    }
 }
 
 export default new EventRoleRepository();

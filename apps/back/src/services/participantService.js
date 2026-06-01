@@ -15,6 +15,7 @@ class ParticipantService {
     const existing = await ParticipantRepository.findEventParticipantByUserId(eventId, userId)
     if (existing) throw new Error('Usuário já está inscrito neste evento')
 
+    
     return ParticipantRepository.createEventParticipant(eventId, userId)
   }
 
@@ -47,7 +48,7 @@ class ParticipantService {
     
 
   // ── SubEvent Participants ───────────────────────────────────────────────────
-
+//não esta em uso ja que foi mudado para inscrição por sections
   async addSubeventParticipant(subEventId, userId) {
     const subEvent = await subEventService.findById(subEventId)
     if (!subEvent) throw new Error('Subevento não encontrado')

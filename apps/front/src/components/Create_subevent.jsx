@@ -53,10 +53,40 @@ export default function CreateSubEvent({ eventId, onBack }) {
   // Membros já existentes no evento principal (para seleção)
   const [eventTeamMembers, setEventTeamMembers] = useState([]);
 
+  // Datas do evento principal (para restringir as seções)
+  const [eventDateStart, setEventDateStart] = useState(null);
+  const [eventDateEnd, setEventDateEnd] = useState(null);
+  const [loadingEvent, setLoadingEvent] = useState(true);
+
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("idle");
   const [errMsg, setErrMsg] = useState("");
   const [loadingEventTeam, setLoadingEventTeam] = useState(false);
+
+  // Buscar datas do evento principal
+  useEffect(() => {
+    const fetchEventDates = async () => {
+      if (!eventId) return;
+      try {
+        const res = await fetch(`/api/events/${eventId}`, {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const event = data?.data?.event || data?.event;
+          if (event) {
+            setEventDateStart(event.date_start ? new Date(event.date_start) : null);
+            setEventDateEnd(event.date_end ? new Date(event.date_end) : null);
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao buscar datas do evento:", err);
+      } finally {
+        setLoadingEvent(false);
+      }
+    };
+    fetchEventDates();
+  }, [eventId]);
 
   // Buscar membros do evento principal para poder selecionar
   useEffect(() => {
@@ -116,16 +146,41 @@ export default function CreateSubEvent({ eventId, onBack }) {
 
   // ========== SEÇÕES ==========
   const addSection = () => {
-    const newErrors = {};
-    if (!newSection.date_start) newErrors.sectionDate = "Data de início é obrigatória";
-    if (!newSection.time_start) newErrors.sectionTime = "Horário de início é obrigatório";
-    if (!newSection.date_end) newErrors.sectionDateEnd = "Data de término é obrigatória";
-    if (!newSection.time_end) newErrors.sectionTimeEnd = "Horário de término é obrigatório";
+  const newErrors = {};
+  if (!newSection.date_start) newErrors.sectionDate = "Data de início é obrigatória";
+  if (!newSection.time_start) newErrors.sectionTime = "Horário de início é obrigatório";
+  if (!newSection.date_end) newErrors.sectionDateEnd = "Data de término é obrigatória";
+  if (!newSection.time_end) newErrors.sectionTimeEnd = "Horário de término é obrigatório";
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(prev => ({ ...prev, ...newErrors }));
-      return;
+  // Validação de período dentro do evento principal
+  if (eventDateStart && eventDateEnd) {
+    // Cria objetos Date para início e fim da seção (considera horário local)
+    const startDateTime = new Date(`${newSection.date_start}T${newSection.time_start}`);
+    const endDateTime = new Date(`${newSection.date_end}T${newSection.time_end}`);
+    
+    // Define o início do evento principal como 00:00:00 do dia eventDateStart
+    const eventStartLimit = new Date(eventDateStart);
+    eventStartLimit.setHours(0, 0, 0, 0);
+    
+    // Define o fim do evento principal como 23:59:59.999 do dia eventDateEnd
+    const eventEndLimit = new Date(eventDateEnd);
+    eventEndLimit.setHours(23, 59, 59, 999);
+    
+    if (startDateTime < eventStartLimit) {
+      newErrors.sectionDate = `A data/hora de início não pode ser anterior a ${eventDateStart.toLocaleDateString('pt-BR')}`;
     }
+    if (endDateTime > eventEndLimit) {
+      newErrors.sectionDateEnd = `A data/hora de término não pode ser posterior a ${eventDateEnd.toLocaleDateString('pt-BR')}`;
+    }
+    if (startDateTime > endDateTime) {
+      newErrors.sectionDate = "A data/hora de início não pode ser maior que a data/hora de término";
+    }
+  }
+
+  if (Object.keys(newErrors).length > 0) {
+    setErrors(prev => ({ ...prev, ...newErrors }));
+    return;
+  }
 
     setSections(prev => [...prev, {
       id: Date.now(),
@@ -312,6 +367,12 @@ export default function CreateSubEvent({ eventId, onBack }) {
     };
   };
 
+  // Formatadores para exibição das datas do evento
+  const formatDateForInput = (date) => {
+    if (!date) return "";
+    return date.toISOString().split('T')[0];
+  };
+
   // Tela de erro
   if (status === "error") {
     return (
@@ -357,6 +418,11 @@ export default function CreateSubEvent({ eventId, onBack }) {
           <p className="text-accent-foreground/60">
             Adicione atividades ao seu evento principal.
           </p>
+          {eventDateStart && eventDateEnd && (
+            <p className="text-xs text-accent-foreground/40 mt-2">
+              Período do evento: {eventDateStart.toLocaleDateString('pt-BR')} a {eventDateEnd.toLocaleDateString('pt-BR')}
+            </p>
+          )}
         </div>
 
         {/* Step Dots */}
@@ -478,6 +544,11 @@ export default function CreateSubEvent({ eventId, onBack }) {
                 </label>
                 <p className="text-xs text-accent-foreground/40 mb-3">
                   Adicione diferentes horários para este subevento (ex: manhã, tarde, múltiplos dias).
+                  {eventDateStart && eventDateEnd && (
+                    <span className="block mt-1 text-amber-400/80">
+                      ⚠️ As datas das seções devem estar entre {eventDateStart.toLocaleDateString('pt-BR')} e {eventDateEnd.toLocaleDateString('pt-BR')}.
+                    </span>
+                  )}
                 </p>
 
                 {sections.length > 0 && (
@@ -528,6 +599,9 @@ export default function CreateSubEvent({ eventId, onBack }) {
                           type="date"
                           value={newSection.date_start}
                           onChange={e => handleDateChange("date_start", e.target.value, true)}
+                          min={eventDateStart ? formatDateForInput(eventDateStart) : ""}
+                          max={eventDateEnd ? formatDateForInput(eventDateEnd) : ""}
+                          disabled={!eventDateStart || !eventDateEnd}
                           className="w-full px-3 py-2 rounded-lg  text-accent-foreground  text-sm bg-[#11101B] border border-border focus:border-primary outline-none"
                         />
                         {errors.sectionDate && <p className="text-xs text-red-400 mt-1">{errors.sectionDate}</p>}
@@ -551,6 +625,9 @@ export default function CreateSubEvent({ eventId, onBack }) {
                           type="date"
                           value={newSection.date_end}
                           onChange={e => handleDateChange("date_end", e.target.value, true)}
+                          min={eventDateStart ? formatDateForInput(eventDateStart) : ""}
+                          max={eventDateEnd ? formatDateForInput(eventDateEnd) : ""}
+                          disabled={!eventDateStart || !eventDateEnd}
                           className="w-full px-3 py-2 rounded-lg  text-accent-foreground  text-sm bg-[#11101B] border border-border focus:border-primary outline-none"
                         />
                         {errors.sectionDateEnd && <p className="text-xs text-red-400 mt-1">{errors.sectionDateEnd}</p>}
@@ -577,10 +654,16 @@ export default function CreateSubEvent({ eventId, onBack }) {
 
                     <button
                       onClick={addSection}
-                      className="w-full flex items-center cursor-pointer justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors"
+                      disabled={!eventDateStart || !eventDateEnd}
+                      className="w-full flex items-center cursor-pointer justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Plus size={16} /> Adicionar seção
                     </button>
+                    {(!eventDateStart || !eventDateEnd) && !loadingEvent && (
+                      <p className="text-xs text-red-400 text-center mt-2">
+                        Aguardando informações do evento principal...
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -629,7 +712,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                     <select
                       onChange={e => selectExistingMember(e.target.value)}
                       value=""
-                      className="w-full px-3 py-2 rounded-lg text-sm bg-background border border-border focus:border-primary outline-none"
+                      className="w-full px-3 py-2 rounded-lg text-accent-foreground text-sm bg-background border border-border focus:border-primary outline-none"
                     >
                       <option value="">-- Escolha um membro --</option>
                       {eventTeamMembers.map(member => {

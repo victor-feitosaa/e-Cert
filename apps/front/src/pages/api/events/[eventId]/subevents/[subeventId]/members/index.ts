@@ -17,7 +17,7 @@ export const POST: APIRoute = async ({ params, request }) => {
   }
 
   const baseUrl = import.meta.env.API_URL || "https://ecert.duckdns.org";
-  // ✅ Rota correta - igual ao Postman
+  
   const apiUrl = `${baseUrl}/subevents/${subeventId}/createMember`;
   
   console.log("🟢 POST Member Proxy - URL:", apiUrl);

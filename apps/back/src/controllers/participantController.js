@@ -3,6 +3,7 @@ import { prisma } from "../config/db.js"
 import participantService from '../services/participantService.js'
 import eventService from '../services/eventService.js'
 import subEventService from '../services/subEventService.js'
+import eventRoleService from "../services/eventRoleService.js"
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,16 @@ export const addEventParticipant = async (req, res) => {
         status: 'fail',
         message: 'Usuário já está inscrito neste evento'
       });
+    }
+
+    //verifica se o usuario é moderador ou membro do evento, se for não pode se inscrever como participante
+    // Verifica se o usuário é moderador ou membro do evento
+    const permission = await eventRoleService.isModeratorOrMember(targetUserId, eventId);
+    if (permission) {
+        return res.status(403).json({
+            status: 'fail',
+            message: 'Moderadores e membros da equipe não podem se inscrever como participantes'
+        });
     }
 
     const participant = await participantService.addEventParticipant(eventId, targetUserId);

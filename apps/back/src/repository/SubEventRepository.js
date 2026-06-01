@@ -59,14 +59,7 @@ class SubEventRepository {
     }
 
 
-    async getEventBySubEventId(subEventId) {
-        return prisma.subEvent.findUnique({
-            where: { id: subEventId },
-            include: {
-                event: true
-            }
-        })
-    }
+    
     
 }
 

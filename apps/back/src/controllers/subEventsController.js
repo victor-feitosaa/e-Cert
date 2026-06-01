@@ -47,6 +47,9 @@ export const createSubEvent = async (req, res) => {
             });
         }
 
+       
+
+
         const subEvent = await subEventService.create(title, description, location, capacity, id, userId);
         
         
@@ -58,7 +61,7 @@ export const createSubEvent = async (req, res) => {
             });
         }
         
-        console.log("✅ SubEvento criado com ID:", subEvent.id);
+        console.log("SubEvento criado com ID:", subEvent.id);
         
         res.status(201).json({
             status: 'success',
