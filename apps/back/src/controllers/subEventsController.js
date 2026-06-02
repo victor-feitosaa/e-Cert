@@ -40,14 +40,7 @@ export const createSubEvent = async (req, res) => {
             });
         }
 
-        if (!capacity || isNaN(parseInt(capacity)) || parseInt(capacity) < 0) {
-            return res.status(400).json({
-                status: 'fail',
-                message: 'A capacidade do evento deve ser um número positivo'
-            });
-        }
-
-       
+        
 
 
         const subEvent = await subEventService.create(title, description, location, capacity, id, userId);

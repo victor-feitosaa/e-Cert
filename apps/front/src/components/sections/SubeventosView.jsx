@@ -4,7 +4,7 @@ import {
   User, UserPlus, CalendarDays, Mail, Send, Target
 } from "lucide-react";
 
-// Badges de função (igual ao CreateSubEvent)
+// Badges de função
 const TEAM_ROLES = [
   { value: "SPEAKER",    label: "Palestrante", color: "text-blue-400",  bg: "bg-blue-500/10",  border: "border-blue-500/20"  },
   { value: "STAFF",      label: "Staff",       color: "text-cyan-400",   bg: "bg-cyan-500/10",   border: "border-cyan-500/20"   },
@@ -22,7 +22,7 @@ const getRoleFromJob = (job) => {
   return "OTHER";
 };
 
-// Helper: converte data ISO para input datetime-local (formato YYYY-MM-DDThh:mm)
+// Helpers de data
 const toLocalInput = (iso) => {
   if (!iso) return "";
   const d = new Date(iso);
@@ -31,13 +31,13 @@ const toLocalInput = (iso) => {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-// Helper: formata data ISO para exibição curta (dd/mm/aaaa)
 const formatShortDate = (iso) => {
   if (!iso) return "";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
   return d.toLocaleDateString("pt-BR", { day:"2-digit", month:"short", year:"numeric" });
 };
+
 const formatShortTime = (iso) => {
   if (!iso) return "";
   const d = new Date(iso);
@@ -51,15 +51,19 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
     title:        subevento?.title        || "",
     description:  subevento?.description  || "",
     location:     subevento?.location     || "",
-    capacity:     subevento?.capacity     ? String(subevento.capacity) : "",
+    // capacity removida do subevento – não será enviada
   });
   
-  // Datas do evento principal (para restrição das seções)
+  // Dados do evento principal (datas e capacidade total)
   const [eventDateStart, setEventDateStart] = useState(null);
   const [eventDateEnd, setEventDateEnd] = useState(null);
-  const [eventTeamMembers, setEventTeamMembers] = useState([]); // membros da equipe principal
+  const [eventCapacity, setEventCapacity] = useState(null);
+  const [eventTeamMembers, setEventTeamMembers] = useState([]);
 
-  const [existingSections, setExistingSections] = useState(subevento?.sections || []);
+  // Seções existentes (agora com capacity)
+  const [existingSections, setExistingSections] = useState(
+    (subevento?.sections || []).map(s => ({ ...s, capacity: s.capacity || "" }))
+  );
   const [newSections, setNewSections] = useState([]);
   const [newSection, setNewSection] = useState({
     title: "",
@@ -68,6 +72,7 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
     date_end: "",
     time_end: "",
     location: "",
+    capacity: "",
   });
   
   const [existingTeam, setExistingTeam] = useState(subevento?.team || []);
@@ -77,7 +82,7 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
   
   const [errors, setErrors] = useState({});
 
-  // Buscar datas e equipe do evento principal
+  // Buscar dados do evento principal
   useEffect(() => {
     if (!eventId) return;
     const fetchEventData = async () => {
@@ -89,6 +94,7 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
           if (event) {
             setEventDateStart(event.date_start ? new Date(event.date_start) : null);
             setEventDateEnd(event.date_end ? new Date(event.date_end) : null);
+            setEventCapacity(event.capacity ? parseInt(event.capacity) : null);
           }
         }
         const teamRes = await fetch(`/api/events/${eventId}/team`, { credentials: "include" });
@@ -104,7 +110,7 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
     fetchEventData();
   }, [eventId]);
 
-  const set = (field, val) => {
+  const setFormField = (field, val) => {
     setForm(f => ({ ...f, [field]: val }));
     setErrors(e => ({ ...e, [field]: "" }));
   };
@@ -117,7 +123,7 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
     return Object.keys(e).length === 0;
   };
 
-  // Validação de período da seção (dentro das datas do evento)
+  // Validação de período da seção
   const validateSectionDates = (section) => {
     if (!eventDateStart || !eventDateEnd) return true;
     const start = new Date(`${section.date_start}T${section.time_start}`);
@@ -128,12 +134,20 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
     return true;
   };
 
+  // Adicionar nova seção (com capacidade)
   const addSection = () => {
     const newErrors = {};
     if (!newSection.date_start) newErrors.sectionDate = "Data de início é obrigatória";
     if (!newSection.time_start) newErrors.sectionTime = "Horário de início é obrigatório";
     if (!newSection.date_end) newErrors.sectionDateEnd = "Data de término é obrigatória";
     if (!newSection.time_end) newErrors.sectionTimeEnd = "Horário de término é obrigatório";
+    if (!newSection.capacity) {
+      newErrors.sectionCapacity = "Capacidade é obrigatória";
+    } else if (parseInt(newSection.capacity) <= 0) {
+      newErrors.sectionCapacity = "Capacidade deve ser maior que zero";
+    } else if (eventCapacity && parseInt(newSection.capacity) > eventCapacity) {
+      newErrors.sectionCapacity = `Capacidade não pode ultrapassar ${eventCapacity} (total do evento)`;
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(prev => ({ ...prev, ...newErrors }));
@@ -153,6 +167,7 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
       date_end: newSection.date_end,
       time_end: newSection.time_end,
       location: newSection.location || null,
+      capacity: parseInt(newSection.capacity),
     }]);
     
     setNewSection({
@@ -162,8 +177,9 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
       date_end: "",
       time_end: "",
       location: "",
+      capacity: "",
     });
-    setErrors(prev => ({ ...prev, sectionDate: "", sectionTime: "", sectionDateEnd: "", sectionTimeEnd: "", sectionError: "" }));
+    setErrors(prev => ({ ...prev, sectionDate: "", sectionTime: "", sectionDateEnd: "", sectionTimeEnd: "", sectionCapacity: "", sectionError: "" }));
   };
 
   const removeExistingSection = (idx) => {
@@ -174,7 +190,14 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
     setNewSections(prev => prev.filter((_, i) => i !== idx));
   };
 
-  // Equipe do subevento (agora com e-mail)
+  // Atualizar capacidade de uma seção existente
+  const updateExistingSectionCapacity = (idx, newCapacity) => {
+    setExistingSections(prev => prev.map((s, i) => 
+      i === idx ? { ...s, capacity: newCapacity } : s
+    ));
+  };
+
+  // Equipe do subevento (e-mail)
   const addTeamMember = () => {
     if (!newMemberEmail.trim()) {
       setErrors(prev => ({ ...prev, teamMemberEmail: "E-mail é obrigatório" }));
@@ -212,7 +235,6 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
     setNewTeam(prev => prev.filter((_, i) => i !== idx));
   };
 
-  // Selecionar membro da equipe principal
   const selectExistingEventMember = (email) => {
     const member = eventTeamMembers.find(m => m.user?.email === email || m.email === email);
     if (member) {
@@ -237,7 +259,6 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
     }
   };
 
-  // Badge style
   const getMemberBadgeStyle = (job) => {
     const role = getRoleFromJob(job);
     const roleConfig = TEAM_ROLES.find(r => r.value === role) || TEAM_ROLES[4];
@@ -260,14 +281,14 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
         </div>
 
         <div className="space-y-6">
-          {/* Informações básicas */}
+          {/* Informações básicas (sem capacity) */}
           <div>
             <label className="block text-sm font-bold text-accent-foreground mb-1.5">
               Título <span className="text-primary">*</span>
             </label>
             <input
               value={form.title}
-              onChange={e => set("title", e.target.value)}
+              onChange={e => setFormField("title", e.target.value)}
               placeholder="ex: Palestra de Abertura"
               className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.title ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
             />
@@ -278,7 +299,7 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
             <label className="block text-sm font-bold text-accent-foreground mb-1.5">Descrição</label>
             <textarea
               value={form.description}
-              onChange={e => set("description", e.target.value)}
+              onChange={e => setFormField("description", e.target.value)}
               rows={3}
               placeholder="Descreva o sub-evento..."
               className="w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border border-border focus:border-primary outline-none resize-none placeholder:text-accent-foreground/40"
@@ -291,54 +312,49 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
             </label>
             <input
               value={form.location}
-              onChange={e => set("location", e.target.value)}
+              onChange={e => setFormField("location", e.target.value)}
               placeholder="ex: Auditório A, Sala 201..."
               className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.location ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
             />
             {errors.location && <p className="text-xs text-red-400 mt-1">{errors.location}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-bold text-accent-foreground mb-1.5">Capacidade</label>
-              <input
-                type="number"
-                value={form.capacity}
-                onChange={e => set("capacity", e.target.value)}
-                placeholder="ex: 50"
-                className="w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
-              />
-            </div>
-          </div>
-
-          {/* Seções Existentes */}
+          {/* Seções Existentes (somente leitura) */}
           {existingSections.length > 0 && (
             <div className="border-t border-border pt-4">
               <label className="block text-sm font-bold text-accent-foreground mb-1.5">Seções Existentes</label>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {existingSections.map((section, idx) => (
-                  <div key={section.id || idx} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border">
-                    <div>
-                      <div className="flex items-center gap-2 text-sm text-accent-foreground">
-                        <Calendar size={14} className="text-purple-400" />
-                        <span>
-                          {section.title && `${section.title} - `}
-                          {formatShortDate(section.date_start)} {formatShortTime(section.date_start)} → {formatShortDate(section.date_end)} {formatShortTime(section.date_end)}
-                        </span>
-                      </div>
-                      {section.location && (
-                        <div className="flex items-center gap-2 mt-1 text-xs text-accent-foreground/60">
-                          <MapPin size={12} />
-                          <span>{section.location}</span>
+                  <div key={section.id || idx} className="p-3 rounded-lg bg-background/50 border border-border">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 text-sm text-accent-foreground">
+                          <Calendar size={14} className="text-purple-400" />
+                          <span>
+                            {section.title && `${section.title} - `}
+                            {formatShortDate(section.date_start)} {formatShortTime(section.date_start)} → {formatShortDate(section.date_end)} {formatShortTime(section.date_end)}
+                          </span>
                         </div>
-                      )}
+                        {section.location && (
+                          <div className="flex items-center gap-2 mt-1 text-xs text-accent-foreground/60">
+                            <MapPin size={12} />
+                            <span>{section.location}</span>
+                          </div>
+                        )}
+                        <div className="mt-2">
+                          <span className="text-xs font-semibold text-accent-foreground">Capacidade:</span>
+                          <span className="ml-2 text-sm text-accent-foreground">
+                            {section.capacity ? section.capacity : "Sem limite"}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeExistingSection(idx)}
+                        className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => removeExistingSection(idx)}
-                      className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 cursor-pointer transition-colors"
-                    >
-                      <Trash2 size={14} />
-                    </button>
                   </div>
                 ))}
               </div>
@@ -359,6 +375,7 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
                           {section.title && `${section.title} - `}
                           {section.date_start} {section.time_start} → {section.date_end} {section.time_end}
                         </span>
+                        <span className="text-xs text-emerald-400 ml-2">Cap: {section.capacity}</span>
                       </div>
                       {section.location && (
                         <div className="flex items-center gap-2 mt-1 text-xs text-accent-foreground/60">
@@ -367,10 +384,7 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
                         </div>
                       )}
                     </div>
-                    <button
-                      onClick={() => removeNewSection(idx)}
-                      className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 cursor-pointer transition-colors"
-                    >
+                    <button onClick={() => removeNewSection(idx)} className="p-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20">
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -379,7 +393,7 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
             </div>
           )}
 
-          {/* Adicionar nova Seção */}
+          {/* Formulário para adicionar nova seção (com capacidade) */}
           <div className="border-t border-border pt-4">
             <label className="block text-sm font-bold text-accent-foreground mb-1.5">Adicionar Nova Seção</label>
             <div className="grid grid-cols-2 gap-2 mb-2">
@@ -428,6 +442,20 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
                 className="flex-1 px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
               />
             </div>
+            <div className="mb-3">
+              <label className="block text-xs font-semibold text-accent-foreground mb-1">
+                Capacidade <span className="text-primary">*</span>
+                {eventCapacity && <span className="text-xs ml-1">(máx. {eventCapacity})</span>}
+              </label>
+              <input
+                type="number"
+                value={newSection.capacity}
+                onChange={e => setNewSection(prev => ({ ...prev, capacity: e.target.value }))}
+                placeholder="ex: 30"
+                className={`w-full px-3 py-1.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.sectionCapacity ? "border-red-400/50" : "border-border"} focus:border-primary outline-none`}
+              />
+              {errors.sectionCapacity && <p className="text-xs text-red-400 mt-1">{errors.sectionCapacity}</p>}
+            </div>
             <button
               onClick={addSection}
               className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors cursor-pointer"
@@ -437,14 +465,13 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
             {errors.sectionError && <p className="text-xs text-red-400 mt-1">{errors.sectionError}</p>}
           </div>
 
-          {/* Equipe do subevento */}
+          {/* Equipe do subevento (sem alterações) */}
           <div className="border-t border-border pt-4">
             <label className="block text-sm font-bold text-accent-foreground mb-1.5">Equipe do Subevento</label>
             <p className="text-xs text-accent-foreground/40 mb-3">
               Adicione os membros da equipe deste subevento. Eles receberão um convite por e-mail.
             </p>
 
-            {/* Membros existentes */}
             {existingTeam.length > 0 && (
               <div className="space-y-2 mb-4">
                 {existingTeam.map((member, idx) => {
@@ -460,10 +487,7 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
                           </span>
                         </div>
                       </div>
-                      <button
-                        onClick={() => removeExistingTeamMember(idx)}
-                        className="p-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 cursor-pointer transition-colors"
-                      >
+                      <button onClick={() => removeExistingTeamMember(idx)} className="p-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20">
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -472,7 +496,6 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
               </div>
             )}
 
-            {/* Novos membros */}
             {newTeam.length > 0 && (
               <div className="space-y-2 mb-4">
                 {newTeam.map((member, idx) => {
@@ -488,10 +511,7 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
                           </span>
                         </div>
                       </div>
-                      <button
-                        onClick={() => removeNewTeamMember(idx)}
-                        className="p-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 cursor-pointer transition-colors"
-                      >
+                      <button onClick={() => removeNewTeamMember(idx)} className="p-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20">
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -500,7 +520,6 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
               </div>
             )}
 
-            {/* Selecionar da equipe principal */}
             {eventTeamMembers.length > 0 && (
               <div className="mb-3">
                 <label className="block text-xs font-semibold text-accent-foreground mb-1">Selecionar da equipe do evento principal</label>
@@ -519,7 +538,6 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
               </div>
             )}
 
-            {/* Adicionar novo membro */}
             <div className="space-y-3">
               <div className="relative">
                 <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6b6888]" />
@@ -543,10 +561,7 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
                 {errors.teamMemberJob && <p className="text-xs text-red-400 mt-1">{errors.teamMemberJob}</p>}
               </div>
             </div>
-            <button
-              onClick={addTeamMember}
-              className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors cursor-pointer"
-            >
+            <button onClick={addTeamMember} className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors cursor-pointer">
               <Send size={14} /> Adicionar membro
             </button>
           </div>
@@ -560,10 +575,7 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
         )}
 
         <div className="flex justify-end gap-2.5 mt-6 pt-5 border-t border-border">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-bold text-accent-foreground/60 border border-border rounded-lg hover:text-accent-foreground hover:border-primary/30 transition-all cursor-pointer"
-          >
+          <button onClick={onClose} className="px-4 py-2 text-sm font-bold text-accent-foreground/60 border border-border rounded-lg hover:text-accent-foreground hover:border-primary/30 transition-all cursor-pointer">
             Cancelar
           </button>
           <button
@@ -579,7 +591,7 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
   );
 }
 
-/* ─── MODAL DELETE (cores atualizadas) ─── */
+/* ─── DELETE MODAL (sem alterações) ─── */
 function DeleteModal({ subevento, onConfirm, onCancel, loading }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6">
@@ -613,7 +625,7 @@ function DeleteModal({ subevento, onConfirm, onCancel, loading }) {
   );
 }
 
-/* ─── CARD ─── (cores atualizadas) */
+/* ─── CARD (exibe capacidade por seção) ─── */
 function SubeventoCard({ subevento, onEdit, onDelete }) {
   const [showDetails, setShowDetails] = useState(false);
   
@@ -658,6 +670,9 @@ function SubeventoCard({ subevento, onEdit, onDelete }) {
                   <div key={idx} className="text-xs text-[#6b6888]">
                     {section.title && <span className="font-semibold">{section.title}: </span>}
                     {fmtDate(section.date_start)} {fmtTime(section.date_start)} → {fmtDate(section.date_end)} {fmtTime(section.date_end)}
+                    {section.capacity && (
+                      <span className="ml-2 text-emerald-400">(Cap: {section.capacity})</span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -672,12 +687,7 @@ function SubeventoCard({ subevento, onEdit, onDelete }) {
               <span className="truncate">{subevento.location}</span>
             </div>
           )}
-          {subevento.capacity && (
-            <div className="flex items-center gap-2 text-xs text-[#6b6888]">
-              <Users size={12} className="shrink-0 text-violet-400" />
-              <span>Capacidade: {subevento.capacity}</span>
-            </div>
-          )}
+          {/* Não exibe capacity do subevento, pois foi removido */}
         </div>
 
         {subevento.team && subevento.team.length > 0 && (
@@ -717,6 +727,7 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
       const res = await fetch(`/api/events/${eventId}/subevents`, { credentials: "include" });
       if (!res.ok) throw new Error(`Erro ${res.status}`);
       const data = await res.json();
+      console.log(data)
       let list = [];
       if (Array.isArray(data)) list = data;
       else if (data?.data?.subevents && Array.isArray(data.data.subevents)) list = data.data.subevents;
@@ -762,7 +773,7 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
     setSaving(true);
     setApiError("");
     try {
-      // 1. Atualizar informações básicas
+      // 1. Atualizar subevento (sem capacity)
       const res = await fetch(`/api/events/${eventId}/subevents/${editing.id}`, {
         method: "PUT",
         credentials: "include",
@@ -771,7 +782,7 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
           title: formData.title,
           description: formData.description || null,
           location: formData.location.trim() || null,
-          capacity: formData.capacity ? Number(formData.capacity) : null,
+          capacity: null, // enviar null explicitamente
         }),
       });
       if (!res.ok) throw new Error(`Erro ${res.status}`);
@@ -784,7 +795,21 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
         await fetch(`/api/events/${eventId}/subevents/${editing.id}/sections/${sec.id}`, { method: "DELETE", credentials: "include" });
       }
 
-      // 3. Adicionar novas seções
+      // 3. Atualizar capacidade das seções existentes (PUT em cada seção)
+      for (const section of formData.existingSections) {
+        // Se a capacidade mudou, atualiza
+        const originalSection = editing.sections?.find(s => s.id === section.id);
+        if (originalSection && originalSection.capacity !== section.capacity) {
+          await fetch(`/api/events/${eventId}/subevents/${editing.id}/sections/${section.id}`, {
+            method: "PUT",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ capacity: parseInt(section.capacity) }),
+          });
+        }
+      }
+
+      // 4. Adicionar novas seções (com capacidade)
       for (const sec of formData.newSections) {
         await fetch(`/api/events/${eventId}/subevents/${editing.id}/sections`, {
           method: "POST",
@@ -795,11 +820,12 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
             date_start: `${sec.date_start}T${sec.time_start}:00.000Z`,
             date_end: `${sec.date_end}T${sec.time_end}:00.000Z`,
             location: sec.location,
+            capacity: sec.capacity,
           }),
         });
       }
 
-      // 4. Remover membros deletados
+      // 5. Remover membros deletados
       const removedMembers = editing.team?.filter(
         old => !formData.existingTeam.some(newM => newM.id === old.id)
       ) || [];
@@ -807,7 +833,7 @@ export default function SubeventosView({ subeventData: initialData = [], eventId
         await fetch(`/api/events/${eventId}/subevents/${editing.id}/members/${member.id}`, { method: "DELETE", credentials: "include" });
       }
 
-      // 5. Adicionar novos membros (agora com e-mail)
+      // 6. Adicionar novos membros (com e-mail)
       for (const member of formData.newTeam) {
         await fetch(`/api/events/${eventId}/subevents/${editing.id}/team/invite`, {
           method: "POST",

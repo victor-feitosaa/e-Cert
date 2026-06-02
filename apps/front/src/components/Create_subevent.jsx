@@ -33,7 +33,6 @@ export default function CreateSubEvent({ eventId, onBack }) {
     description: "",
     location: "",
     locationUrl: "",
-    capacity: "",
   });
   const [sections, setSections] = useState([]);
   const [newSection, setNewSection] = useState({
@@ -43,6 +42,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
     date_end: "",
     time_end: "",
     location: "",
+    capacity: "",
   });
 
   // Equipe do subevento (agora com email e job)
@@ -53,9 +53,10 @@ export default function CreateSubEvent({ eventId, onBack }) {
   // Membros já existentes no evento principal (para seleção)
   const [eventTeamMembers, setEventTeamMembers] = useState([]);
 
-  // Datas do evento principal (para restringir as seções)
+  // Datas e capacidade do evento principal (para restringir as seções)
   const [eventDateStart, setEventDateStart] = useState(null);
   const [eventDateEnd, setEventDateEnd] = useState(null);
+  const [eventCapacity, setEventCapacity] = useState(null);
   const [loadingEvent, setLoadingEvent] = useState(true);
 
   const [errors, setErrors] = useState({});
@@ -63,9 +64,9 @@ export default function CreateSubEvent({ eventId, onBack }) {
   const [errMsg, setErrMsg] = useState("");
   const [loadingEventTeam, setLoadingEventTeam] = useState(false);
 
-  // Buscar datas do evento principal
+  // Buscar dados do evento principal (datas e capacidade)
   useEffect(() => {
-    const fetchEventDates = async () => {
+    const fetchEventData = async () => {
       if (!eventId) return;
       try {
         const res = await fetch(`/api/events/${eventId}`, {
@@ -77,15 +78,16 @@ export default function CreateSubEvent({ eventId, onBack }) {
           if (event) {
             setEventDateStart(event.date_start ? new Date(event.date_start) : null);
             setEventDateEnd(event.date_end ? new Date(event.date_end) : null);
+            setEventCapacity(event.capacity ? parseInt(event.capacity) : null);
           }
         }
       } catch (err) {
-        console.error("Erro ao buscar datas do evento:", err);
+        console.error("Erro ao buscar dados do evento:", err);
       } finally {
         setLoadingEvent(false);
       }
     };
-    fetchEventDates();
+    fetchEventData();
   }, [eventId]);
 
   // Buscar membros do evento principal para poder selecionar
@@ -128,7 +130,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
     setErrors(e => ({ ...e, [name]: "" }));
   }, []);
 
-  // Validação de ano com máximo 4 dígitos (igual ao CreateEvent)
+  // Validação de ano com máximo 4 dígitos
   const validateYear = (value) => {
     if (!value) return true;
     const year = value.split('-')[0];
@@ -146,41 +148,43 @@ export default function CreateSubEvent({ eventId, onBack }) {
 
   // ========== SEÇÕES ==========
   const addSection = () => {
-  const newErrors = {};
-  if (!newSection.date_start) newErrors.sectionDate = "Data de início é obrigatória";
-  if (!newSection.time_start) newErrors.sectionTime = "Horário de início é obrigatório";
-  if (!newSection.date_end) newErrors.sectionDateEnd = "Data de término é obrigatória";
-  if (!newSection.time_end) newErrors.sectionTimeEnd = "Horário de término é obrigatório";
+    const newErrors = {};
+    if (!newSection.date_start) newErrors.sectionDate = "Data de início é obrigatória";
+    if (!newSection.time_start) newErrors.sectionTime = "Horário de início é obrigatório";
+    if (!newSection.date_end) newErrors.sectionDateEnd = "Data de término é obrigatória";
+    if (!newSection.time_end) newErrors.sectionTimeEnd = "Horário de término é obrigatório";
+    if (!newSection.capacity) {
+      newErrors.sectionCapacity = "Capacidade da seção é obrigatória";
+    } else if (parseInt(newSection.capacity) <= 0) {
+      newErrors.sectionCapacity = "Capacidade deve ser maior que zero";
+    } else if (eventCapacity && parseInt(newSection.capacity) > eventCapacity) {
+      newErrors.sectionCapacity = `Capacidade não pode ultrapassar ${eventCapacity} (capacidade total do evento)`;
+    }
 
-  // Validação de período dentro do evento principal
-  if (eventDateStart && eventDateEnd) {
-    // Cria objetos Date para início e fim da seção (considera horário local)
-    const startDateTime = new Date(`${newSection.date_start}T${newSection.time_start}`);
-    const endDateTime = new Date(`${newSection.date_end}T${newSection.time_end}`);
-    
-    // Define o início do evento principal como 00:00:00 do dia eventDateStart
-    const eventStartLimit = new Date(eventDateStart);
-    eventStartLimit.setHours(0, 0, 0, 0);
-    
-    // Define o fim do evento principal como 23:59:59.999 do dia eventDateEnd
-    const eventEndLimit = new Date(eventDateEnd);
-    eventEndLimit.setHours(23, 59, 59, 999);
-    
-    if (startDateTime < eventStartLimit) {
-      newErrors.sectionDate = `A data/hora de início não pode ser anterior a ${eventDateStart.toLocaleDateString('pt-BR')}`;
+    // Validação de período dentro do evento principal
+    if (eventDateStart && eventDateEnd) {
+      const startDateTime = new Date(`${newSection.date_start}T${newSection.time_start}`);
+      const endDateTime = new Date(`${newSection.date_end}T${newSection.time_end}`);
+      const eventStartLimit = new Date(eventDateStart);
+      eventStartLimit.setHours(0, 0, 0, 0);
+      const eventEndLimit = new Date(eventDateEnd);
+      eventEndLimit.setHours(23, 59, 59, 999);
+      
+      if (startDateTime < eventStartLimit) {
+        newErrors.sectionDate = `A data/hora de início não pode ser anterior a ${eventDateStart.toLocaleDateString('pt-BR')}`;
+      }
+      if (endDateTime > eventEndLimit) {
+        newErrors.sectionDateEnd = `A data/hora de término não pode ser posterior a ${eventDateEnd.toLocaleDateString('pt-BR')}`;
+      }
+      if (startDateTime > endDateTime) {
+        newErrors.sectionDate = "A data/hora de início não pode ser maior que a data/hora de término";
+      }
     }
-    if (endDateTime > eventEndLimit) {
-      newErrors.sectionDateEnd = `A data/hora de término não pode ser posterior a ${eventDateEnd.toLocaleDateString('pt-BR')}`;
-    }
-    if (startDateTime > endDateTime) {
-      newErrors.sectionDate = "A data/hora de início não pode ser maior que a data/hora de término";
-    }
-  }
 
-  if (Object.keys(newErrors).length > 0) {
-    setErrors(prev => ({ ...prev, ...newErrors }));
-    return;
-  }
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(prev => ({ ...prev, ...newErrors }));
+      return;
+    }
 
     setSections(prev => [...prev, {
       id: Date.now(),
@@ -190,6 +194,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
       date_end: newSection.date_end,
       time_end: newSection.time_end,
       location: newSection.location || null,
+      capacity: parseInt(newSection.capacity),
     }]);
     
     setNewSection({
@@ -199,8 +204,9 @@ export default function CreateSubEvent({ eventId, onBack }) {
       date_end: "",
       time_end: "",
       location: "",
+      capacity: "",
     });
-    setErrors(prev => ({ ...prev, sectionDate: "", sectionTime: "", sectionDateEnd: "", sectionTimeEnd: "" }));
+    setErrors(prev => ({ ...prev, sectionDate: "", sectionTime: "", sectionDateEnd: "", sectionTimeEnd: "", sectionCapacity: "" }));
   };
 
   const removeSection = (id) => {
@@ -259,8 +265,6 @@ export default function CreateSubEvent({ eventId, onBack }) {
       if (!form.name.trim()) e.name = "Campo obrigatório";
       if (!form.description.trim()) e.description = "Campo obrigatório";
       if (!form.location.trim()) e.location = "Local é obrigatório";
-      if (!form.capacity) e.capacity = "Capacidade é obrigatória";
-      else if (parseInt(form.capacity) <= 0) e.capacity = "Capacidade deve ser maior que zero";
     }
     if (s === 1) {
       if (sections.length === 0) e.sections = "Adicione pelo menos uma seção";
@@ -282,16 +286,6 @@ export default function CreateSubEvent({ eventId, onBack }) {
       setErrMsg("O local do subevento é obrigatório");
       return;
     }
-    if (!form.capacity) {
-      setStatus("error");
-      setErrMsg("A capacidade do subevento é obrigatória");
-      return;
-    }
-    if (parseInt(form.capacity) <= 0) {
-      setStatus("error");
-      setErrMsg("A capacidade deve ser maior que zero");
-      return;
-    }
     if (sections.length === 0) {
       setStatus("error");
       setErrMsg("Adicione pelo menos uma seção ao subevento");
@@ -299,7 +293,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
     }
 
     try {
-      // 1. Criar subevento
+      // 1. Criar subevento (sem capacidade)
       const subeventRes = await fetch(`/api/events/${eventId}/subevents`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -309,7 +303,8 @@ export default function CreateSubEvent({ eventId, onBack }) {
           description: form.description,
           location: form.location,
           locationUrl: form.locationUrl,
-          capacity: parseInt(form.capacity),
+          capacity:null
+          // capacity removido
         }),
       });
 
@@ -322,7 +317,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
       const createdSubeventId = subeventData?.data?.subEvent?.id || subeventData?.id;
       if (!createdSubeventId) throw new Error("Não foi possível obter o ID do subevento");
 
-      // 2. Adicionar seções
+      // 2. Adicionar seções (agora com capacity)
       for (const section of sections) {
         await fetch(`/api/events/${eventId}/subevents/${createdSubeventId}/sections`, {
           method: "POST",
@@ -333,6 +328,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
             date_start: `${section.date_start}T${section.time_start}:00.000Z`,
             date_end: `${section.date_end}T${section.time_end}:00.000Z`,
             location: section.location,
+            capacity: section.capacity,
           }),
         });
       }
@@ -420,7 +416,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
           </p>
           {eventDateStart && eventDateEnd && (
             <p className="text-xs text-accent-foreground/40 mt-2">
-              Período do evento: {eventDateStart.toLocaleDateString('pt-BR')} a {eventDateEnd.toLocaleDateString('pt-BR')}
+              Período do evento: {eventDateStart.toLocaleDateString('pt-BR')} a {eventDateEnd.toLocaleDateString('pt-BR')} | Capacidade total: {eventCapacity ? eventCapacity : "não definida"}
             </p>
           )}
         </div>
@@ -462,7 +458,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
         {/* Form Card */}
         <div className="bg-[#11101B] border border-border rounded-xl p-6 md:p-8 animate-in fade-in slide-in-from-bottom-6 duration-400">
 
-          {/* STEP 0 - INFORMAÇÕES DO SUBEVENTO */}
+          {/* STEP 0 - INFORMAÇÕES DO SUBEVENTO (sem capacidade) */}
           {step === 0 && (
             <div className="space-y-5">
               <div>
@@ -474,7 +470,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                   value={form.name}
                   onChange={e => set("name", e.target.value)}
                   placeholder="ex: Workshop de React, Palestra Principal"
-                  className={`w-full px-4 py-2.5 text-accent-foreground  rounded-lg text-sm bg-[#11101B] border ${errors.name ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
+                  className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.name ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
                 />
                 {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name}</p>}
               </div>
@@ -488,7 +484,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                   onChange={e => set("description", e.target.value)}
                   rows={4}
                   placeholder="Descreva o conteúdo, objetivos e público-alvo desta atividade..."
-                  className={`w-full px-4 py-2.5 text-accent-foreground   rounded-lg text-sm bg-[#11101B] border resize-y ${errors.description ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
+                  className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border resize-y ${errors.description ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
                 />
                 {errors.description && <p className="text-xs text-red-400 mt-1">{errors.description}</p>}
               </div>
@@ -503,39 +499,25 @@ export default function CreateSubEvent({ eventId, onBack }) {
                     value={form.location}
                     onChange={e => set("location", e.target.value)}
                     placeholder="ex: Auditório Principal"
-                    className={`w-full px-4 py-2.5  text-accent-foreground  rounded-lg text-sm bg-[#11101B] border ${errors.location ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
+                    className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.location ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
                   />
                   {errors.location && <p className="text-xs text-red-400 mt-1">{errors.location}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">
-                    Capacidade <span className="text-primary">*</span>
-                  </label>
+                  <label className="block text-sm font-bold text-accent-foreground mb-1.5">Link do local / online</label>
                   <input
-                    type="number"
-                    value={form.capacity}
-                    onChange={e => set("capacity", e.target.value)}
-                    placeholder="ex: 50"
-                    className={`w-full px-4 py-2.5 rounded-lg text-sm  text-accent-foreground  bg-[#11101B] border ${errors.capacity ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
+                    type="url"
+                    value={form.locationUrl}
+                    onChange={e => set("locationUrl", e.target.value)}
+                    placeholder="https://..."
+                    className="w-full px-4 py-2.5 rounded-lg text-sm text-accent-foreground bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
                   />
-                  {errors.capacity && <p className="text-xs text-red-400 mt-1">{errors.capacity}</p>}
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-accent-foreground mb-1.5">Link do local / online</label>
-                <input
-                  type="url"
-                  value={form.locationUrl}
-                  onChange={e => set("locationUrl", e.target.value)}
-                  placeholder="https://..."
-                  className="w-full px-4 py-2.5 rounded-lg text-sm  text-accent-foreground  bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
-                />
               </div>
             </div>
           )}
 
-          {/* STEP 1 - SEÇÕES */}
+          {/* STEP 1 - SEÇÕES (com capacidade) */}
           {step === 1 && (
             <div className="space-y-5">
               <div>
@@ -543,7 +525,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                   Seções / Horários <span className="text-primary">*</span>
                 </label>
                 <p className="text-xs text-accent-foreground/40 mb-3">
-                  Adicione diferentes horários para este subevento (ex: manhã, tarde, múltiplos dias).
+                  Adicione diferentes horários para este subevento. Cada seção possui sua própria capacidade (máximo {eventCapacity ? eventCapacity : "?"} pessoas, limite do evento).
                   {eventDateStart && eventDateEnd && (
                     <span className="block mt-1 text-amber-400/80">
                       ⚠️ As datas das seções devem estar entre {eventDateStart.toLocaleDateString('pt-BR')} e {eventDateEnd.toLocaleDateString('pt-BR')}.
@@ -562,6 +544,9 @@ export default function CreateSubEvent({ eventId, onBack }) {
                             <span className="text-sm font-medium text-accent-foreground">
                               {section.title && `${section.title} - `}
                               {section.date_start} {section.time_start} → {section.date_end} {section.time_end}
+                            </span>
+                            <span className="text-xs text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
+                              Cap: {section.capacity}
                             </span>
                           </div>
                           {section.location && (
@@ -589,7 +574,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                       value={newSection.title}
                       onChange={e => setNewSection(prev => ({ ...prev, title: e.target.value }))}
                       placeholder="Título da seção (opcional - ex: Manhã, Tarde, Dia 1)"
-                      className="w-full px-4 py-2.5 rounded-lg  text-accent-foreground  text-sm bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
+                      className="w-full px-4 py-2.5 rounded-lg text-accent-foreground text-sm bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
                     />
 
                     <div className="grid grid-cols-2 gap-3">
@@ -602,7 +587,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                           min={eventDateStart ? formatDateForInput(eventDateStart) : ""}
                           max={eventDateEnd ? formatDateForInput(eventDateEnd) : ""}
                           disabled={!eventDateStart || !eventDateEnd}
-                          className="w-full px-3 py-2 rounded-lg  text-accent-foreground  text-sm bg-[#11101B] border border-border focus:border-primary outline-none"
+                          className="w-full px-3 py-2 rounded-lg text-accent-foreground text-sm bg-[#11101B] border border-border focus:border-primary outline-none"
                         />
                         {errors.sectionDate && <p className="text-xs text-red-400 mt-1">{errors.sectionDate}</p>}
                       </div>
@@ -612,7 +597,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                           type="time"
                           value={newSection.time_start}
                           onChange={e => setNewSection(prev => ({ ...prev, time_start: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-lg  text-accent-foreground  text-sm bg-[#11101B] border border-border focus:border-primary outline-none"
+                          className="w-full px-3 py-2 rounded-lg text-accent-foreground text-sm bg-[#11101B] border border-border focus:border-primary outline-none"
                         />
                         {errors.sectionTime && <p className="text-xs text-red-400 mt-1">{errors.sectionTime}</p>}
                       </div>
@@ -628,7 +613,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                           min={eventDateStart ? formatDateForInput(eventDateStart) : ""}
                           max={eventDateEnd ? formatDateForInput(eventDateEnd) : ""}
                           disabled={!eventDateStart || !eventDateEnd}
-                          className="w-full px-3 py-2 rounded-lg  text-accent-foreground  text-sm bg-[#11101B] border border-border focus:border-primary outline-none"
+                          className="w-full px-3 py-2 rounded-lg text-accent-foreground text-sm bg-[#11101B] border border-border focus:border-primary outline-none"
                         />
                         {errors.sectionDateEnd && <p className="text-xs text-red-400 mt-1">{errors.sectionDateEnd}</p>}
                       </div>
@@ -638,10 +623,25 @@ export default function CreateSubEvent({ eventId, onBack }) {
                           type="time"
                           value={newSection.time_end}
                           onChange={e => setNewSection(prev => ({ ...prev, time_end: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-lg text-sm  text-accent-foreground  bg-[#11101B] border border-border focus:border-primary outline-none"
+                          className="w-full px-3 py-2 rounded-lg text-accent-foreground text-sm bg-[#11101B] border border-border focus:border-primary outline-none"
                         />
                         {errors.sectionTimeEnd && <p className="text-xs text-red-400 mt-1">{errors.sectionTimeEnd}</p>}
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-accent-foreground mb-1">
+                        Capacidade da seção <span className="text-primary">*</span>
+                        {eventCapacity && <span className="text-xs text-accent-foreground/60 ml-1">(máx. {eventCapacity})</span>}
+                      </label>
+                      <input
+                        type="number"
+                        value={newSection.capacity}
+                        onChange={e => setNewSection(prev => ({ ...prev, capacity: e.target.value }))}
+                        placeholder="ex: 30"
+                        className={`w-full px-3 py-2 rounded-lg text-accent-foreground text-sm bg-[#11101B] border ${errors.sectionCapacity ? "border-red-400/50" : "border-border"} focus:border-primary outline-none`}
+                      />
+                      {errors.sectionCapacity && <p className="text-xs text-red-400 mt-1">{errors.sectionCapacity}</p>}
                     </div>
 
                     <input
@@ -649,7 +649,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                       value={newSection.location}
                       onChange={e => setNewSection(prev => ({ ...prev, location: e.target.value }))}
                       placeholder="Local específico (opcional)"
-                      className="w-full px-4 py-2.5 rounded-lg text-sm  text-accent-foreground  bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
+                      className="w-full px-4 py-2.5 rounded-lg text-accent-foreground text-sm bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
                     />
 
                     <button
@@ -670,7 +670,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
             </div>
           )}
 
-          {/* STEP 2 - EQUIPE DO SUBEVENTO */}
+          {/* STEP 2 - EQUIPE DO SUBEVENTO (sem alterações) */}
           {step === 2 && (
             <div className="space-y-5">
               <div>
@@ -732,7 +732,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                       value={newMemberEmail}
                       onChange={e => { setNewMemberEmail(e.target.value); setErrors(prev => ({ ...prev, teamMemberEmail: "" })); }}
                       placeholder="E-mail do membro"
-                      className={`w-full pl-10 pr-4 py-2.5  text-accent-foreground  rounded-lg text-sm bg-[#11101B] border ${errors.teamMemberEmail ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
+                      className={`w-full pl-10 pr-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.teamMemberEmail ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
                     />
                   </div>
                   {errors.teamMemberEmail && <p className="text-xs text-red-400 mt-1">{errors.teamMemberEmail}</p>}
@@ -742,7 +742,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                       value={newMemberJob}
                       onChange={e => { setNewMemberJob(e.target.value); setErrors(prev => ({ ...prev, teamMemberJob: "" })); }}
                       placeholder="Função (ex: Palestrante, Monitor)"
-                      className={`w-full px-4 py-2.5  text-accent-foreground  rounded-lg text-sm bg-[#11101B] border ${errors.teamMemberJob ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
+                      className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.teamMemberJob ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
                     />
                     {errors.teamMemberJob && <p className="text-xs text-red-400 mt-1">{errors.teamMemberJob}</p>}
                   </div>
@@ -771,7 +771,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
 
               <div>
                 <div className="text-[11px] font-bold uppercase text-accent-foreground/40 mb-3">Informações</div>
-                <div className="space-y-2 text-accent-foreground  ">
+                <div className="space-y-2 text-accent-foreground">
                   <div className="flex gap-3 p-3 rounded-lg bg-[#11101B] border border-border">
                     <ClipboardList size={18} className="text-accent-foreground/40" />
                     <div><div className="text-[10px] uppercase">Nome</div><div className="text-sm">{form.name}</div></div>
@@ -784,17 +784,13 @@ export default function CreateSubEvent({ eventId, onBack }) {
                     <MapPin size={18} className="text-accent-foreground/40" />
                     <div><div className="text-[10px] uppercase">Local</div><div className="text-sm">{form.location}</div></div>
                   </div>
-                  <div className="flex gap-3 p-3 rounded-lg bg-[#11101B] border border-border">
-                    <Users size={18} className="text-accent-foreground/40" />
-                    <div><div className="text-[10px] uppercase">Capacidade</div><div className="text-sm">{form.capacity}</div></div>
-                  </div>
                 </div>
               </div>
 
               {sections.length > 0 && (
                 <div>
                   <div className="text-[11px] font-bold uppercase text-accent-foreground/40 mb-3">Seções</div>
-                  <div className="space-y-2 text-accent-foreground  ">
+                  <div className="space-y-2 text-accent-foreground">
                     {sections.map((section, idx) => (
                       <div key={section.id} className="flex gap-3 p-3 rounded-lg bg-[#11101B] border border-border">
                         <CalendarDays size={18} className="text-accent-foreground/40" />
@@ -805,6 +801,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
                             {section.date_start} {section.time_start} → {section.date_end} {section.time_end}
                             {section.location && ` - ${section.location}`}
                           </div>
+                          <div className="text-xs text-emerald-400 mt-1">Capacidade: {section.capacity}</div>
                         </div>
                       </div>
                     ))}
@@ -815,7 +812,7 @@ export default function CreateSubEvent({ eventId, onBack }) {
               {teamMembers.length > 0 && (
                 <div>
                   <div className="text-[11px] font-bold uppercase text-accent-foreground/40 mb-3">Equipe</div>
-                  <div className="space-y-2 text-accent-foreground  ">
+                  <div className="space-y-2 text-accent-foreground">
                     {teamMembers.map(member => (
                       <div key={member.id} className="flex gap-3 p-3 rounded-lg bg-[#11101B] border border-border">
                         <Mail size={18} className="text-accent-foreground/40" />
