@@ -1,7 +1,9 @@
 // src/controllers/eventsTeamController.js
 import { prisma } from "../config/db.js"
 import eventMemberService from "../services/eventMemberService.js";
+import eventRoleService from "../services/eventRoleService.js";
 import eventService from "../services/eventService.js";
+import participantService from "../services/participantService.js";
 
 // ── CRIAR MEMBRO MANUAL (legado) ──
 export const createTeamMember = async (req, res) => {
@@ -66,13 +68,15 @@ export const inviteTeamMemberByEmail = async (req, res) => {
             });
         }
 
-        // Verificar permissão (apenas criador pode convidar)
-        if (event.createdBy !== userId) {
+        // Verificar permissão ou moderador
+        const isOrganizerOrModerator = await eventRoleService.isOrganizerOrModerator(userId, eventId);
+        if (!isOrganizerOrModerator) {
             return res.status(403).json({
                 status: 'fail',
-                message: 'Apenas o criador do evento pode convidar membros para a equipe'
+                message: 'Você não tem permissão para convidar membros para este evento'
             });
-        }
+         }    
+        
 
         // Validações
         if (!email?.trim()) {
@@ -95,6 +99,16 @@ export const inviteTeamMemberByEmail = async (req, res) => {
                 message: 'Função é obrigatória'
             });
         }
+
+        //participantes não podem ser membros
+
+        const isAttendee = await participantService.findByEmailAndEventId(email, eventId);
+        if (isAttendee) {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'Participantes não podem ser membros da equipe'
+             });
+         }
 
         const result = await eventMemberService.inviteByEmail(eventId, email, job, userId);
 

@@ -1,5 +1,6 @@
 // src/services/participantService.js
 import ParticipantRepository from '../repository/ParticipantRepository.js'
+import emailService from './emailService.js'
 import eventService from './eventService.js'
 import subEventService from './subEventService.js'
 
@@ -11,12 +12,23 @@ class ParticipantService {
     const event = await eventService.getById(eventId)
     if (!event) throw new Error('Evento não encontrado')
 
-    // @@unique no schema já rejeita duplicata, mas checamos antes para mensagem legível
     const existing = await ParticipantRepository.findEventParticipantByUserId(eventId, userId)
     if (existing) throw new Error('Usuário já está inscrito neste evento')
 
-    
-    return ParticipantRepository.createEventParticipant(eventId, userId)
+    const participant = await ParticipantRepository.createEventParticipant(eventId, userId)
+
+    if (participant){
+      await emailService.sendEmail(
+        participant.user.email,
+        `Confirmação de inscrição: ${event.title}`,
+        `<h2>Você se inscreveu com sucesso no evento!</h2>
+        <p><strong>Evento:</strong> ${event.title}</p>
+        <p>Agradecemos por se inscrever. Fique atento para mais informações sobre o evento.</p>
+        <a href="${process.env.FRONTEND_URL}/eventPage?id=${event.id}">Ver detalhes do evento</a>`
+      );
+    }
+
+    return participant
   }
 
   async getEventParticipants(eventId, search = '') {
@@ -44,6 +56,10 @@ class ParticipantService {
   async isEventParticipant(eventId, userId) {
     const participant = await ParticipantRepository.findEventParticipantByUserId(eventId, userId)
     return !!participant
+  }
+
+  async findByEmailAndEventId(email, eventId) {
+    return await ParticipantRepository.findByEmailAndEventId(email, eventId);
   }
     
 

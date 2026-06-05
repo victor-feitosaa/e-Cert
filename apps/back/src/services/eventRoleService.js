@@ -59,6 +59,11 @@ class EventRoleService {
         // Se veio de event_team (não tem role no mesmo sentido), considera como membro
         return true;
     }
+
+    async isOrganizerOrModerator(userId, eventId) {
+        const role = await EventRoleRepository.findUserByEvent(userId, eventId);
+        return role && (role.role === 'ORGANIZER' || role.role === 'MODERATOR');
+    }
 }
 
 export default new EventRoleService();

@@ -1,5 +1,6 @@
 // src/services/sectionService.js
 import SectionRepository from '../repository/SectionRepository.js'
+import emailService from './emailService.js'
 import subEventService from './subEventService.js'
 
 const sectionService = {
@@ -152,7 +153,19 @@ const sectionService = {
       throw new Error('Usuário já está inscrito nesta seção')
     }
 
-    return SectionRepository.addParticipant(sectionId, userId)
+    const participant = await SectionRepository.addParticipant(sectionId, userId)
+
+    if(participant) {
+      await emailService.sendEmail(
+        participant.user.email,
+        `Inscrição confirmada: ${section.title}`,
+        `<h2>Você se inscreveu com sucesso na seção!</h2>
+        <p><strong>Seção:</strong> ${section.title}</p>
+        <p><strong>Data e hora de início:</strong> ${new Date(section.date_start).toLocaleString()}</p>
+        <a href="${process.env.FRONTEND_URL}/eventPage?id=${section.subEvent.eventId}">Ver detalhes da seção</a>`
+      );
+    }
+    return participant;
   },
 
   async leaveSection(sectionId, userId) {

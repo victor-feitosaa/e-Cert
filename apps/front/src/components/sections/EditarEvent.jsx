@@ -9,6 +9,8 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState("");
     const [deleting, setDeleting] = useState(false);
+    const [currentUserId, setCurrentUserId] = useState(null);  // ID do usuário logado
+    const [organizerId, setOrganizerId] = useState(null);      // ID do criador do evento
 
     const validateYear = (value) => {
         if (!value) return true;
@@ -42,19 +44,38 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
             setLoading(true);
             setError("");
 
+            // 1. Buscar dados do usuário logado
+            const meRes = await fetch(`/api/auth/me`, {
+                method: "GET",
+                credentials: "include"
+            });
+            if (!meRes.ok) {
+                const errorMe = await meRes.json();
+                throw new Error(errorMe.error || "Erro ao carregar dados do usuário");
+            }
+            const userData = await meRes.json();
+            
+            const loggedUserId = userData?.data.user?.id 
+            if (!loggedUserId) throw new Error("ID do usuário não encontrado");
+            setCurrentUserId(loggedUserId);
+
+            // 2. Buscar dados do evento
             const res = await fetch(`/api/events/${eventId}`, {
                 method: "GET",
                 credentials: "include",
             });
-
             if (!res.ok) {
                 const errorData = await res.json();
                 throw new Error(errorData.error || "Erro ao carregar evento");
             }
-
             const response = await res.json();
             const ev = response.data?.event || response.event || response.data;
             if (!ev) throw new Error("Dados do evento não encontrados");
+
+            // Armazenar ID do organizador
+            const creatorId = ev.creator?.id || ev.createdBy;
+            if (!creatorId) throw new Error("Organizador do evento não identificado");
+            setOrganizerId(creatorId);
 
             setForm({
                 title: ev.title || "",
@@ -194,6 +215,9 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
 
     if (!form) return null;
 
+    // Verifica se o usuário logado é o organizador
+    const isOrganizer = currentUserId && organizerId && currentUserId === organizerId;
+
     return (
         <section>
             <form onSubmit={handleSubmit} className="flex gap-6">
@@ -299,58 +323,61 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                         </div>
                     </div>
 
-                    <div className="bg-[#13111e] border border-white/[0.07] rounded-xl flex-1">
-                        <div className="flex p-4 items-center gap-2 border-b border-white/[0.06]">
-                            <Cog size={20} className="text-purple-400" />
-                            <h3 className="font-extrabold text-white">Configurações</h3>
-                        </div>
+                    {/* Seção de Configurações – visível apenas para organizadores */}
+                    {isOrganizer && (
+                        <div className="bg-[#13111e] border border-white/[0.07] rounded-xl flex-1">
+                            <div className="flex p-4 items-center gap-2 border-b border-white/[0.06]">
+                                <Cog size={20} className="text-purple-400" />
+                                <h3 className="font-extrabold text-white">Configurações</h3>
+                            </div>
 
-                        <div className="p-4 border-b border-white/[0.06]">
-                            <p className="text-xs font-bold text-[#6b6888] uppercase tracking-widest mb-3">Visibilidade</p>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="p-4 border-b border-white/[0.06]">
+                                <p className="text-xs font-bold text-[#6b6888] uppercase tracking-widest mb-3">Visibilidade</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => togglePublic(true)}
+                                        className={`flex flex-col items-start gap-1 px-4 py-3 rounded-lg border text-left transition-all text-sm font-bold cursor-pointer
+                                            ${form.isPublic === true ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "border-white/[0.06] text-[#6b6888] hover:border-purple-500/30"}`}
+                                    >
+                                        <div className="flex items-center gap-1.5"><Globe size={12} /> Público</div>
+                                        <span className="text-xs font-normal opacity-60">Visível para todos</span>
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => togglePublic(false)}
+                                        className={`flex flex-col items-start gap-1 px-4 py-3 rounded-lg border text-left transition-all text-sm font-bold cursor-pointer
+                                            ${form.isPublic === false ? "bg-amber-500/10 border-amber-500/20 text-amber-400" : "border-white/[0.06] text-[#6b6888] hover:border-purple-500/30"}`}
+                                    >
+                                        <div className="flex items-center gap-1.5"><Lock size={12} /> Privado</div>
+                                        <span className="text-xs font-normal opacity-60">Somente convidados</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="p-4">
+                                <p className="text-xs font-bold text-[#6b6888] uppercase tracking-widest mb-3">Zona de risco</p>
                                 <button 
                                     type="button" 
-                                    onClick={() => togglePublic(true)}
-                                    className={`flex flex-col items-start gap-1 px-4 py-3 rounded-lg border text-left transition-all text-sm font-bold cursor-pointer
-                                        ${form.isPublic === true ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "border-white/[0.06] text-[#6b6888] hover:border-purple-500/30"}`}
+                                    onClick={handleDelete}
+                                    disabled={deleting}
+                                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <div className="flex items-center gap-1.5"><Globe size={12} /> Público</div>
-                                    <span className="text-xs font-normal opacity-60">Visível para todos</span>
-                                </button>
-                                <button 
-                                    type="button" 
-                                    onClick={() => togglePublic(false)}
-                                    className={`flex flex-col items-start gap-1 px-4 py-3 rounded-lg border text-left transition-all text-sm font-bold cursor-pointer
-                                        ${form.isPublic === false ? "bg-amber-500/10 border-amber-500/20 text-amber-400" : "border-white/[0.06] text-[#6b6888] hover:border-purple-500/30"}`}
-                                >
-                                    <div className="flex items-center gap-1.5"><Lock size={12} /> Privado</div>
-                                    <span className="text-xs font-normal opacity-60">Somente convidados</span>
+                                    {deleting ? (
+                                        <>
+                                            <div className="w-4 h-4 rounded-full border-2 border-red-400/30 border-t-red-400 animate-spin" />
+                                            Cancelando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <AlertTriangle size={13} />
+                                            Cancelar evento
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </div>
-
-                        <div className="p-4">
-                            <p className="text-xs font-bold text-[#6b6888] uppercase tracking-widest mb-3">Zona de risco</p>
-                            <button 
-                                type="button" 
-                                onClick={handleDelete}
-                                disabled={deleting}
-                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {deleting ? (
-                                    <>
-                                        <div className="w-4 h-4 rounded-full border-2 border-red-400/30 border-t-red-400 animate-spin" />
-                                        Cancelando...
-                                    </>
-                                ) : (
-                                    <>
-                                        <AlertTriangle size={13} />
-                                        Cancelar evento
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </div>
+                    )}
 
                     {error && (
                         <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
@@ -360,7 +387,7 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                     )}
                     {success && (
                         <p className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-3">
-                            ✓ Evento atualizado com sucesso!
+                             Evento atualizado com sucesso!
                         </p>
                     )}
 

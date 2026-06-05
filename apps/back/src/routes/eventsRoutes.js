@@ -52,12 +52,12 @@ router.post("/:id/confirmAttendance", confirmAttendance);
 // ──────────────────────────────────────────────
 router.put('/:id', hasRole, updateEvent);
 router.delete('/:id', isEventOwner, deleteEvent);
-router.get('/:id/eventParticipants', isEventOwner, getEventParticipants); 
+router.get('/:id/eventParticipants', hasRole, getEventParticipants); 
 
 // ──────────────────────────────────────────────
 // MODERADORES
 // ──────────────────────────────────────────────
-router.get('/:id/moderators', isEventOwner, getModerators);
+router.get('/:id/moderators', hasRole, getModerators);
 router.post('/:id/invite/:email', isEventOwner, inviteModerator);
 router.delete('/:id/moderator/:userId', isEventOwner, deleteModerator);
 

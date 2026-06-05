@@ -1,4 +1,6 @@
 import { prisma } from "../config/db.js";
+import eventRoleService from "../services/eventRoleService.js";
+import participantService from "../services/participantService.js";
 import subEventMemberService from "../services/subEventMemberService.js";
 import subEventService from "../services/subEventService.js";
 
@@ -184,6 +186,72 @@ export const deleteSubMember = async (req, res) => {
         res.status(500).json({
             status: 'error',
             message: 'Erro interno ao deletar membro',
+        });
+    }
+}
+
+export const inviteByEmail = async (req, res) => {
+    try {
+        const {subEventId} = req.params;
+        const {email, job} = req.body;
+        const userId = req.user.id;
+        const subEvent = await subEventService.findById(subEventId);
+
+        if (!subEvent) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'Sub-Evento não encontrado',
+            });
+        }
+    
+        if (!email?.trim()) {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'É obrigatório informar um email',
+            });
+        }
+
+        if (!job?.trim()) {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'É obrigatório informar uma função',
+            });
+        }
+
+     
+        //somente organizer e moderador podem convidar membros
+        const isOrganizerOrModerator = await eventRoleService.isOrganizerOrModerator(userId, subEvent.eventId);
+
+        if (!isOrganizerOrModerator) {
+            return res.status(403).json({
+                status: 'fail',
+                message: 'Você não tem permissão para convidar membros para este subevento'
+            });
+        }
+
+        //participantes não podem ser membros
+        const isAttendee = await participantService.findByEmailAndEventId(email, subEvent.eventId);
+
+        if (isAttendee) {
+            return res.status(403).json({
+                status: 'fail',
+                message: 'Participantes não podem ser membros deste subevento'
+            });
+        }
+
+        const member = await subEventMemberService.inviteByEmail(email, subEventId, job, userId);
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Convite enviado com sucesso',
+            data: { member },
+        });
+    }
+    catch (error) {
+        console.error('Erro ao enviar convite por email: ', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Erro interno ao enviar convite por email',
         });
     }
 }

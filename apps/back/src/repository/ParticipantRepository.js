@@ -104,6 +104,20 @@ class ParticipantRepository {
   async countSubeventParticipants(subEventId) {
     return prisma.subeventParticipant.count({ where: { subEventId } })
   }
+
+  async findByEmailAndEventId(email, eventId) {
+    return prisma.eventParticipant.findFirst({
+      where: {
+        eventId,
+        user: {
+          email
+        }
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true } }
+      }
+    })
+  }
 }
 
 export default new ParticipantRepository()

@@ -510,8 +510,28 @@ export default function ParticipantesTab({ eventId, eventData }) {
   const [addParticipantOpen, setAddParticipantOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState(null);
   const [removeParticipantTarget, setRemoveParticipantTarget] = useState(null);
+  const [me, setMe] = useState(null)
 
-  const canManage = eventData?.isOwner ?? true;
+  const canManage = me === organizer ? false : true;
+
+  console.log(canManage)
+
+  const fetchMe = async () => {
+    try{
+      const me = await fetch('/api/auth/me' , {
+        method: "GET",
+        credentials:"include"
+      })
+
+      if (me.ok){
+        const userData = await me.json()
+        setMe(userData.data.user.id)
+
+      }
+    } catch (err) {
+      console.error("Erro ao buscar dados de usuário.", err);
+    }
+  };
 
   // Buscar moderadores
   const fetchModerators = async () => {
@@ -558,6 +578,7 @@ export default function ParticipantesTab({ eventId, eventData }) {
   const fetchAll = async () => {
     setLoading(true);
     await Promise.all([
+      fetchMe(),
       fetchModerators(),
       fetchTeamAndParticipants()
     ]);

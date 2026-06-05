@@ -70,6 +70,43 @@ class subEventMemberRepository {
 
     }
 
+    async findMemberByUserAndSubEvent(userId, subEventId) {
+        return prisma.subEventTeam.findFirst({
+            where: {
+                userId,
+                subEventId,
+            },
+        });
+    }
+
+    async inviteByEmail(email, subEventId, job, userId) {
+        let user = await prisma.user.findUnique({
+            where: { email },
+        });
+
+
+       
+
+        return await prisma.subEventTeam.create({
+            data: {
+                name: user.name,
+                role: null,
+                job,
+                subEventId,
+                userId: user.id
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    }
+                }
+            }
+        });
+    }
+
 }
 
 export default new subEventMemberRepository();
