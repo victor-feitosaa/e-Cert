@@ -250,7 +250,7 @@ export default function PublicEvents() {
   const totalCapacity = events.reduce((sum, e) => sum + (e.capacity || 0), 0);
 
   const filtered = useMemo(() => {
-    let list = [...events];
+    let list = events.filter((e) => e.isPublic);
     
     
     if (userId) {

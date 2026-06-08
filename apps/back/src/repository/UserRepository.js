@@ -18,29 +18,32 @@ class UserRepository {
         })
     }
 
-    async create(name, email, password, status) {
+    async create(name, email, password, cpf, status) {
         return prisma.user.create({
             data: {
                 name,
                 email,
                 password,
+                cpf,
                 status
             }
         });
     }
 
-    async update(name, email, password, status) {
+    async update(name, email, password, cpf, status) {
         return prisma.user.update({
             where: {email},
             data: {
                 name,
                 email,
                 password,
+                cpf,
                 status
             }
-        })
+        });
     }
 
+    
 
 
 }

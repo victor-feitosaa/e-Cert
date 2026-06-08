@@ -1,24 +1,21 @@
 // sections/Participantes.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Users, UserPlus, UserX, Crown, Shield, UserCheck,
   Mail, Search, X, Send, AlertCircle, MoreVertical,
-  Trash2, Mic2, BookOpen, Star, Briefcase, Edit2
+  Trash2, Mic2, BookOpen, Star, Briefcase
 } from "lucide-react";
 
-const TEAM_ROLES = [
-  { value: "SPEAKER",    label: "Palestrante", color: "text-blue-400",  bg: "bg-blue-500/10",  border: "border-blue-500/20",  Icon: Mic2      },
-  { value: "STAFF",      label: "Staff",       color: "text-cyan-400",   bg: "bg-cyan-500/10",   border: "border-cyan-500/20",   Icon: Briefcase },
-  { value: "VOLUNTEER",  label: "Voluntário",  color: "text-emerald-400",bg: "bg-emerald-500/10",border: "border-emerald-500/20",Icon: Star      },
-  { value: "INSTRUCTOR", label: "Instrutor",   color: "text-amber-400",   bg: "bg-amber-500/10",  border: "border-amber-500/20",  Icon: BookOpen  },
-  { value: "OTHER",      label: "Outro",       color: "text-gray-400",    bg: "bg-gray-500/10",   border: "border-gray-500/20",   Icon: Users     },
-];
-
+/* ─── ROLE CONFIGS ─── */
 const ROLE_CONFIG = {
   ORGANIZER: { label: "Organizador",  color: "text-yellow-400",  bg: "bg-yellow-500/10",  border: "border-yellow-500/20",  Icon: Crown     },
   MODERATOR: { label: "Moderador",    color: "text-purple-400",   bg: "bg-purple-500/10",   border: "border-purple-500/20",   Icon: Shield    },
   ATTENDEE:  { label: "Participante", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", Icon: UserCheck },
-  ...Object.fromEntries(TEAM_ROLES.map(r => [r.value, r])),
+  SPEAKER:   { label: "Palestrante",  color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20",    Icon: Mic2      },
+  STAFF:     { label: "Staff",        color: "text-cyan-400",    bg: "bg-cyan-500/10",    border: "border-cyan-500/20",    Icon: Briefcase },
+  VOLUNTEER: { label: "Voluntário",   color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", Icon: Star      },
+  INSTRUCTOR:{ label: "Instrutor",    color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   Icon: BookOpen  },
+  OTHER:     { label: "Outro",        color: "text-gray-400",    bg: "bg-gray-500/10",    border: "border-gray-500/20",    Icon: Users     },
 };
 
 /* ─── MODAL BASE ─── */
@@ -102,19 +99,9 @@ function AddTeamMemberModal({ onClose, onSubmit, loading }) {
 
   const submit = () => {
     let hasError = false;
-    
-    if (!email.trim() || !email.includes("@")) { 
-      setEmailError("E-mail inválido"); 
-      hasError = true; 
-    }
-    
-    if (!job.trim()) { 
-      setJobError("Função é obrigatória"); 
-      hasError = true; 
-    }
-    
+    if (!email.trim() || !email.includes("@")) { setEmailError("E-mail inválido"); hasError = true; }
+    if (!job.trim()) { setJobError("Função é obrigatória"); hasError = true; }
     if (hasError) return;
-    
     onSubmit({ email: email.trim().toLowerCase(), job: job.trim() });
   };
 
@@ -191,19 +178,9 @@ function AddParticipantModal({ onClose, onSubmit, loading }) {
 
   const submit = () => {
     let hasError = false;
-    
-    if (!name.trim()) { 
-      setNameError("Nome é obrigatório"); 
-      hasError = true; 
-    }
-    
-    if (!email.trim() || !email.includes("@")) { 
-      setEmailError("E-mail inválido"); 
-      hasError = true; 
-    }
-    
+    if (!name.trim()) { setNameError("Nome é obrigatório"); hasError = true; }
+    if (!email.trim() || !email.includes("@")) { setEmailError("E-mail inválido"); hasError = true; }
     if (hasError) return;
-    
     onSubmit({ name: name.trim(), email: email.trim().toLowerCase() });
   };
 
@@ -268,10 +245,8 @@ function AddParticipantModal({ onClose, onSubmit, loading }) {
   );
 }
 
-/* ─── MODAL REMOVER PARTICIPANTE ─── */
-function RemoveParticipantModal({ participant, onClose, onConfirm, loading }) {
-  const name = participant?.name || "Participante";
-  
+/* ─── MODAL REMOVER ─── */
+function RemoveModal({ name, label = "membro", onClose, onConfirm, loading, danger }) {
   return (
     <Modal onClose={onClose} danger>
       <div className="flex items-center gap-3 mb-4">
@@ -279,7 +254,7 @@ function RemoveParticipantModal({ participant, onClose, onConfirm, loading }) {
           <AlertCircle size={15} className="text-red-400" />
         </div>
         <div>
-          <p className="font-bold text-white text-sm">Remover participante</p>
+          <p className="font-bold text-white text-sm">Remover {label}</p>
           <p className="text-xs text-gray-500">Essa ação pode ser desfeita depois</p>
         </div>
       </div>
@@ -302,22 +277,22 @@ function RemoveParticipantModal({ participant, onClose, onConfirm, loading }) {
   );
 }
 
-/* ─── MEMBER ROW (Equipe) ─── */
-function MemberRow({ member, isOrganizer, canManage, onRemove }) {
+/* ─── MEMBER ROW (Equipe / Moderadores) ─── */
+function MemberRow({ member, isEventOrganizer, canRemove, onRemove }) {
   const roleConfig = ROLE_CONFIG[member.role] || ROLE_CONFIG.OTHER;
   const { Icon: RoleIcon } = roleConfig;
   const [menuOpen, setMenuOpen] = useState(false);
-  
-  const name = member.name || member.user?.name || "Usuário";
-  const email = member.user?.email || member.email || null;
-  const job = member.job || member.roleDescription || roleConfig.label;
+
+  const name    = member.name || member.user?.name || "Usuário";
+  const email   = member.user?.email || member.email || null;
+  const job     = member.job || member.roleDescription || roleConfig.label;
   const initial = name[0].toUpperCase();
-  const joined = member.createdAt
+  const joined  = member.createdAt
     ? new Date(member.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
     : "—";
-  
+
   const isSystemUser = !!(member.userId && (member.user?.email || member.email));
-  const isExternal = !member.userId && member.name;
+  const isExternal   = !member.userId && member.name;
 
   return (
     <div
@@ -331,12 +306,12 @@ function MemberRow({ member, isOrganizer, canManage, onRemove }) {
         <div className="min-w-0 overflow-hidden">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-sm font-semibold text-white truncate" title={name}>{name}</span>
-            {isOrganizer && (
+            {isEventOrganizer && (
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 shrink-0">
                 Criador
               </span>
             )}
-            {isExternal && !isOrganizer && (
+            {isExternal && !isEventOrganizer && (
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white/[0.04] text-[#6b6888] border border-white/[0.06] shrink-0">
                 Externo
               </span>
@@ -356,7 +331,7 @@ function MemberRow({ member, isOrganizer, canManage, onRemove }) {
       <span className="text-xs text-[#6b6888] shrink-0">{joined}</span>
 
       <div className="flex justify-end shrink-0">
-        {canManage && !isOrganizer ? (
+        {canRemove && !isEventOrganizer ? (
           <div className="relative">
             <button onClick={() => setMenuOpen(v => !v)} className="p-1.5 cursor-pointer rounded-md text-[#2e2c42] hover:text-white hover:bg-white/5 transition-colors">
               <MoreVertical size={14} />
@@ -379,13 +354,13 @@ function MemberRow({ member, isOrganizer, canManage, onRemove }) {
 }
 
 /* ─── PARTICIPANT ROW ─── */
-function ParticipantRow({ participant, canManage, onRemove }) {
+function ParticipantRow({ participant, canRemove, onRemove }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  
-  const name = participant.user?.name || "Participante";
-  const email = participant.user?.email || "";
-  const initial = name[0]?.toUpperCase() || "P"; 
-  const joined = participant?.createdAt
+
+  const name    = participant.user?.name || "Participante";
+  const email   = participant.user?.email || "";
+  const initial = name[0]?.toUpperCase() || "P";
+  const joined  = participant?.createdAt
     ? new Date(participant.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
     : "—";
 
@@ -403,23 +378,16 @@ function ParticipantRow({ participant, canManage, onRemove }) {
 
       <div className="flex items-center gap-3">
         <span className="text-xs text-[#6b6888] hidden md:block">{joined}</span>
-
-        {canManage && (
+        {canRemove && (
           <div className="relative">
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="p-1.5 cursor-pointer rounded-md text-[#2e2c42] hover:text-white hover:bg-white/5 transition-colors"
-            >
+            <button onClick={() => setMenuOpen(!menuOpen)} className="p-1.5 cursor-pointer rounded-md text-[#2e2c42] hover:text-white hover:bg-white/5 transition-colors">
               <MoreVertical size={14} />
             </button>
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
                 <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-[#0c0e18] border border-purple-500/20 shadow-xl overflow-hidden z-20">
-                  <button
-                    onClick={() => { onRemove(participant); setMenuOpen(false); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
-                  >
+                  <button onClick={() => { onRemove(participant); setMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer">
                     <Trash2 size={11} /> Remover
                   </button>
                 </div>
@@ -433,7 +401,7 @@ function ParticipantRow({ participant, canManage, onRemove }) {
 }
 
 /* ─── SECTION BLOCK ─── */
-function Section({ title, subtitle, dot, accentBorder, headerAction, children, emptyLabel }) {
+function Section({ title, subtitle, dot, accentBorder, headerAction, children }) {
   return (
     <div className="border border-white/[0.06] rounded-xl overflow-hidden">
       <div className={`flex items-center justify-between px-5 py-3.5 bg-[#0c0e18] border-b border-white/[0.06] border-l-2 ${accentBorder}`}>
@@ -452,163 +420,102 @@ function Section({ title, subtitle, dot, accentBorder, headerAction, children, e
       </div>
 
       {children}
-
-      {emptyLabel && (
-        <div className="flex flex-col items-center justify-center py-10 text-center">
-          <Users size={22} className="text-[#2e2c42] mb-2" strokeWidth={1.5} />
-          <p className="text-xs text-[#6b6888]">{emptyLabel}</p>
-        </div>
-      )}
     </div>
-  );
-}
-
-/* ─── MODAL REMOVER (Equipe) ─── */
-function RemoveModal({ member, onClose, onConfirm, loading }) {
-  const name = member.user?.name || member.name || "Usuário";
-  return (
-    <Modal onClose={onClose} danger>
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-9 h-9 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
-          <AlertCircle size={15} className="text-red-400" />
-        </div>
-        <div>
-          <p className="font-bold text-white text-sm">Remover membro</p>
-          <p className="text-xs text-gray-500">Essa ação pode ser desfeita depois</p>
-        </div>
-      </div>
-      <p className="text-sm text-gray-400 leading-relaxed mb-6 p-3 bg-white/[0.02] border border-white/5 rounded-lg">
-        Você está prestes a remover <strong className="text-white">{name}</strong> do evento.
-      </p>
-      <div className="flex justify-end gap-2.5">
-        <button onClick={onClose} className="px-4 py-2 text-sm cursor-pointer font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
-          Cancelar
-        </button>
-        <button
-          onClick={onConfirm}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 text-sm cursor-pointer font-bold text-white bg-red-600 rounded-lg hover:opacity-90 disabled:opacity-50 transition-all"
-        >
-          <UserX size={13} /> {loading ? "Removendo..." : "Remover"}
-        </button>
-      </div>
-    </Modal>
   );
 }
 
 /* ─── MAIN ─── */
 export default function ParticipantesTab({ eventId, eventData }) {
-  const [organizer, setOrganizer] = useState(null);
-  const [moderators, setModerators] = useState([]);
-  const [teamMembers, setTeamMembers] = useState([]);
-  const [participants, setParticipants] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [moderators,    setModerators]    = useState([]);
+  const [teamMembers,   setTeamMembers]   = useState([]);
+  const [participants,  setParticipants]  = useState([]);
+  const [meId,          setMeId]          = useState(null);
+  const [loading,       setLoading]       = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [search, setSearch] = useState("");
-  const [inviteModOpen, setInviteModOpen] = useState(false);
-  const [addMemberOpen, setAddMemberOpen] = useState(false);
-  const [addParticipantOpen, setAddParticipantOpen] = useState(false);
-  const [removeTarget, setRemoveTarget] = useState(null);
-  const [removeParticipantTarget, setRemoveParticipantTarget] = useState(null);
-  const [me, setMe] = useState(null)
+  const [search,        setSearch]        = useState("");
 
-  const canManage = me === organizer ? false : true;
+  // modal: null | "inviteMod" | "addMember" | "addParticipant"
+  const [modal,                   setModal]                   = useState(null);
+  const [removeTarget,            setRemoveTarget]            = useState(null); // { member, type: "team"|"moderator"|"participant" }
 
-  console.log(canManage)
+  // Derived permission flags — organizerId vem de eventData.createdBy
+  const organizerId = eventData?.createdBy ?? eventData?.creator?.id ?? null;
+  const isOrganizer = !!meId && !!organizerId && String(meId) === String(organizerId);
+  const isModerator = !isOrganizer && moderators.some(m => m.userId === meId);
+  // Organizer can manage everything; moderator can manage team & participants but NOT moderators
+  const canManageTeamAndParticipants = isOrganizer || isModerator;
+  const canManageModerators          = isOrganizer;
 
-  const fetchMe = async () => {
-    try{
-      const me = await fetch('/api/auth/me' , {
-        method: "GET",
-        credentials:"include"
-      })
-
-      if (me.ok){
-        const userData = await me.json()
-        setMe(userData.data.user.id)
-
+  /* ─── FETCH ─── */
+  const fetchMe = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/me", { method: "GET", credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setMeId(data.data.user.id);
       }
     } catch (err) {
-      console.error("Erro ao buscar dados de usuário.", err);
+      console.error("Erro ao buscar usuário:", err);
     }
-  };
+  }, []);
 
-  // Buscar moderadores
-  const fetchModerators = async () => {
+  const fetchModerators = useCallback(async () => {
     try {
       const res = await fetch(`/api/events/${eventId}/moderators`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
-        const moderatorsList = data?.data?.moderators || data?.moderators || [];
-        setModerators(moderatorsList);
+        setModerators(data?.data?.moderators || data?.moderators || []);
       }
     } catch (err) {
       console.error("Erro ao buscar moderadores:", err);
     }
-  };
+  }, [eventId]);
 
-  // Buscar membros da equipe e participantes
-  const fetchTeamAndParticipants = async () => {
+  const fetchTeamAndParticipants = useCallback(async () => {
     try {
       const [membersRes, participantsRes] = await Promise.all([
         fetch(`/api/events/${eventId}/team`, { credentials: "include" }),
-        fetch(`/api/events/${eventId}/participants`, { credentials: "include" })
+        fetch(`/api/events/${eventId}/participants`, { credentials: "include" }),
       ]);
-      
+
       if (membersRes.ok) {
         const data = await membersRes.json();
         const teamList = data?.data?.team || data?.team || [];
-        
-        const org = teamList.find(m => m.role === "ORGANIZER");
-        setOrganizer(org || null);
-        
         setTeamMembers(teamList.filter(m => !["ORGANIZER", "MODERATOR", "ATTENDEE"].includes(m.role)));
       }
-      
+
       if (participantsRes.ok) {
         const data = await participantsRes.json();
-        const participantsList = data?.data?.participants || data?.participants || [];
-        setParticipants(participantsList);
+        setParticipants(data?.data?.participants || data?.participants || []);
       }
     } catch (err) {
-      console.error("Erro ao buscar dados:", err);
+      console.error("Erro ao buscar equipe/participantes:", err);
     }
-  };
-
-  const fetchAll = async () => {
-    setLoading(true);
-    await Promise.all([
-      fetchMe(),
-      fetchModerators(),
-      fetchTeamAndParticipants()
-    ]);
-    setLoading(false);
-  };
-
-  useEffect(() => { 
-    if (eventId) fetchAll(); 
   }, [eventId]);
 
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    await Promise.all([fetchMe(), fetchModerators(), fetchTeamAndParticipants()]);
+    setLoading(false);
+  }, [fetchMe, fetchModerators, fetchTeamAndParticipants]);
+
+  useEffect(() => { if (eventId) fetchAll(); }, [eventId, fetchAll]);
+
+  /* ─── ACTIONS ─── */
   const handleInviteModerator = async (payload) => {
     setActionLoading(true);
     try {
       const res = await fetch(`/api/events/${eventId}/moderators`, {
-        method: "POST", 
-        credentials: "include",
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (res.ok) { 
-        await fetchModerators(); 
-        setInviteModOpen(false); 
-      } else { 
-        const d = await res.json(); 
-        alert(d.message || "Erro ao convidar"); 
-      }
-    } catch (err) { 
-      console.error(err); 
-    } finally { 
-      setActionLoading(false); 
+      if (res.ok) { await fetchModerators(); setModal(null); }
+      else { const d = await res.json(); alert(d.message || "Erro ao convidar"); }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -616,103 +523,74 @@ export default function ParticipantesTab({ eventId, eventData }) {
     setActionLoading(true);
     try {
       const res = await fetch(`/api/events/${eventId}/team/invite`, {
-        method: "POST", 
-        credentials: "include",
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      
-      if (res.ok) { 
-        await fetchTeamAndParticipants(); 
-        setAddMemberOpen(false); 
-      } else { 
-        const d = await res.json(); 
-        alert(d.message || "Erro ao convidar membro"); 
-      }
-    } catch (err) { 
-      console.error(err); 
-    } finally { 
-      setActionLoading(false); 
+      if (res.ok) { await fetchTeamAndParticipants(); setModal(null); }
+      else { const d = await res.json(); alert(d.message || "Erro ao convidar membro"); }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleAddParticipant = async (payload) => {
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/events/${eventId}/participants`, {
-        method: "POST",
-        credentials: "include",
+      const res = await fetch(`/api/events/${eventId}/participants/invite`, {
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (res.ok) {
-        await fetchTeamAndParticipants();
-        setAddParticipantOpen(false);
-      } else {
-        const d = await res.json();
-        alert(d.message || "Erro ao adicionar participante");
-      }
+      if (res.ok) { await fetchTeamAndParticipants(); setModal(null); }
+      else { const d = await res.json(); alert(d.message || "Erro ao adicionar participante"); }
     } catch (err) {
-      console.error("Erro:", err);
+      console.error(err);
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleRemove = async () => {
+  const handleRemoveConfirm = async () => {
     if (!removeTarget) return;
     setActionLoading(true);
     try {
-      const isModerator = removeTarget.role === "MODERATOR";
-      const url = isModerator 
-        ? `/api/events/${eventId}/moderators/${removeTarget.id}`
-        : `/api/events/${eventId}/team/${removeTarget.id}`;
-      
-      const res = await fetch(url, { method: "DELETE", credentials: "include" });
-      if (res.ok) { 
-        await fetchAll(); 
-        setRemoveTarget(null); 
-      }
-    } catch (err) { 
-      console.error(err); 
-    } finally { 
-      setActionLoading(false); 
-    }
-  };
-
-  const handleRemoveParticipant = async () => {
-    if (!removeParticipantTarget) return;
-    setActionLoading(true);
-    try {
-      const res = await fetch(`/api/events/${eventId}/participants/${removeParticipantTarget.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      const { member, type } = removeTarget;
+      const urlMap = {
+        moderator:   `/api/events/${eventId}/moderators/${member.id}`,
+        team:        `/api/events/${eventId}/team/${member.id}`,
+        participant: `/api/events/${eventId}/participants/${member.id}`,
+      };
+      const res = await fetch(urlMap[type], { method: "DELETE", credentials: "include" });
       if (res.ok) {
-        await fetchTeamAndParticipants();
-        setRemoveParticipantTarget(null);
+        await (type === "moderator" ? fetchModerators() : fetchTeamAndParticipants());
+        setRemoveTarget(null);
       }
     } catch (err) {
-      console.error("Erro:", err);
+      console.error(err);
     } finally {
       setActionLoading(false);
     }
   };
 
+  /* ─── FILTER ─── */
   const q = search.toLowerCase();
-  const matchesTeam = (m) =>
-    (m.name || m.user?.name || "").toLowerCase().includes(q) ||
-    (m.email || m.user?.email || "").toLowerCase().includes(q) ||
-    (m.job || m.roleDescription || "").toLowerCase().includes(q);
-  
-  const matchesParticipant = (p) =>
-    (p?.user?.name?.toLowerCase() || "").includes(q) ||
-    (p?.user?.email?.toLowerCase() || "").includes(q);
+  const matchMember      = m => (m.name || m.user?.name || "").toLowerCase().includes(q) || (m.email || m.user?.email || "").toLowerCase().includes(q) || (m.job || m.roleDescription || "").toLowerCase().includes(q);
+  const matchParticipant = p => (p?.user?.name?.toLowerCase() || "").includes(q) || (p?.user?.email?.toLowerCase() || "").includes(q);
 
-  const filteredModerators = moderators.filter(matchesTeam);
-  const filteredTeamMembers = teamMembers.filter(matchesTeam);
-  const filteredParticipants = participants.filter(matchesParticipant);
+  const filteredModerators   = moderators.filter(matchMember);
+  const filteredTeamMembers  = teamMembers.filter(matchMember);
+  const filteredParticipants = participants.filter(matchParticipant);
 
+  /* ─── REMOVE TARGET NAME ─── */
+  const removeTargetName = removeTarget
+    ? (removeTarget.member?.name || removeTarget.member?.user?.name || "Usuário")
+    : "";
+  const removeTargetLabel = removeTarget?.type === "participant" ? "participante" : removeTarget?.type === "moderator" ? "moderador" : "membro";
+
+  /* ─── LOADING ─── */
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64 gap-3">
@@ -724,35 +602,43 @@ export default function ParticipantesTab({ eventId, eventData }) {
 
   return (
     <div>
+      {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
           <h2 className="font-bold text-white text-lg tracking-tight mb-1">Equipe & Participantes</h2>
           <p className="text-sm text-[#6b6888]">Gerencie organizador, moderadores, equipe e participantes</p>
         </div>
-        {canManage && (
-          <div className="flex gap-2">
+
+        {/* Botões globais — visíveis conforme permissão */}
+        <div className="flex gap-2">
+          {canManageTeamAndParticipants && (
+            <>
+              <button
+                onClick={() => setModal("addParticipant")}
+                className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer font-bold text-white bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-lg shadow-[0_4px_14px_rgba(16,185,129,0.4)] hover:opacity-90 transition-all"
+              >
+                <UserPlus size={14} /> Participante
+              </button>
+              <button
+                onClick={() => setModal("addMember")}
+                className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer font-bold text-white bg-[#13111e] border border-white/[0.08] rounded-lg hover:border-purple-500/30 hover:text-white transition-all"
+              >
+                <UserPlus size={14} /> Equipe
+              </button>
+            </>
+          )}
+          {canManageModerators && (
             <button
-              onClick={() => setAddParticipantOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer font-bold text-white bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-lg shadow-[0_4px_14px_rgba(16,185,129,0.4)] hover:opacity-90 transition-all"
-            >
-              <UserPlus size={14} /> Participante
-            </button>
-            <button
-              onClick={() => setAddMemberOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer font-bold text-white bg-[#13111e] border border-white/[0.08] rounded-lg hover:border-purple-500/30 hover:text-white transition-all"
-            >
-              <UserPlus size={14} /> Equipe
-            </button>
-            <button
-              onClick={() => setInviteModOpen(true)}
+              onClick={() => setModal("inviteMod")}
               className="flex items-center gap-2 px-3 py-2 text-sm font-bold cursor-pointer text-white bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 transition-all"
             >
               <Shield size={14} /> Moderador
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
+      {/* Search */}
       <div className="relative mb-6">
         <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2e2c42] pointer-events-none" />
         <input
@@ -777,9 +663,9 @@ export default function ParticipantesTab({ eventId, eventData }) {
           dot="bg-emerald-400"
           accentBorder="border-l-emerald-400/50"
           headerAction={
-            canManage && (
+            canManageTeamAndParticipants && (
               <button
-                onClick={() => setAddParticipantOpen(true)}
+                onClick={() => setModal("addParticipant")}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/20 transition-all"
               >
                 <UserPlus size={11} /> Adicionar
@@ -792,8 +678,8 @@ export default function ParticipantesTab({ eventId, eventData }) {
               <ParticipantRow
                 key={p.id}
                 participant={p}
-                canManage={canManage}
-                onRemove={setRemoveParticipantTarget}
+                canRemove={canManageTeamAndParticipants}
+                onRemove={m => setRemoveTarget({ member: m, type: "participant" })}
               />
             ))
           ) : (
@@ -813,9 +699,9 @@ export default function ParticipantesTab({ eventId, eventData }) {
           dot="bg-purple-400"
           accentBorder="border-l-purple-400/50"
           headerAction={
-            canManage && (
+            canManageModerators && (
               <button
-                onClick={() => setInviteModOpen(true)}
+                onClick={() => setModal("inviteMod")}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer font-bold text-purple-400 bg-purple-500/10 border border-purple-500/20 rounded-lg hover:bg-purple-500/20 transition-all"
               >
                 <Send size={11} /> Convidar
@@ -825,7 +711,13 @@ export default function ParticipantesTab({ eventId, eventData }) {
         >
           {filteredModerators.length > 0 ? (
             filteredModerators.map(m => (
-              <MemberRow key={m.id} member={m} isOrganizer={false} canManage={canManage} onRemove={setRemoveTarget} />
+              <MemberRow
+                key={m.id}
+                member={m}
+                isEventOrganizer={false}
+                canRemove={canManageModerators}
+                onRemove={member => setRemoveTarget({ member, type: "moderator" })}
+              />
             ))
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -844,9 +736,9 @@ export default function ParticipantesTab({ eventId, eventData }) {
           dot="bg-blue-400"
           accentBorder="border-l-blue-400/50"
           headerAction={
-            canManage && (
+            canManageTeamAndParticipants && (
               <button
-                onClick={() => setAddMemberOpen(true)}
+                onClick={() => setModal("addMember")}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded-lg hover:bg-blue-500/20 transition-all"
               >
                 <UserPlus size={11} /> Adicionar
@@ -856,7 +748,13 @@ export default function ParticipantesTab({ eventId, eventData }) {
         >
           {filteredTeamMembers.length > 0 ? (
             filteredTeamMembers.map(m => (
-              <MemberRow key={m.id} member={m} isOrganizer={false} canManage={canManage} onRemove={setRemoveTarget} />
+              <MemberRow
+                key={m.id}
+                member={m}
+                isEventOrganizer={false}
+                canRemove={canManageTeamAndParticipants}
+                onRemove={member => setRemoveTarget({ member, type: "team" })}
+              />
             ))
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -870,20 +768,23 @@ export default function ParticipantesTab({ eventId, eventData }) {
       </div>
 
       {/* Modais */}
-      {inviteModOpen && (
-        <InviteModeratorModal onClose={() => setInviteModOpen(false)} onSubmit={handleInviteModerator} loading={actionLoading} />
+      {modal === "inviteMod" && (
+        <InviteModeratorModal onClose={() => setModal(null)} onSubmit={handleInviteModerator} loading={actionLoading} />
       )}
-      {addMemberOpen && (
-        <AddTeamMemberModal onClose={() => setAddMemberOpen(false)} onSubmit={handleAddTeamMember} loading={actionLoading} />
+      {modal === "addMember" && (
+        <AddTeamMemberModal onClose={() => setModal(null)} onSubmit={handleAddTeamMember} loading={actionLoading} />
       )}
-      {addParticipantOpen && (
-        <AddParticipantModal onClose={() => setAddParticipantOpen(false)} onSubmit={handleAddParticipant} loading={actionLoading} />
+      {modal === "addParticipant" && (
+        <AddParticipantModal onClose={() => setModal(null)} onSubmit={handleAddParticipant} loading={actionLoading} />
       )}
       {removeTarget && (
-        <RemoveModal member={removeTarget} onClose={() => setRemoveTarget(null)} onConfirm={handleRemove} loading={actionLoading} />
-      )}
-      {removeParticipantTarget && (
-        <RemoveParticipantModal participant={removeParticipantTarget} onClose={() => setRemoveParticipantTarget(null)} onConfirm={handleRemoveParticipant} loading={actionLoading} />
+        <RemoveModal
+          name={removeTargetName}
+          label={removeTargetLabel}
+          onClose={() => setRemoveTarget(null)}
+          onConfirm={handleRemoveConfirm}
+          loading={actionLoading}
+        />
       )}
     </div>
   );

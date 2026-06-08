@@ -3,7 +3,7 @@ import { useState, useCallback } from "react";
 import {
   Calendar, ChartLine, Download, GraduationCap, Pen, Users,
   Globe, Lock, Clock, MapPin, User, ArrowLeft, FileText,
-  CalendarDays, Layers, Sparkles, ChevronRight
+  CalendarDays, Layers, Sparkles, ChevronRight, UserCheck
 } from "lucide-react";
 
 import Overview from "./sections/Overview.jsx";
@@ -28,7 +28,6 @@ function SiteNav({ onBack }) {
         <nav className="fixed top-0 left-0 right-0 z-50 h-14 flex items-center justify-between px-6 bg-[#0A0A0F]/90 backdrop-blur-xl border-b border-white/[0.06]">
             {/* Logo */}
             <div className="flex items-center gap-2">
-
                 <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white to-violet-300 bg-clip-text text-transparent">
                     e-<span className="text-violet-400">cert</span>
                 </span>
@@ -47,7 +46,7 @@ function SiteNav({ onBack }) {
 }
 
 /* ── Event Header ────────────────────────────── */
-function EventHeader({ eventData, date, time }) {
+function EventHeader({ eventData, date, time, canCheckin }) {
     const subEventCount = eventData.subEvents?.length ?? 0;
 
     return (
@@ -95,9 +94,20 @@ function EventHeader({ eventData, date, time }) {
                         </div>
                     </div>
 
-                    {/* Right — stat chip */}
-                    <div className="flex gap-3 shrink-0">
+                    {/* Right — stat chip and check-in button */}
+                    <div className="flex gap-3 shrink-0 items-center">
                         <StatChip Icon={Layers} value={subEventCount} label="sub-eventos" />
+                        {canCheckin && (
+                            <a
+                                href={`/checkin?eventId=${eventData.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600/20 text-purple-400 border border-purple-500/20 hover:bg-purple-600/30 transition-all text-sm font-bold"
+                            >
+                                <UserCheck size={14} />
+                                Credenciamento
+                            </a>
+                        )}
                     </div>
                 </div>
             </div>
@@ -116,7 +126,7 @@ function StatChip({ Icon, value, label }) {
 }
 
 /* ── Root ────────────────────────────────────── */
-export default function AnalyticTabs({ eventData: initialEventData, apiURL, cookieHeader, onBack }) {
+export default function AnalyticTabs({ eventData: initialEventData, apiURL, cookieHeader, onBack, canCheckin = false }) {
     const [activeTab, setActiveTab] = useState("overview");
     const [eventData, setEventData] = useState(initialEventData);
 
@@ -178,7 +188,7 @@ export default function AnalyticTabs({ eventData: initialEventData, apiURL, cook
 
             <div className="pt-14">
                 <div className="px-6 pt-6">
-                    <EventHeader eventData={eventData} date={date} time={time} />
+                    <EventHeader eventData={eventData} date={date} time={time} canCheckin={canCheckin} />
                 </div>
 
                 <div className="px-6 pb-6">

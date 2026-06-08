@@ -149,6 +149,22 @@ export const deleteEventParticipant = async (req, res) => {
   }
 }
 
+export const inviteParticipantByEmail = async (req, res) => {
+  try {
+    const { eventId } = req.params
+    const { name, email } = req.body
+    if (!email || !name) {
+      return res.status(400).json({ status: 'fail', message: 'Nome e email são obrigatórios' })
+    }
+    const participant = await participantService.inviteParticipantByEmail(eventId, name, email)
+    res.status(201).json({ status: 'success', data: { participant } })
+  }
+    catch (error) {
+      console.error('Erro ao adicionar participante por email:', error)
+      res.status(500).json({ status: 'error', message: 'Erro ao adicionar participante por email' })
+    }
+}
+
 // bulk — agora recebe array de userIds
 export const bulkAddEventParticipants = async (req, res) => {
   try {

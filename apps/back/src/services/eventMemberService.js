@@ -54,7 +54,7 @@ class EventMemberService {
 
         if (!user) {
             const tempPassword = Math.random().toString(36).slice(-10);
-            user = await UserRepository.create(null, email, tempPassword, 'PARCIAL');
+            user = await UserRepository.create(null, email, tempPassword, null, 'PARCIAL');
             isNewUser = true;
 
             await emailService.sendEmail(

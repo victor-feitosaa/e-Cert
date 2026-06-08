@@ -1,0 +1,26 @@
+---
+// apps/front/src/pages/checkin.astro
+import Layout from '../layouts/Layout.astro';
+import CheckinApp from '@/components/CheckinApp.jsx';
+import { AlertCircle } from 'lucide-react';
+
+export const prerender = false;
+
+const eventId = Astro.url.searchParams.get('eventId');
+---
+
+<Layout title="Credenciamento e Check-in">
+  <div class="min-h-screen bg-background">
+    {eventId ? (
+      <CheckinApp client:load eventId={eventId} />
+    ) : (
+      <div class="flex items-center justify-center min-h-screen">
+        <div class="bg-red-500/10 border border-red-500/20 rounded-2xl p-8 text-center">
+          <AlertCircle size={48} class="text-red-400 mx-auto mb-4" />
+          <h2 class="text-xl font-bold text-white">Evento não especificado</h2>
+          <p class="text-gray-400">É necessário informar o ID do evento.</p>
+        </div>
+      </div>
+    )}
+  </div>
+</Layout>

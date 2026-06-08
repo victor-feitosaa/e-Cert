@@ -1,5 +1,6 @@
 // src/services/participantService.js
 import ParticipantRepository from '../repository/ParticipantRepository.js'
+import UserRepository from '../repository/UserRepository.js'
 import emailService from './emailService.js'
 import eventService from './eventService.js'
 import subEventService from './subEventService.js'
@@ -62,6 +63,36 @@ class ParticipantService {
     return await ParticipantRepository.findByEmailAndEventId(email, eventId);
   }
     
+    async inviteParticipantByEmail(eventId, name, email) {
+    const event = await eventService.getById(eventId)
+    if (!event) throw new Error('Evento não encontrado')
+
+    const existing = await ParticipantRepository.findByEmailAndEventId(email, eventId)
+    if (existing) throw new Error('Usuário já está inscrito neste evento')
+
+    let isNewUser = false
+    let user = await UserRepository.findByEmail(email)
+    if (!user) {
+      isNewUser = true
+      const randomPassword = Math.random().toString(36).slice(-8)
+      user = await UserRepository.create(name, email, randomPassword, null, 'PARCIAL')
+    }
+
+    const participant = await ParticipantRepository.createEventParticipant(eventId, user.id)
+
+    if (participant) {
+      await emailService.sendEmail(
+        email,
+        `Convite para evento: ${event.title}`,
+        `<h2>Você foi convidado para participar do evento!</h2>
+        <p><strong>Evento:</strong> ${event.title}</p>
+        <p><strong>Função:</strong> Participante</p>
+        ${isNewUser ? `<p>Uma conta foi criada para você com a senha: <strong>${user.password}</strong>. Por favor, faça login e altere sua senha.</p>` : ''}
+        <a href="${process.env.FRONTEND_URL}/eventPage?id=${event.id}">Ver detalhes do evento</a>`
+      );
+    }
+    return participant
+  }
 
   // ── SubEvent Participants ───────────────────────────────────────────────────
 //não esta em uso ja que foi mudado para inscrição por sections
@@ -96,6 +127,7 @@ class ParticipantService {
   async countSubeventParticipants(subEventId) {
     return ParticipantRepository.countSubeventParticipants(subEventId)
   }
-}
 
+
+}
 export default new ParticipantService()

@@ -5,10 +5,24 @@ import AnalyticTabs from "../AnalyticsTabs";
 const { event } = Astro.props;
 
 const apiURL = import.meta.env.VITE_API_URL ?? "http://localhost:5001";
-
 const cookieHeader = Astro.request.headers.get("cookie") ?? "";
 
+let canCheckin = false;
 
+try {
+  // Faz a requisição para verificar permissão de check-in
+  const permissionRes = await fetch(`${apiURL}/events/${event.id}/checkin/permission`, {
+    headers: {
+      Cookie: cookieHeader,
+    },
+  });
+  if (permissionRes.ok) {
+    const permissionData = await permissionRes.json();
+    canCheckin = permissionData.allowed === true;
+  }
+} catch (err) {
+  console.error("Erro ao verificar permissão de check-in:", err);
+}
 ---
 
 <section>
@@ -28,7 +42,14 @@ const cookieHeader = Astro.request.headers.get("cookie") ?? "";
     </div>
 
     <div class="relative z-10 ">
-      <AnalyticTabs eventData={event} apiURL={apiURL} cookieHeader={cookieHeader} onBack="/userDashboard" client:load />
+      <AnalyticTabs 
+        eventData={event} 
+        apiURL={apiURL} 
+        cookieHeader={cookieHeader} 
+        onBack="/userDashboard" 
+        canCheckin={canCheckin}
+        client:load 
+      />
     </div>
 
   </div>
