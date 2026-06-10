@@ -45,7 +45,7 @@ app.use("/testes", testeRoutes);
 app.use('/participants', myParticipationsRoutes);
 app.use('/events/:eventId/subevents/:subEventId/sections', sectionRoutes)
 app.use('/events/:eventId/participants', participantRoutes)
-app.use('/events', checkinRoutes); 
+app.use('/checkin', checkinRoutes); 
 
 const PORT = 5001;
 app.listen(PORT, () => {

@@ -64,6 +64,14 @@ class EventRoleService {
         const role = await EventRoleRepository.findUserByEvent(userId, eventId);
         return role && (role.role === 'ORGANIZER' || role.role === 'MODERATOR');
     }
+
+    // services/eventRoleService.js
+    async canCheckin(userId, eventId) {
+        // Organizador sempre pode
+        if (await this.isOrganizer(userId, eventId)) return true;
+        // Verificar permissão CHECKIN via EventPermission
+        return await this.hasRole(userId, eventId, 'CHECKIN');
+    }
 }
 
 export default new EventRoleService();
