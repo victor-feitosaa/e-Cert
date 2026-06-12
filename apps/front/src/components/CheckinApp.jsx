@@ -6,7 +6,7 @@ import {
   Clock, Scan, Home, Layers
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
-import jwtDecode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
 export default function CheckinApp({ eventId }) {
   const [event, setEvent] = useState(null);
