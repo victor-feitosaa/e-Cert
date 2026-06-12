@@ -56,8 +56,16 @@ export const createTeamMember = async (req, res) => {
 export const inviteTeamMemberByEmail = async (req, res) => {
     try {
         const { id: eventId } = req.params;
-        const { email, job } = req.body;
+        const { email, job, permission } = req.body;
         const userId = req.user.id;
+
+
+        if (!permission || !['MEMBER', 'CHECKIN'].includes(permission)) {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'Permissão inválida. Deve ser MEMBER ou CHECKIN.'
+            });
+        }
 
         // Validar evento
         const event = await eventService.getById(eventId);
@@ -110,7 +118,7 @@ export const inviteTeamMemberByEmail = async (req, res) => {
              });
          }
 
-        const result = await eventMemberService.inviteByEmail(eventId, email, job, userId);
+        const result = await eventMemberService.inviteByEmail(eventId, email, job, permission, userId);
 
         res.status(201).json({
             status: 'success',
@@ -296,3 +304,52 @@ export const deleteMember = async (req, res) => {
         });
     }
 }
+
+
+export const updateMemberPermission = async (req, res) => {
+    try {
+        const { memberId } = req.params;
+        const { permission } = req.body; // 'MEMBER' ou 'CHECKIN'
+        const userId = req.user.id;
+
+        if (!permission || !['MEMBER', 'CHECKIN'].includes(permission)) {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'Permissão inválida. Deve ser MEMBER ou CHECKIN.'
+            });
+        }
+
+        // Buscar o membro da equipe
+        const member = await eventMemberService.getMemberById(memberId);
+        if (!member) {
+            return res.status(404).json({ status: 'fail', message: 'Membro não encontrado' });
+        }
+
+        // Verificar permissão do usuário logado (apenas organizador pode alterar)
+        const event = await eventService.getById(member.eventId);
+        if (event.createdBy !== userId) {
+            return res.status(403).json({
+                status: 'fail',
+                message: 'Apenas o organizador pode alterar permissões'
+            });
+        }
+
+        // Atualizar ou remover permissão
+        if (permission === 'CHECKIN') {
+            await eventRoleService.grantCheckinPermission(member.userId, member.eventId);
+        } else {
+            // Remover permissão de CHECKIN, se existir
+            await prisma.eventPermission.deleteMany({
+                where: { userId: member.userId, eventId: member.eventId, role: 'CHECKIN' }
+            });
+        }
+
+        res.status(200).json({
+            status: 'success',
+            message: `Permissão alterada para ${permission}`
+        });
+    } catch (error) {
+        console.error('Erro ao atualizar permissão:', error);
+        res.status(500).json({ status: 'error', message: 'Erro interno' });
+    }
+};

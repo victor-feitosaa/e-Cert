@@ -3,10 +3,12 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Users, UserPlus, UserX, Crown, Shield, UserCheck,
   Mail, Search, X, Send, AlertCircle, MoreVertical,
-  Trash2, Mic2, BookOpen, Star, Briefcase
+  Trash2, Mic2, BookOpen, Star, Briefcase, Edit2,
+  CheckSquare, ShieldCheck, Save,
+  User
 } from "lucide-react";
 
-/* ─── ROLE CONFIGS ─── */
+/* ─── ROLE CONFIGS (função/job) ─── */
 const ROLE_CONFIG = {
   ORGANIZER: { label: "Organizador",  color: "text-yellow-400",  bg: "bg-yellow-500/10",  border: "border-yellow-500/20",  Icon: Crown     },
   MODERATOR: { label: "Moderador",    color: "text-purple-400",   bg: "bg-purple-500/10",   border: "border-purple-500/20",   Icon: Shield    },
@@ -17,6 +19,12 @@ const ROLE_CONFIG = {
   INSTRUCTOR:{ label: "Instrutor",    color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   Icon: BookOpen  },
   OTHER:     { label: "Outro",        color: "text-gray-400",    bg: "bg-gray-500/10",    border: "border-gray-500/20",    Icon: Users     },
 };
+
+/* ─── PERMISSIONS (MEMBER / CHECKIN) ─── */
+const PERMISSION_OPTIONS = [
+  { value: "MEMBER", label: "Membro", icon: User, color: "text-blue-400", bg: "bg-blue-500/10" },
+  { value: "CHECKIN", label: "Checkin", icon: ShieldCheck, color: "text-indigo-400", bg: "bg-indigo-500/10" },
+];
 
 /* ─── MODAL BASE ─── */
 function Modal({ children, onClose, danger }) {
@@ -90,10 +98,11 @@ function InviteModeratorModal({ onClose, onSubmit, loading }) {
   );
 }
 
-/* ─── MODAL CONVIDAR MEMBRO DA EQUIPE ─── */
+/* ─── MODAL CONVIDAR MEMBRO DA EQUIPE (com permissão) ─── */
 function AddTeamMemberModal({ onClose, onSubmit, loading }) {
   const [email, setEmail] = useState("");
   const [job, setJob] = useState("");
+  const [permission, setPermission] = useState("MEMBER");
   const [emailError, setEmailError] = useState("");
   const [jobError, setJobError] = useState("");
 
@@ -102,7 +111,7 @@ function AddTeamMemberModal({ onClose, onSubmit, loading }) {
     if (!email.trim() || !email.includes("@")) { setEmailError("E-mail inválido"); hasError = true; }
     if (!job.trim()) { setJobError("Função é obrigatória"); hasError = true; }
     if (hasError) return;
-    onSubmit({ email: email.trim().toLowerCase(), job: job.trim() });
+    onSubmit({ email: email.trim().toLowerCase(), job: job.trim(), permission });
   };
 
   return (
@@ -150,6 +159,24 @@ function AddTeamMemberModal({ onClose, onSubmit, loading }) {
             className="w-full bg-[#0f0d1a] border border-purple-500/20 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-purple-500/60 transition-colors"
           />
           {jobError && <p className="text-xs text-red-400 mt-1">{jobError}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-300 mb-1.5">
+            Permissão
+          </label>
+          <select
+            value={permission}
+            onChange={e => setPermission(e.target.value)}
+            className="w-full bg-[#0f0d1a] border border-purple-500/20 rounded-lg px-4 py-2.5 text-sm text-white outline-none focus:border-purple-500/60 transition-colors"
+          >
+            {PERMISSION_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          <p className="text-xs text-[#6b6888] mt-1">
+            {permission === "CHECKIN" ? "Poderá realizar check-in de participantes." : "Membro comum da equipe."}
+          </p>
         </div>
       </div>
 
@@ -245,8 +272,64 @@ function AddParticipantModal({ onClose, onSubmit, loading }) {
   );
 }
 
+/* ─── MODAL EDITAR PERMISSÃO ─── */
+function EditPermissionModal({ member, onClose, onUpdate, loading }) {
+  const [permission, setPermission] = useState(member.permission || "MEMBER");
+
+  const handleSubmit = () => {
+    onUpdate(member.id, permission);
+  };
+
+  return (
+    <Modal onClose={onClose}>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-9 h-9 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+          <ShieldCheck size={15} className="text-indigo-400" />
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-white">Alterar permissão</h2>
+          <p className="text-xs text-gray-500">{member.name || member.user?.name}</p>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-gray-300 mb-1.5">
+          Permissão
+        </label>
+        <select
+          value={permission}
+          onChange={e => setPermission(e.target.value)}
+          className="w-full bg-[#0f0d1a] border border-purple-500/20 rounded-lg px-4 py-2.5 text-sm text-white outline-none focus:border-purple-500/60 transition-colors"
+        >
+          {PERMISSION_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        <p className="text-xs text-[#6b6888] mt-2">
+          {permission === "CHECKIN"
+            ? "O usuário poderá realizar check-in de participantes."
+            : "O usuário terá permissão de membro comum da equipe."}
+        </p>
+      </div>
+
+      <div className="flex justify-end gap-2.5 mt-6 pt-5 border-t border-white/5">
+        <button onClick={onClose} className="px-4 py-2 text-sm cursor-pointer font-bold text-gray-400 border border-white/10 rounded-lg hover:text-white hover:border-purple-500/30 transition-all">
+          Cancelar
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="flex items-center gap-2 px-5 py-2 cursor-pointer text-sm font-bold text-white bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-lg shadow-[0_4px_14px_rgba(79,70,229,0.4)] hover:opacity-90 disabled:opacity-50 transition-all"
+        >
+          {loading ? "Salvando..." : <><Save size={13} /> Salvar</>}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 /* ─── MODAL REMOVER ─── */
-function RemoveModal({ name, label = "membro", onClose, onConfirm, loading, danger }) {
+function RemoveModal({ name, label = "membro", onClose, onConfirm, loading }) {
   return (
     <Modal onClose={onClose} danger>
       <div className="flex items-center gap-3 mb-4">
@@ -277,8 +360,8 @@ function RemoveModal({ name, label = "membro", onClose, onConfirm, loading, dang
   );
 }
 
-/* ─── MEMBER ROW (Equipe / Moderadores) ─── */
-function MemberRow({ member, isEventOrganizer, canRemove, onRemove }) {
+/* ─── MEMBER ROW (Equipe / Moderadores) com permissão e edição ─── */
+function MemberRow({ member, isEventOrganizer, canRemove, canEditPermission, onRemove, onEditPermission }) {
   const roleConfig = ROLE_CONFIG[member.role] || ROLE_CONFIG.OTHER;
   const { Icon: RoleIcon } = roleConfig;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -291,13 +374,18 @@ function MemberRow({ member, isEventOrganizer, canRemove, onRemove }) {
     ? new Date(member.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
     : "—";
 
+  // Permissão (MEMBER / CHECKIN)
+  const permission = member.permission || "MEMBER";
+  const permissionConfig = PERMISSION_OPTIONS.find(p => p.value === permission) || PERMISSION_OPTIONS[0];
+  const PermissionIcon = permissionConfig.icon;
+
   const isSystemUser = !!(member.userId && (member.user?.email || member.email));
   const isExternal   = !member.userId && member.name;
 
   return (
     <div
       className="grid items-center gap-3 px-4 py-3 rounded-lg border-b border-white/[0.04] hover:bg-purple-500/[0.03] transition-colors"
-      style={{ gridTemplateColumns: "minmax(200px, 1fr) minmax(100px, 130px) 90px 36px" }}
+      style={{ gridTemplateColumns: "minmax(200px, 1fr) minmax(100px, 130px) minmax(80px, 100px) 90px 36px" }}
     >
       <div className="flex items-center gap-3 min-w-0 overflow-hidden">
         <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white font-bold text-xs shadow-md ${isSystemUser ? "bg-gradient-to-br from-purple-500 to-purple-700" : "bg-[#1e2030]"}`}>
@@ -328,10 +416,18 @@ function MemberRow({ member, isEventOrganizer, canRemove, onRemove }) {
         </span>
       </div>
 
+      {/* Badge de permissão */}
+      <div className="min-w-0 overflow-hidden">
+        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${permissionConfig.color} ${permissionConfig.bg} border-white/10`}>
+          <PermissionIcon size={10} />
+          {permissionConfig.label}
+        </span>
+      </div>
+
       <span className="text-xs text-[#6b6888] shrink-0">{joined}</span>
 
       <div className="flex justify-end shrink-0">
-        {canRemove && !isEventOrganizer ? (
+        {(canRemove || canEditPermission) && !isEventOrganizer ? (
           <div className="relative">
             <button onClick={() => setMenuOpen(v => !v)} className="p-1.5 cursor-pointer rounded-md text-[#2e2c42] hover:text-white hover:bg-white/5 transition-colors">
               <MoreVertical size={14} />
@@ -339,10 +435,23 @@ function MemberRow({ member, isEventOrganizer, canRemove, onRemove }) {
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-6 top-1 mt-0 w-32 rounded-lg bg-[#0c0e18] border border-purple-500/20 shadow-xl overflow-hidden z-20">
-                  <button onClick={() => { onRemove(member); setMenuOpen(false); }} className="w-full cursor-pointer flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors">
-                    <Trash2 size={11} /> Remover
-                  </button>
+                <div className="absolute right-6 top-1 mt-0 w-36 rounded-lg bg-[#0c0e18] border border-purple-500/20 shadow-xl overflow-hidden z-20">
+                  {canEditPermission && (
+                    <button
+                      onClick={() => { onEditPermission(member); setMenuOpen(false); }}
+                      className="w-full cursor-pointer flex items-center gap-2 px-3 py-2 text-xs text-indigo-400 hover:bg-indigo-500/10 transition-colors"
+                    >
+                      <Edit2 size={11} /> Alterar permissão
+                    </button>
+                  )}
+                  {canRemove && (
+                    <button
+                      onClick={() => { onRemove(member); setMenuOpen(false); }}
+                      className="w-full cursor-pointer flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      <Trash2 size={11} /> Remover
+                    </button>
+                  )}
                 </div>
               </>
             )}
@@ -353,7 +462,7 @@ function MemberRow({ member, isEventOrganizer, canRemove, onRemove }) {
   );
 }
 
-/* ─── PARTICIPANT ROW ─── */
+/* ─── PARTICIPANT ROW (sem alterações) ─── */
 function ParticipantRow({ participant, canRemove, onRemove }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -414,8 +523,11 @@ function Section({ title, subtitle, dot, accentBorder, headerAction, children })
       </div>
 
       <div className="grid px-4 py-2 border-b border-white/[0.04] bg-[#0c0e18]/50"
-        style={{ gridTemplateColumns: "1fr auto" }}>
+        style={{ gridTemplateColumns: "minmax(200px, 1fr) minmax(100px, 130px) minmax(80px, 100px) 90px 36px" }}>
         <span className="text-[10px] font-bold text-[#6b6888] tracking-widest uppercase">Participante</span>
+        <span className="text-[10px] font-bold text-[#6b6888] tracking-widest uppercase">Função</span>
+        <span className="text-[10px] font-bold text-[#6b6888] tracking-widest uppercase">Permissão</span>
+        <span className="text-[10px] font-bold text-[#6b6888] tracking-widest uppercase">Entrada</span>
         <span className="text-[10px] font-bold text-[#6b6888] tracking-widest uppercase text-right">Ações</span>
       </div>
 
@@ -434,17 +546,16 @@ export default function ParticipantesTab({ eventId, eventData }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [search,        setSearch]        = useState("");
 
-  // modal: null | "inviteMod" | "addMember" | "addParticipant"
-  const [modal,                   setModal]                   = useState(null);
-  const [removeTarget,            setRemoveTarget]            = useState(null); // { member, type: "team"|"moderator"|"participant" }
+  const [modal,              setModal]              = useState(null); // "inviteMod" | "addMember" | "addParticipant"
+  const [removeTarget,      setRemoveTarget]       = useState(null);
+  const [editPermTarget,    setEditPermTarget]     = useState(null); // member object for editing permission
 
-  // Derived permission flags — organizerId vem de eventData.createdBy
   const organizerId = eventData?.createdBy ?? eventData?.creator?.id ?? null;
   const isOrganizer = !!meId && !!organizerId && String(meId) === String(organizerId);
   const isModerator = !isOrganizer && moderators.some(m => m.userId === meId);
-  // Organizer can manage everything; moderator can manage team & participants but NOT moderators
   const canManageTeamAndParticipants = isOrganizer || isModerator;
   const canManageModerators          = isOrganizer;
+  const canEditPermission            = isOrganizer; // apenas organizador pode alterar permissão
 
   /* ─── FETCH ─── */
   const fetchMe = useCallback(async () => {
@@ -481,6 +592,7 @@ export default function ParticipantesTab({ eventId, eventData }) {
       if (membersRes.ok) {
         const data = await membersRes.json();
         const teamList = data?.data?.team || data?.team || [];
+
         setTeamMembers(teamList.filter(m => !["ORGANIZER", "MODERATOR", "ATTENDEE"].includes(m.role)));
       }
 
@@ -553,6 +665,29 @@ export default function ParticipantesTab({ eventId, eventData }) {
     }
   };
 
+  const handleUpdatePermission = async (memberId, newPermission) => {
+    setActionLoading(true);
+    try {
+        const res = await fetch(`/api/events/${eventId}/team/${memberId}/permission`, {
+            method: "PUT",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ permission: newPermission }),
+        });
+        if (res.ok) {
+            await fetchTeamAndParticipants(); // recarrega a lista
+            setEditPermTarget(null);
+        } else {
+            const data = await res.json();
+            alert(data.message || "Erro ao alterar permissão");
+        }
+    } catch (err) {
+        console.error(err);
+    } finally {
+        setActionLoading(false);
+    }
+};
+
   const handleRemoveConfirm = async () => {
     if (!removeTarget) return;
     setActionLoading(true);
@@ -584,7 +719,6 @@ export default function ParticipantesTab({ eventId, eventData }) {
   const filteredTeamMembers  = teamMembers.filter(matchMember);
   const filteredParticipants = participants.filter(matchParticipant);
 
-  /* ─── REMOVE TARGET NAME ─── */
   const removeTargetName = removeTarget
     ? (removeTarget.member?.name || removeTarget.member?.user?.name || "Usuário")
     : "";
@@ -608,8 +742,6 @@ export default function ParticipantesTab({ eventId, eventData }) {
           <h2 className="font-bold text-white text-lg tracking-tight mb-1">Equipe & Participantes</h2>
           <p className="text-sm text-[#6b6888]">Gerencie organizador, moderadores, equipe e participantes</p>
         </div>
-
-        {/* Botões globais — visíveis conforme permissão */}
         <div className="flex gap-2">
           {canManageTeamAndParticipants && (
             <>
@@ -713,9 +845,10 @@ export default function ParticipantesTab({ eventId, eventData }) {
             filteredModerators.map(m => (
               <MemberRow
                 key={m.id}
-                member={m}
+                member={{ ...m, permission: "MODERATOR" }} // moderators têm permissão implícita? Não editável
                 isEventOrganizer={false}
                 canRemove={canManageModerators}
+                canEditPermission={false}
                 onRemove={member => setRemoveTarget({ member, type: "moderator" })}
               />
             ))
@@ -753,7 +886,9 @@ export default function ParticipantesTab({ eventId, eventData }) {
                 member={m}
                 isEventOrganizer={false}
                 canRemove={canManageTeamAndParticipants}
+                canEditPermission={canEditPermission}
                 onRemove={member => setRemoveTarget({ member, type: "team" })}
+                onEditPermission={member => setEditPermTarget(member)}
               />
             ))
           ) : (
@@ -783,6 +918,14 @@ export default function ParticipantesTab({ eventId, eventData }) {
           label={removeTargetLabel}
           onClose={() => setRemoveTarget(null)}
           onConfirm={handleRemoveConfirm}
+          loading={actionLoading}
+        />
+      )}
+      {editPermTarget && (
+        <EditPermissionModal
+          member={editPermTarget}
+          onClose={() => setEditPermTarget(null)}
+          onUpdate={handleUpdatePermission}
           loading={actionLoading}
         />
       )}

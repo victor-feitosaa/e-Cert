@@ -4,7 +4,8 @@ import {
   Calendar, Filter, Search, Grid3x3, List, Award, Users, 
   MapPin, Clock, ChevronRight, Sparkles, TrendingUp,
   Laptop, Briefcase, Palette, Book, Heart, Music, MoreHorizontal,
-  Crown, Shield, Mic2, Star, Briefcase as BriefcaseIcon, X
+  Crown, Shield, Mic2, Star, Briefcase as BriefcaseIcon, X,
+  CheckSquare
 } from "lucide-react";
 
 const CATEGORIES = {
@@ -17,7 +18,7 @@ const CATEGORIES = {
   outro: { name: "Outro", icon: MoreHorizontal, color: "#94a3b8", bg: "rgba(148,163,184,0.1)" }
 };
 
-// Configuração de roles do usuário no evento
+// Configuração de roles do usuário no evento (incluindo CHECKIN)
 const USER_ROLES = {
   ORGANIZER: { 
     label: "Organizador", 
@@ -25,7 +26,8 @@ const USER_ROLES = {
     color: "text-yellow-400", 
     bg: "bg-yellow-500/10", 
     border: "border-yellow-500/20",
-    canAccessAdmin: true
+    canAccessAdmin: true,
+    redirectTo: "admin"
   },
   MODERATOR: { 
     label: "Moderador", 
@@ -33,7 +35,8 @@ const USER_ROLES = {
     color: "text-purple-400", 
     bg: "bg-purple-500/10", 
     border: "border-purple-500/20",
-    canAccessAdmin: true
+    canAccessAdmin: true,
+    redirectTo: "admin"
   },
   SPEAKER: { 
     label: "Palestrante", 
@@ -41,7 +44,8 @@ const USER_ROLES = {
     color: "text-blue-400", 
     bg: "bg-blue-500/10", 
     border: "border-blue-500/20",
-    canAccessAdmin: false
+    canAccessAdmin: false,
+    redirectTo: "public"
   },
   STAFF: { 
     label: "Staff", 
@@ -49,7 +53,8 @@ const USER_ROLES = {
     color: "text-cyan-400", 
     bg: "bg-cyan-500/10", 
     border: "border-cyan-500/20",
-    canAccessAdmin: false
+    canAccessAdmin: false,
+    redirectTo: "public"
   },
   VOLUNTEER: { 
     label: "Voluntário", 
@@ -57,7 +62,17 @@ const USER_ROLES = {
     color: "text-emerald-400", 
     bg: "bg-emerald-500/10", 
     border: "border-emerald-500/20",
-    canAccessAdmin: false
+    canAccessAdmin: false,
+    redirectTo: "public"
+  },
+  CHECKIN: { 
+    label: "Checkin", 
+    icon: CheckSquare, 
+    color: "text-indigo-400", 
+    bg: "bg-indigo-500/10", 
+    border: "border-indigo-500/20",
+    canAccessAdmin: false,
+    redirectTo: "checkin"
   },
   OTHER: { 
     label: "Membro", 
@@ -65,7 +80,8 @@ const USER_ROLES = {
     color: "text-gray-400", 
     bg: "bg-gray-500/10", 
     border: "border-gray-500/20",
-    canAccessAdmin: false
+    canAccessAdmin: false,
+    redirectTo: "public"
   }
 };
 
@@ -112,26 +128,32 @@ function EventCard({ event, viewMode = "list" }) {
   const isPast = daysLeft < 0;
   
   // Determinar a role do usuário neste evento
-  const userRole = event.userRole || (event.isOwner ? "ORGANIZER" : "OTHER");
-  const roleConfig = USER_ROLES[userRole] || USER_ROLES.OTHER;
+  // Prioridade: se existir permissão CHECKIN, usar CHECKIN; senão usar userRole padrão
+  let finalRole = event.userRole || (event.isOwner ? "ORGANIZER" : "OTHER");
+  const hasCheckinPerm = event.eventPermissions?.some(p => p.role === 'CHECKIN') || event.userPermission === 'CHECKIN';
+  if (hasCheckinPerm && finalRole !== 'ORGANIZER' && finalRole !== 'MODERATOR') {
+    finalRole = 'CHECKIN';
+  }
+  
+  const roleConfig = USER_ROLES[finalRole] || USER_ROLES.OTHER;
   const RoleIcon = roleConfig.icon;
   
-  // Verificar se pode acessar a página de admin
-  const canAccessAdmin = roleConfig.canAccessAdmin;
+  // Definir destino do clique
+  const handleClick = () => {
+    if (roleConfig.redirectTo === 'admin') {
+      window.location.href = `/eventPageAdm?id=${event.id}`;
+    } else if (roleConfig.redirectTo === 'checkin') {
+      window.location.href = `/checkin?eventId=${event.id}`;
+    } else {
+      window.location.href = `/eventPage?id=${event.id}`;
+    }
+  };
   
   const occupied = event.participants && event.capacity
     ? pct(event.participants, event.capacity)
     : null;
   
   const occColor = occupied >= 90 ? "#f87171" : occupied >= 70 ? "#fbbf24" : "#34d399";
-
-  const handleClick = () => {
-    if (canAccessAdmin) {
-      window.location.href = `/eventPageAdm?id=${event.id}`;
-    } else {
-      window.location.href = `/eventPage?id=${event.id}`;
-    }
-  };
 
   // Modo Grid
   if (viewMode === "grid") {
@@ -283,8 +305,12 @@ function EventCard({ event, viewMode = "list" }) {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          {canAccessAdmin && (
+          {/* Indicador visual de redirecionamento */}
+          {roleConfig.redirectTo === 'admin' && (
             <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" title="Acesso administrativo" />
+          )}
+          {roleConfig.redirectTo === 'checkin' && (
+            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" title="Acesso ao credenciamento" />
           )}
           {isUpcoming && daysLeft > 0 && (
             <span className="text-[11px] font-bold px-2 py-1 rounded-full" style={{
@@ -355,7 +381,13 @@ export default function MyEvents({ userData, eventsData }) {
     }
     
     if (filterRole !== "all") {
-      filtered = filtered.filter(event => event.userRole === filterRole);
+      // Para filtrar, precisamos resolver a role final (considerando CHECKIN)
+      filtered = filtered.filter(event => {
+        let role = event.userRole || (event.isOwner ? "ORGANIZER" : "OTHER");
+        const hasCheckinPerm = event.eventPermissions?.some(p => p.role === 'CHECKIN') || event.userPermission === 'CHECKIN';
+        if (hasCheckinPerm && role !== 'ORGANIZER' && role !== 'MODERATOR') role = 'CHECKIN';
+        return role === filterRole;
+      });
     }
     
     return filtered;
@@ -381,7 +413,7 @@ export default function MyEvents({ userData, eventsData }) {
           </p>
         </div>
 
-        {/* Stats Bento Grid - 5 cards agora */}
+        {/* Stats Bento Grid - 5 cards */}
         <div className="grid grid-cols-5 gap-3">
           <StatCard value={stats.total || events.length} label="Total de eventos" Icon={Calendar} />
           <StatCard value={upcomingEvents} label="Próximos eventos" Icon={TrendingUp} />
@@ -452,6 +484,7 @@ export default function MyEvents({ userData, eventsData }) {
                 { v: "all", l: "Todas funções" },
                 { v: "ORGANIZER", l: "Organizador" },
                 { v: "MODERATOR", l: "Moderador" },
+                { v: "CHECKIN", l: "Checkin" },
                 { v: "OTHER", l: "Membro" },
               ].map(({ v, l }) => (
                 <button

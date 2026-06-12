@@ -1,6 +1,8 @@
 // controllers/checkinController.js
 import { prisma } from '../config/db.js';
 import eventRoleService from '../services/eventRoleService.js';
+import jwt from 'jsonwebtoken';
+
 
 // ==========================
 // 1. Verificar permissão do credenciador
@@ -105,26 +107,32 @@ export const getAttendances = async (req, res) => {
       return res.status(403).json({ status: 'fail', message: 'Sem permissão' });
     }
 
-    // Buscar todos os participantes do evento com seus dados de check-in
+    // Buscar todos os participantes do evento
     const participants = await prisma.eventParticipant.findMany({
       where: { eventId },
       include: {
-        user: { select: { id: true, name: true, email: true, cpf: true } },
-        attendance: true   // relação eventAttendance
+        user: { select: { id: true, name: true, email: true, cpf: true } }
       }
+    });
+
+    // Buscar todas as presenças deste evento
+    const attendances = await prisma.eventAttendance.findMany({
+      where: { eventId },
+      select: { userId: true, attended: true, updatedAt: true }
+    });
+
+    // Mapear presenças por userId
+    const attendanceMap = new Map();
+    attendances.forEach(a => {
+      attendanceMap.set(a.userId, { attended: a.attended, checkedInAt: a.updatedAt });
     });
 
     const formatted = participants.map(p => ({
       id: p.id,
       userId: p.userId,
-      user: {
-        id: p.user.id,
-        name: p.user.name,
-        email: p.user.email,
-        cpf: p.user.cpf
-      },
-      attended: p.attendance?.attended || false,
-      checkedInAt: p.attendance?.updatedAt || null
+      user: p.user,
+      attended: attendanceMap.get(p.userId)?.attended || false,
+      checkedInAt: attendanceMap.get(p.userId)?.checkedInAt || null
     }));
 
     res.status(200).json({ status: 'success', data: { attendances: formatted } });
@@ -134,18 +142,21 @@ export const getAttendances = async (req, res) => {
   }
 };
 
-// ==========================
-// (Opcional) Funções originais do usuário – podem ser mantidas, mas não são usadas pelos proxies atuais
-// ==========================
-export const eventCheckin = async (req, res) => {
-  // mantido para compatibilidade, mas não usado pelos novos endpoints
-  // ...
+
+export const getCheckinToken = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { sectionId } = req.query; // opcional
+    const userId = req.user.id;
+
+    const payload = { userId, eventId };
+    if (sectionId) payload.sectionId = sectionId;
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
-export const sectionCheckin = async (req, res) => {
-  // mantido para compatibilidade
-};
 
-export const getCheckinStatus = async (req, res) => {
-  // mantido para compatibilidade
-};

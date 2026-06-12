@@ -195,7 +195,7 @@ export default function AnalyticTabs({ eventData: initialEventData, apiURL, cook
                     <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-xl overflow-hidden">
                         {/* Tabs */}
                         <div className="border-b border-white/[0.06] px-4">
-                            <div className="flex gap-1 overflow-x-auto scrollbar-custom">
+                            <div className="flex gap-1 scrollbar-custom overflow-hidden">
                                 {NAV_ITEMS.map(({ id, Icon, label }) => {
                                     const isActive = activeTab === id;
                                     return (

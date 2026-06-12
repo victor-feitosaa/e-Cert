@@ -25,18 +25,25 @@ import {
   Target,
   Globe,
   Lock,
+  ShieldCheck,
 } from "lucide-react";
 import Particles from "./Particles";
 
 const STEP_LABELS = ["Informações", "Equipe", "Subeventos", "Revisão"];
 
-// Funções auxiliares para badges de função
+// Funções auxiliares para badges de função (job)
 const TEAM_ROLES = [
   { value: "SPEAKER",    label: "Palestrante", color: "text-blue-400",  bg: "bg-blue-500/10",  border: "border-blue-500/20"  },
   { value: "STAFF",      label: "Staff",       color: "text-cyan-400",   bg: "bg-cyan-500/10",   border: "border-cyan-500/20"   },
   { value: "VOLUNTEER",  label: "Voluntário",  color: "text-emerald-400",bg: "bg-emerald-500/10",border: "border-emerald-500/20" },
   { value: "INSTRUCTOR", label: "Instrutor",   color: "text-amber-400",   bg: "bg-amber-500/10",  border: "border-amber-500/20"  },
   { value: "OTHER",      label: "Outro",       color: "text-gray-400",    bg: "bg-gray-500/10",   border: "border-gray-500/20"   },
+];
+
+// Permissões (MEMBER / CHECKIN) para membros da equipe
+const PERMISSION_OPTIONS = [
+  { value: "MEMBER", label: "Membro", icon: User, color: "text-blue-400", bg: "bg-blue-500/10" },
+  { value: "CHECKIN", label: "Checkin", icon: ShieldCheck, color: "text-purple-400", bg: "bg-purple-500/10" },
 ];
 
 const getRoleFromJob = (job) => {
@@ -84,6 +91,7 @@ export default function CreateEvent({ onBack }) {
   const [teamMembers, setTeamMembers] = useState([]);
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [newMemberJob, setNewMemberJob] = useState("");
+  const [newMemberPermission, setNewMemberPermission] = useState("MEMBER");
 
   // Estado para subeventos
   const [subevents, setSubevents] = useState([]);
@@ -96,7 +104,7 @@ export default function CreateEvent({ onBack }) {
     teamMembers: [],
   });
 
-  // Estado para seção atual (agora com capacity)
+  // Estado para seção atual
   const [newSection, setNewSection] = useState({
     title: "",
     date_start: "",
@@ -166,11 +174,13 @@ export default function CreateEvent({ onBack }) {
         id: Date.now(),
         email: newMemberEmail.trim().toLowerCase(),
         job: newMemberJob.trim(),
+        permission: newMemberPermission,
         role: getRoleFromJob(newMemberJob.trim()),
       },
     ]);
     setNewMemberEmail("");
     setNewMemberJob("");
+    setNewMemberPermission("MEMBER");
     setErrors((prev) => ({ ...prev, teamMemberEmail: "", teamMemberJob: "" }));
   };
 
@@ -421,7 +431,7 @@ export default function CreateEvent({ onBack }) {
     setErrMsg("");
 
     try {
-      // 1. Criar evento principal (com isPublic)
+      // 1. Criar evento principal
       const eventRes = await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -452,17 +462,21 @@ export default function CreateEvent({ onBack }) {
       const createdEventId = eventData?.data?.event?.id || eventData?.event?.id || eventData?.id;
       if (!createdEventId) throw new Error("Não foi possível obter o ID do evento");
 
-      // 2. Convidar equipe do evento principal
+      // 2. Convidar equipe do evento principal (agora com permission)
       for (const member of teamMembers) {
         await fetch(`/api/events/${createdEventId}/team/invite`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ email: member.email, job: member.job }),
+          body: JSON.stringify({
+            email: member.email,
+            job: member.job,
+            permission: member.permission,
+          }),
         }).catch((err) => console.error(`Erro ao convidar ${member.email}:`, err));
       }
 
-      // 3. Criar subeventos com suas seções (agora com capacity)
+      // 3. Criar subeventos e seções
       for (const subevent of subevents) {
         const subRes = await fetch(`/api/events/${createdEventId}/subevents`, {
           method: "POST",
@@ -472,7 +486,7 @@ export default function CreateEvent({ onBack }) {
             title: subevent.name,
             description: subevent.description,
             location: subevent.location,
-            capacity: null
+            capacity: null,
           }),
         });
         if (!subRes.ok) {
@@ -524,7 +538,7 @@ export default function CreateEvent({ onBack }) {
     }
   };
 
-  // Estilo de badge
+  // Estilo de badge para função (job)
   const getMemberBadgeStyle = (job) => {
     const role = getRoleFromJob(job);
     const roleConfig = TEAM_ROLES.find((r) => r.value === role) || TEAM_ROLES[4];
@@ -554,7 +568,6 @@ export default function CreateEvent({ onBack }) {
       </div>
 
       <div className="max-w-2xl mx-auto px-6 py-12 relative z-10">
-        {/* Header */}
         <div className="text-center mb-10">
           <h1 className="text-3xl md:text-4xl font-extrabold text-accent-foreground mb-3">
             Seu evento,{" "}
@@ -594,7 +607,6 @@ export default function CreateEvent({ onBack }) {
           {/* STEP 0 - INFORMAÇÕES DO EVENTO */}
           {step === 0 && (
             <div className="space-y-5">
-              {/* ... campos de nome, descrição, datas, local, categoria, capacidade (já existentes) ... */}
               <div>
                 <label className="block text-sm font-bold text-accent-foreground mb-1.5">
                   Nome do evento <span className="text-primary">*</span>
@@ -710,7 +722,7 @@ export default function CreateEvent({ onBack }) {
                 </div>
               </div>
 
-              {/* Visibilidade do evento - estilo botão como no EditarEvent */}
+              {/* Visibilidade */}
               <div>
                 <label className="block text-sm font-bold text-accent-foreground mb-1.5">Visibilidade</label>
                 <div className="grid grid-cols-2 gap-2">
@@ -764,15 +776,23 @@ export default function CreateEvent({ onBack }) {
                   <div className="space-y-2 mb-4">
                     {teamMembers.map((member) => {
                       const badge = getMemberBadgeStyle(member.job);
+                      const permissionConfig = PERMISSION_OPTIONS.find(p => p.value === member.permission) || PERMISSION_OPTIONS[0];
+                      const PermissionIcon = permissionConfig.icon;
                       return (
                         <div key={member.id} className="flex items-center justify-between p-3 rounded-lg bg-[#11101B] border border-border">
                           <div className="flex items-center gap-3">
                             <Mail size={14} className="text-purple-400" />
                             <div>
-                              <p className="text-sm font-medium text-accent-foreground">{member.email}</p>
-                              <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded ${badge.color} ${badge.bg} ${badge.border}`}>
-                                {member.job}
-                              </span>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-medium text-accent-foreground">{member.email}</p>
+                                <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded ${badge.color} ${badge.bg} ${badge.border}`}>
+                                  {member.job}
+                                </span>
+                                <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded ${permissionConfig.color} ${permissionConfig.bg} border border-white/10`}>
+                                  <PermissionIcon size={10} />
+                                  {permissionConfig.label}
+                                </span>
+                              </div>
                             </div>
                           </div>
                           <button onClick={() => removeTeamMember(member.id)} className="p-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 cursor-pointer">
@@ -796,16 +816,26 @@ export default function CreateEvent({ onBack }) {
                     />
                   </div>
                   {errors.teamMemberEmail && <p className="text-xs text-red-400 mt-1">{errors.teamMemberEmail}</p>}
-                  <div>
+
+                  <div className="grid grid-cols-2 gap-3">
                     <input
                       type="text"
                       value={newMemberJob}
                       onChange={(e) => { setNewMemberJob(e.target.value); setErrors((prev) => ({ ...prev, teamMemberJob: "" })); }}
-                      placeholder="Função (ex: Organizador, Coordenador)"
+                      placeholder="Função (ex: Palestrante, Staff)"
                       className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.teamMemberJob ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
                     />
-                    {errors.teamMemberJob && <p className="text-xs text-red-400 mt-1">{errors.teamMemberJob}</p>}
+                    <select
+                      value={newMemberPermission}
+                      onChange={(e) => setNewMemberPermission(e.target.value)}
+                      className="w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border border-border focus:border-primary outline-none cursor-pointer"
+                    >
+                      {PERMISSION_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
                   </div>
+                  {errors.teamMemberJob && <p className="text-xs text-red-400 mt-1">{errors.teamMemberJob}</p>}
                 </div>
 
                 <button onClick={addTeamMember} className="w-full mt-3 flex cursor-pointer items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors">
@@ -905,7 +935,7 @@ export default function CreateEvent({ onBack }) {
                     </div>
                     {(errors.subeventLocation) && <p className="text-xs text-red-400">{errors.subeventLocation}</p>}
 
-                    {/* Seções do subevento (com capacity) */}
+                    {/* Seções do subevento */}
                     <div className="border-t border-border/50 pt-3">
                       <p className="text-xs font-semibold text-accent-foreground/60 mb-2">Seções (horários) *</p>
                       {newSubevent.sections.length > 0 && (
@@ -997,7 +1027,7 @@ export default function CreateEvent({ onBack }) {
                       {errors.subeventSections && <p className="text-xs text-red-400 mt-1">{errors.subeventSections}</p>}
                     </div>
 
-                    {/* Membros do subevento - com botão abaixo dos inputs */}
+                    {/* Membros do subevento */}
                     <div className="border-t border-border/50 pt-3">
                       <p className="text-xs font-semibold text-accent-foreground/60 mb-2">Equipe do subevento</p>
 
@@ -1025,7 +1055,6 @@ export default function CreateEvent({ onBack }) {
                         </div>
                       )}
 
-                      {/* Inputs lado a lado */}
                       <div className="flex gap-2 mb-2">
                         <input
                           type="email"
@@ -1042,7 +1071,6 @@ export default function CreateEvent({ onBack }) {
                           className="flex-1 px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
                         />
                       </div>
-                      {/* Botão adicionar membro (embaixo, largura total) */}
                       <button
                         onClick={addMemberToSubevent}
                         className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium text-purple-400 bg-purple-400/10 border border-purple-400/20 hover:bg-purple-400/20 transition-colors cursor-pointer"

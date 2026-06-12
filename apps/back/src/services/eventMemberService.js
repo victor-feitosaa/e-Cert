@@ -20,8 +20,38 @@ class EventMemberService {
         return await EventMemberRepository.delete(memberId);
     }
 
-    async getMembersByEvent(id) {
-        return await EventMemberRepository.getMembersByEvent(id);
+    
+    async getMembersByEvent(eventId) {
+        // Buscar membros da equipe (EventTeam)
+        const members = await prisma.eventTeam.findMany({
+            where: { eventId },
+            include: {
+                user: { select: { id: true, name: true, email: true } }
+            }
+        });
+
+        // Buscar permissões para este evento (apenas CHECKIN, pois MEMBER é ausência)
+        const permissions = await prisma.eventPermission.findMany({
+            where: { eventId, role: 'CHECKIN' },
+            select: { userId: true, role: true }
+        });
+
+        // Criar mapa userId -> permissão
+        const permMap = new Map();
+        permissions.forEach(p => permMap.set(p.userId, p.role));
+
+        // Mapear resultado final
+        return members.map(m => ({
+            id: m.id,
+            name: m.name,
+            job: m.job,
+            role: m.role,
+            userId: m.userId,
+            user: m.user,
+            createdAt: m.createdAt,
+            updatedAt: m.updatedAt,
+            permission: permMap.get(m.userId) === 'CHECKIN' ? 'CHECKIN' : 'MEMBER'
+        }));
     }
 
     async getMemberById(id) {
@@ -40,7 +70,7 @@ class EventMemberService {
     };
 
     // ── CONVITE POR E-MAIL ──
-    async inviteByEmail(eventId, email, job, granterId) {
+    async inviteByEmail(eventId, email, job, permission, granterId) {
         // Verificar se o evento existe
         const event = await EventRepository.getById(eventId);
         
@@ -83,6 +113,20 @@ class EventMemberService {
             eventId,
             user.id
         );
+
+        await EventRoleRepository.grantPermission(user.id, eventId, permission);
+        // Notificar o usuário por email
+        if (!isNewUser) {
+            await emailService.sendEmail(
+                email,
+                `Adicionado à equipe do evento: ${event.title}`,
+                `<h2>Você foi adicionado à equipe do evento!</h2>
+                <p><strong>Evento:</strong> ${event.title}</p>
+                <p><strong>Função:</strong> ${job}</p>
+                <p>Acesse o sistema para colaborar com a equipe.</p>
+                <a href="${process.env.FRONTEND_URL}/login">Fazer login</a>`
+            );
+        }
 
         return { teamMember, isNewUser, user };
     }

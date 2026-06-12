@@ -21,7 +21,8 @@ import {
   deleteMember, 
   getMyTeam, 
   inviteTeamMemberByEmail, 
-  updateMember 
+  updateMember, 
+  updateMemberPermission
 } from '../controllers/eventsTeamController.js';
 import { convidarMod } from '../controllers/testController.js';
 import { hasRole } from '../middleware/roleMiddleware.js';
@@ -64,6 +65,9 @@ router.delete('/:id/moderator/:userId', isEventOwner, deleteModerator);
 // ──────────────────────────────────────────────
 // MEMBROS DA EQUIPE
 // ──────────────────────────────────────────────
+router.put('/:id/team/:memberId/permission', updateMemberPermission);
+
+
 router.route('/:id/team')
   .get(getMyTeam)                           // Listar membros
   .post(createTeamMember);                   // Adicionar membro manualmente
