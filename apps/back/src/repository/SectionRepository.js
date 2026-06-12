@@ -161,13 +161,19 @@ const SectionRepository = {
     })
   },
 
+  // Em sectionService.js
   async createAttendance(sectionId, userId) {
-    return prisma.sectionAttendance.create({
-      data: {
-        userId,
-        sectionId
-      }
-    })
+      return prisma.sectionAttendance.upsert({
+          where: { userId_sectionId: { userId, sectionId } },
+          update: { attended: false },
+          create: { userId, sectionId, attended: false }
+      });
+  },
+
+  async deleteAttendance(sectionId, userId) {
+      return prisma.sectionAttendance.delete({
+          where: { userId_sectionId: { userId, sectionId } }
+      });
   },
 
   async confirmAttendance(sectionId, userId) {

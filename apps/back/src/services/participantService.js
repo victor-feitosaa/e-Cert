@@ -50,6 +50,18 @@ class ParticipantService {
     return ParticipantRepository.deleteEventParticipant(id)
   }
 
+  async removeEventParticipantWithSections(eventId, userId) {
+    const participant = await ParticipantRepository.findEventParticipantByUserAndEvent(eventId, userId);
+    if (!participant) throw new Error('Inscrição não encontrada');
+
+    await ParticipantRepository.deleteEventParticipantById(participant.id);
+    await ParticipantRepository.deleteAllSectionParticipationsForUserInEvent(eventId, userId);
+    await ParticipantRepository.deleteEventAttendance(eventId, userId);
+    await ParticipantRepository.deleteAllSectionAttendancesForUserInEvent(eventId, userId);
+
+    return true;
+  }
+
   async countEventParticipants(eventId) {
     return ParticipantRepository.countEventParticipants(eventId)
   }

@@ -388,11 +388,10 @@ class EventRepository {
     }
 
     async createAttendance(eventId, userId) {
-        return await prisma.eventAttendance.create({
-            data: {
-                userId,
-                eventId
-            }
+        return prisma.eventAttendance.upsert({
+            where: { userId_eventId: { userId, eventId } },
+            update: { attended: false, updatedAt: new Date() },
+            create: { userId, eventId, attended: false }
         });
     }
 

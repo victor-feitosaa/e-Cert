@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Calendar, MapPin, Users, Search, CheckCircle, AlertCircle, 
-  Loader2, UserCheck, X, ArrowLeft, ChevronDown, ChevronUp,
+  Loader2, UserCheck, X, ArrowLeft,
   Clock, Scan, Home, Layers
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -12,18 +12,19 @@ export default function CheckinApp({ eventId }) {
   const [event, setEvent] = useState(null);
   const [subEvents, setSubEvents] = useState([]);
   const [participants, setParticipants] = useState([]);
-  const [allSections, setAllSections] = useState([]); // { id, title, subEventTitle, date, time, capacity, enrolledCount }
-  const [activeCheckinTarget, setActiveCheckinTarget] = useState(null); // { type, id, title }
+  const [allSections, setAllSections] = useState([]);
+  const [activeCheckinTarget, setActiveCheckinTarget] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState('email');
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [notification, setNotification] = useState(null);
   const [permission, setPermission] = useState(false);
-  const [checkins, setCheckins] = useState({}); // userId -> { event: bool, sectionId: bool }
+  const [checkins, setCheckins] = useState({});
   const [showScanner, setShowScanner] = useState(false);
   const [scanning, setScanning] = useState(false);
   const html5QrCodeRef = useRef(null);
+  const isScannerRunning = useRef(false);
 
   // Verificar permissão do usuário
   useEffect(() => {
@@ -32,7 +33,7 @@ export default function CheckinApp({ eventId }) {
         const res = await fetch(`/api/events/${eventId}/checkin/permission`, { credentials: 'include' });
         const data = await res.json();
         setPermission(data.allowed);
-      } catch (err) {
+      } catch {
         setPermission(false);
       }
     };
@@ -83,17 +84,21 @@ export default function CheckinApp({ eventId }) {
         setParticipants(partsData.data?.participants || partsData.participants || []);
       }
 
+      // Processar presenças (evento principal + seções)
       if (attRes.ok) {
         const attData = await attRes.json();
         const attList = attData.data?.attendances || attData.attendances || [];
         const map = {};
         attList.forEach(a => {
-          map[a.userId] = { event: a.attended, sectionId: a.sectionId };
+          map[a.userId] = {
+            event: a.attended,
+            sectionIds: a.sectionCheckins || []   // array de IDs das seções com check-in
+          };
         });
         setCheckins(map);
       }
 
-      // Definir target padrão: evento principal
+      // Target padrão: evento principal
       setActiveCheckinTarget({ type: 'event', id: eventId, title: 'Evento Principal' });
     } catch (err) {
       setNotification({ type: 'error', message: err.message });
@@ -106,8 +111,8 @@ export default function CheckinApp({ eventId }) {
     if (eventId && permission) fetchData();
   }, [eventId, permission, fetchData]);
 
-  // Função de check-in (para evento ou seção)
-  const handleCheckin = async (participant, target) => {
+  // Função de check-in (evento ou seção)
+  const handleCheckin = useCallback(async (participant, target) => {
     if (!participant || checking) return;
     setChecking(true);
     setNotification(null);
@@ -122,15 +127,24 @@ export default function CheckinApp({ eventId }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Erro ao registrar check-in');
+      
       setNotification({ type: 'success', message: `Check-in realizado para ${participant.user?.name}` });
-      setCheckins(prev => ({
-        ...prev,
-        [participant.userId]: {
-          ...prev[participant.userId],
-          event: target.type === 'event' ? true : (prev[participant.userId]?.event || false),
-          sectionId: target.type === 'section' ? target.id : (prev[participant.userId]?.sectionId)
+      
+      // Atualizar estado local corretamente
+      setCheckins(prev => {
+        const current = prev[participant.userId] || { event: false, sectionIds: [] };
+        let newSectionIds = [...current.sectionIds];
+        if (target.type === 'section' && !newSectionIds.includes(target.id)) {
+          newSectionIds.push(target.id);
         }
-      }));
+        return {
+          ...prev,
+          [participant.userId]: {
+            event: target.type === 'event' ? true : current.event,
+            sectionIds: newSectionIds
+          }
+        };
+      });
       setSearchTerm('');
     } catch (err) {
       setNotification({ type: 'error', message: err.message });
@@ -138,85 +152,102 @@ export default function CheckinApp({ eventId }) {
       setChecking(false);
       setTimeout(() => setNotification(null), 3000);
     }
-  };
+  }, [eventId, checking]);
 
-  // Leitor QR
+  // Callback chamado quando um QR code é lido
+  const handleQRScan = useCallback((decodedText) => {
+    if (scanning) return;
+    setScanning(true);
+    try {
+      let decoded;
+      try {
+        decoded = jwtDecode(decodedText);
+      } catch (e) {
+        // Fallback para formatos antigos
+        if (decodedText.startsWith('{')) {
+          decoded = JSON.parse(decodedText);
+        } else if (decodedText.includes(':')) {
+          const parts = decodedText.split(':');
+          decoded = { eventId: parts[0], userId: parts[1] };
+        } else {
+          decoded = { userId: decodedText };
+        }
+      }
+
+      const { userId, eventId: qrEventId, sectionId } = decoded;
+      if (qrEventId && qrEventId !== eventId) {
+        setNotification({ type: 'error', message: 'QR code de outro evento' });
+        return;
+      }
+
+      const participant = participants.find(p => p.userId === userId);
+      if (participant) {
+        const target = sectionId
+          ? { type: 'section', id: sectionId }
+          : activeCheckinTarget;
+        handleCheckin(participant, target);
+        setShowScanner(false);
+      } else {
+        setNotification({ type: 'error', message: 'Participante não encontrado' });
+      }
+    } catch (err) {
+      console.error('Erro ao processar QR:', err);
+      setNotification({ type: 'error', message: 'QR code inválido' });
+    } finally {
+      setScanning(false);
+    }
+  }, [scanning, participants, activeCheckinTarget, handleCheckin, eventId]);
+
+  // Iniciar / parar o scanner
   const startScanner = useCallback(async () => {
-  if (!showScanner) return;
-  try {
-    html5QrCodeRef.current = new Html5Qrcode('qr-reader');
-    await html5QrCodeRef.current.start(
-      { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 250, height: 250 } },
-      (decodedText) => {
-        if (!scanning) {
-          setScanning(true);
-          try {
-            // Tenta decodificar como JWT
-            let decoded;
-            try {
-              decoded = jwtDecode(decodedText);
-            } catch (e) {
-              // Fallback para formato antigo (se ainda existir)
-              if (decodedText.startsWith('{')) {
-                decoded = JSON.parse(decodedText);
-              } else {
-                const parts = decodedText.split(':');
-                if (parts.length >= 2) {
-                  decoded = { eventId: parts[0], userId: parts[1] };
-                } else {
-                  decoded = { userId: decodedText };
-                }
-              }
-            }
-
-            const { userId, eventId, sectionId } = decoded;
-            
-            // Verifica se o evento corresponde (opcional)
-            if (eventId && eventId !== eventIdFromParams) {
-              setNotification({ type: 'error', message: 'QR code de outro evento' });
-              return;
-            }
-
-            const participant = participants.find(p => p.userId === userId);
-            if (participant) {
-              // Se o token contiver sectionId, usa‑a; senão usa o target ativo
-              const target = sectionId
-                ? { type: 'section', id: sectionId }
-                : activeCheckinTarget;
-              handleCheckin(participant, target);
-              setShowScanner(false);
-            } else {
-              setNotification({ type: 'error', message: 'Participante não encontrado' });
-            }
-          } catch (err) {
-            setNotification({ type: 'error', message: 'QR code inválido' });
-          } finally {
-            setScanning(false);
+    if (!showScanner) return;
+    try {
+      html5QrCodeRef.current = new Html5Qrcode('qr-reader');
+      await html5QrCodeRef.current.start(
+        { facingMode: 'environment' },
+        {
+          fps: 15,
+          qrbox: { width: 400, height: 400 },
+          aspectRatio: 1.0,
+          videoConstraints: {
+            facingMode: 'environment',
+            width: { ideal: 1920, min: 1280 },
+            height: { ideal: 1080, min: 720 }
+          },
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
+          }
+        },
+        (decodedText) => {
+          if (!scanning) handleQRScan(decodedText);
+        },
+        (error) => {
+          if (error && error.name !== 'NotFoundException') {
+            console.warn(error);
           }
         }
-      },
-      (error) => console.warn(error)
-    );
-  } catch (err) {
-    console.error(err);
-    setNotification({ type: 'error', message: 'Não foi possível acessar a câmera' });
-    setShowScanner(false);
-  }
-}, [showScanner, scanning, participants, activeCheckinTarget, handleCheckin]);
+      );
+      isScannerRunning.current = true;
+    } catch (err) {
+      console.error('Erro ao iniciar scanner:', err);
+      setNotification({ type: 'error', message: 'Não foi possível acessar a câmera' });
+      setShowScanner(false);
+    }
+  }, [showScanner, scanning, handleQRScan]);
 
   useEffect(() => {
     if (showScanner) {
       startScanner();
     }
     return () => {
-      if (html5QrCodeRef.current) {
+      if (html5QrCodeRef.current && isScannerRunning.current) {
         html5QrCodeRef.current.stop().catch(console.warn);
+        isScannerRunning.current = false;
       }
     };
   }, [showScanner, startScanner]);
 
-  // Filtrar participantes (apenas os inscritos no target atual? Opcional: mostrar todos)
+  // Filtro de participantes
   const filteredParticipants = participants.filter(p => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -230,6 +261,7 @@ export default function CheckinApp({ eventId }) {
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' }) : '—';
   const formatTime = (d) => d ? new Date(d).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }) : null;
 
+  // Permissão negada
   if (!permission) {
     return (
       <div className="dark min-h-screen bg-background flex items-center justify-center p-6 relative">
@@ -252,7 +284,6 @@ export default function CheckinApp({ eventId }) {
 
   if (!event) return <div className="text-center p-8">Evento não encontrado</div>;
 
-  // Lista de destinos de check-in: evento principal + todas as seções
   const checkinTargets = [
     { type: 'event', id: eventId, title: 'Evento Principal', icon: Home },
     ...allSections.map(sec => ({
@@ -304,7 +335,7 @@ export default function CheckinApp({ eventId }) {
           </div>
         )}
 
-        {/* Abas de check-in (horizontal scroll) */}
+        {/* Abas de check-in */}
         <div className="mb-6 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-purple-500/20">
           <div className="flex gap-2 min-w-max">
             {checkinTargets.map(target => {
@@ -329,7 +360,7 @@ export default function CheckinApp({ eventId }) {
           </div>
         </div>
 
-        {/* Informações do target selecionado (opcional) */}
+        {/* Informações do target (seção) */}
         {activeCheckinTarget?.type === 'section' && (
           <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-2xl p-4 mb-6 text-sm">
             <div className="flex flex-wrap gap-4 text-[#6b6888]">
@@ -341,7 +372,7 @@ export default function CheckinApp({ eventId }) {
           </div>
         )}
 
-        {/* Busca e lista de participantes */}
+        {/* Lista de participantes */}
         <div className="bg-[#13111e]/80 backdrop-blur-sm border border-white/[0.07] rounded-2xl p-4 md:p-6">
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
             <div className="relative flex-1">
@@ -393,9 +424,10 @@ export default function CheckinApp({ eventId }) {
               </div>
             ) : (
               filteredParticipants.map(p => {
+                // Verificação de check-in: evento principal ou seção ativa
                 const isChecked = activeCheckinTarget.type === 'event'
                   ? checkins[p.userId]?.event
-                  : checkins[p.userId]?.sectionId === activeCheckinTarget.id;
+                  : checkins[p.userId]?.sectionIds?.includes(activeCheckinTarget.id);
                 return (
                   <div key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors gap-3">
                     <div className="min-w-0 flex-1">

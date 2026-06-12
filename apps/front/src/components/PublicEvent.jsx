@@ -209,30 +209,30 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
 
   // Cancelar inscrição no evento principal
   const handleCancelEnrollment = async () => {
-    if (!user) return;
-    setCancelling(true);
-    setEnrollError(null);
-    try {
-      const res = await fetch(`/api/events/${eventId}/participants/`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ userId: user.id }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || "Erro ao cancelar inscrição");
-      }
-      setEnrolled(false);
-      await fetchParticipantCount();
-      subEvents.forEach(sub => fetchSectionsWithStatus(sub.id));
-      setAvailableSections([]);
-    } catch (err) {
-      setEnrollError(err.message);
-    } finally {
-      setCancelling(false);
+  if (!user) return;
+  setCancelling(true);
+  setEnrollError(null);
+  try {
+    const res = await fetch(`/api/events/${eventId}/participants/`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ userId: user.id }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.message || "Erro ao cancelar inscrição");
     }
-  };
+    setEnrolled(false);
+    await fetchParticipantCount();
+    subEvents.forEach(sub => fetchSectionsWithStatus(sub.id));
+    setAvailableSections([]);
+  } catch (err) {
+    setEnrollError(err.message);
+  } finally {
+    setCancelling(false);
+  }
+};
 
   // Inscrição em seção
   const handleSectionEnroll = async (sectionId, subEventId) => {
@@ -719,7 +719,7 @@ export default function PublicEvent({ eventData, eventId, user = null, isEnrolle
               <button onClick={() => setShowQR(false)} className="text-gray-400 hover:text-white"><XCircle size={20} /></button>
             </div>
             <div className="flex justify-center p-4 bg-white rounded-xl">
-              <QRCodeSVG value={qrToken} size={200} />
+              <QRCodeSVG value={qrToken} size={250} bgColor="white" fgColor="black" level="Q" />
             </div>
             <p className="text-xs text-gray-400 text-center mt-4">Apresente este QR Code na entrada do evento.</p>
           </div>

@@ -149,6 +149,38 @@ export const deleteEventParticipant = async (req, res) => {
   }
 }
 
+
+export const deleteEventParticipantByUserAndEvent = async (req, res) => {
+    try {
+        const { eventId } = req.params;
+        const { userId } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'userId é obrigatório'
+            });
+        }
+
+        // Usa o service que remove evento principal + seções
+        await participantService.removeEventParticipantWithSections(eventId, userId);
+
+        res.status(204).send();
+    } catch (error) {
+        console.error('Erro ao cancelar inscrição:', error);
+        if (error.message === 'Inscrição não encontrada') {
+            return res.status(404).json({
+                status: 'fail',
+                message: error.message
+            });
+        }
+        res.status(500).json({
+            status: 'error',
+            message: 'Erro ao cancelar inscrição'
+        });
+    }
+};
+
 export const inviteParticipantByEmail = async (req, res) => {
   try {
     const { eventId } = req.params

@@ -101,38 +101,58 @@ export const getAttendances = async (req, res) => {
     const { eventId } = req.params;
     const userId = req.user.id;
 
-    // Verificar permissão
     const authorized = await eventRoleService.canCheckin(userId, eventId);
     if (!authorized) {
       return res.status(403).json({ status: 'fail', message: 'Sem permissão' });
     }
 
-    // Buscar todos os participantes do evento
+    // Participantes do evento
     const participants = await prisma.eventParticipant.findMany({
       where: { eventId },
-      include: {
-        user: { select: { id: true, name: true, email: true, cpf: true } }
-      }
+      include: { user: { select: { id: true, name: true, email: true, cpf: true } } }
     });
 
-    // Buscar todas as presenças deste evento
-    const attendances = await prisma.eventAttendance.findMany({
+    // Presenças do evento principal
+    const eventAttendances = await prisma.eventAttendance.findMany({
       where: { eventId },
       select: { userId: true, attended: true, updatedAt: true }
     });
 
-    // Mapear presenças por userId
-    const attendanceMap = new Map();
-    attendances.forEach(a => {
-      attendanceMap.set(a.userId, { attended: a.attended, checkedInAt: a.updatedAt });
+    // Todas as seções do evento (para saber quais existem)
+    const sections = await prisma.section.findMany({
+      where: { subEvent: { eventId } },
+      select: { id: true }
+    });
+    const sectionIds = sections.map(s => s.id);
+
+    // Presenças nas seções
+    const sectionAttendances = await prisma.sectionAttendance.findMany({
+      where: { sectionId: { in: sectionIds } },
+      select: { userId: true, sectionId: true, attended: true }
+    });
+
+    // Mapear presenças do evento
+    const eventAttMap = new Map();
+    eventAttendances.forEach(a => {
+      eventAttMap.set(a.userId, { event: a.attended, checkedInAt: a.updatedAt });
+    });
+
+    // Mapear presenças das seções: userId -> array de sectionId onde attended = true
+    const sectionAttMap = new Map();
+    sectionAttendances.forEach(att => {
+      if (att.attended) {
+        if (!sectionAttMap.has(att.userId)) sectionAttMap.set(att.userId, []);
+        sectionAttMap.get(att.userId).push(att.sectionId);
+      }
     });
 
     const formatted = participants.map(p => ({
       id: p.id,
       userId: p.userId,
       user: p.user,
-      attended: attendanceMap.get(p.userId)?.attended || false,
-      checkedInAt: attendanceMap.get(p.userId)?.checkedInAt || null
+      attended: eventAttMap.get(p.userId)?.event || false,
+      checkedInAt: eventAttMap.get(p.userId)?.checkedInAt || null,
+      sectionCheckins: sectionAttMap.get(p.userId) || []   // ← novo campo
     }));
 
     res.status(200).json({ status: 'success', data: { attendances: formatted } });
@@ -141,7 +161,6 @@ export const getAttendances = async (req, res) => {
     res.status(500).json({ status: 'error', message: 'Erro interno no servidor' });
   }
 };
-
 
 export const getCheckinToken = async (req, res) => {
   try {

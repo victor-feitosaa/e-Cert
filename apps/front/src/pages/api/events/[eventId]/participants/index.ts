@@ -14,8 +14,6 @@ export const GET: APIRoute = async ({ params, request }) => {
   const baseUrl = import.meta.env.API_URL || "https://ecert.duckdns.org";
   const apiUrl = `${baseUrl}/events/${eventId}/participants/`;
 
-  console.log("🟢 GET URL:", apiUrl);
-
   try {
     const response = await fetch(apiUrl, {
       method: "GET",
@@ -24,8 +22,6 @@ export const GET: APIRoute = async ({ params, request }) => {
         "Cookie": request.headers.get("cookie") || "",
       },
     });
-
-    console.log("📡 Response status:", response.status);
 
     const data = await response.json();
 
@@ -76,23 +72,7 @@ export const POST: APIRoute = async ({ params, request }) => {
       body: JSON.stringify(body),
     });
 
-    console.log("📡 Response status:", response.status);
-
-    const responseText = await response.text();
-    let data;
-
-    try {
-      data = JSON.parse(responseText);
-    } catch (e) {
-      console.error("❌ Resposta não é JSON:", responseText.substring(0, 200));
-      return new Response(JSON.stringify({
-        error: "Backend returned invalid response",
-        details: responseText.substring(0, 200)
-      }), {
-        status: 502,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
+    const data = await response.json();
 
     return new Response(JSON.stringify(data), {
       status: response.status,
@@ -110,15 +90,14 @@ export const POST: APIRoute = async ({ params, request }) => {
   }
 };
 
-// DELETE - Remover participante do evento
+// DELETE - Remover participante do evento (usando userId no corpo)
 export const DELETE: APIRoute = async ({ params, request }) => {
   const { eventId } = params;
 
-  // Espera o body com { userId } ou pode vir como query param
   let body;
   try {
     const text = await request.text();
-    body = text ? JSON.parse(text) : {};
+    body = JSON.parse(text);
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
       status: 400,
@@ -139,8 +118,8 @@ export const DELETE: APIRoute = async ({ params, request }) => {
   console.log("👤 User ID:", userId);
 
   const baseUrl = import.meta.env.API_URL || "https://ecert.duckdns.org";
-  // Supondo que o backend aceite DELETE com userId no body ou query
-  const apiUrl = `${baseUrl}/events/${eventId}`;
+  // O backend precisa ter uma rota DELETE /events/:eventId/participants que aceite { userId } no corpo
+  const apiUrl = `${baseUrl}/events/${eventId}/participants`;
 
   try {
     const response = await fetch(apiUrl, {
@@ -152,7 +131,10 @@ export const DELETE: APIRoute = async ({ params, request }) => {
       body: JSON.stringify({ userId }),
     });
 
-    console.log("📡 Response status:", response.status);
+    // Se o backend responder com 204 (sem conteúdo)
+    if (response.status === 204) {
+      return new Response(null, { status: 204 });
+    }
 
     let data;
     const responseText = await response.text();

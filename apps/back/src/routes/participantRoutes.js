@@ -15,6 +15,7 @@ import {
   checkSubeventEnrollment,
   getMyParticipations,
   inviteParticipantByEmail,
+  deleteEventParticipantByUserAndEvent,
 } from '../controllers/participantController.js'
 
 const router = express.Router({ mergeParams: true })
@@ -31,6 +32,8 @@ router.get('/check', checkEventEnrollment)   /
 
 router.post('/invite',inviteParticipantByEmail)
 router.post('/bulk', bulkAddEventParticipants)
+
+router.delete('/', deleteEventParticipantByUserAndEvent);
 
 router.route('/:id')
   .get(getEventParticipantById)
