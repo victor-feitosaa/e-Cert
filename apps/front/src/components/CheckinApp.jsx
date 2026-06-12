@@ -6,6 +6,7 @@ import {
   Clock, Scan, Home, Layers
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
+import jwtDecode from 'jwt-decode';
 
 export default function CheckinApp({ eventId }) {
   const [event, setEvent] = useState(null);
@@ -141,44 +142,68 @@ export default function CheckinApp({ eventId }) {
 
   // Leitor QR
   const startScanner = useCallback(async () => {
-    if (!showScanner) return;
-    try {
-      html5QrCodeRef.current = new Html5Qrcode('qr-reader');
-      await html5QrCodeRef.current.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText) => {
-          if (!scanning) {
-            setScanning(true);
+  if (!showScanner) return;
+  try {
+    html5QrCodeRef.current = new Html5Qrcode('qr-reader');
+    await html5QrCodeRef.current.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      (decodedText) => {
+        if (!scanning) {
+          setScanning(true);
+          try {
+            // Tenta decodificar como JWT
+            let decoded;
             try {
-              let parsed;
-              if (decodedText.startsWith('{')) parsed = JSON.parse(decodedText);
-              else {
-                const parts = decodedText.split(':');
-                parsed = parts.length >= 2 ? { eventId: parts[0], userId: parts[1] } : { userId: decodedText };
-              }
-              const participant = participants.find(p => p.userId === parsed.userId);
-              if (participant) {
-                handleCheckin(participant, activeCheckinTarget);
-                setShowScanner(false);
+              decoded = jwtDecode(decodedText);
+            } catch (e) {
+              // Fallback para formato antigo (se ainda existir)
+              if (decodedText.startsWith('{')) {
+                decoded = JSON.parse(decodedText);
               } else {
-                setNotification({ type: 'error', message: 'Participante não encontrado' });
+                const parts = decodedText.split(':');
+                if (parts.length >= 2) {
+                  decoded = { eventId: parts[0], userId: parts[1] };
+                } else {
+                  decoded = { userId: decodedText };
+                }
               }
-            } catch (err) {
-              setNotification({ type: 'error', message: 'QR code inválido' });
-            } finally {
-              setScanning(false);
             }
+
+            const { userId, eventId, sectionId } = decoded;
+            
+            // Verifica se o evento corresponde (opcional)
+            if (eventId && eventId !== eventIdFromParams) {
+              setNotification({ type: 'error', message: 'QR code de outro evento' });
+              return;
+            }
+
+            const participant = participants.find(p => p.userId === userId);
+            if (participant) {
+              // Se o token contiver sectionId, usa‑a; senão usa o target ativo
+              const target = sectionId
+                ? { type: 'section', id: sectionId }
+                : activeCheckinTarget;
+              handleCheckin(participant, target);
+              setShowScanner(false);
+            } else {
+              setNotification({ type: 'error', message: 'Participante não encontrado' });
+            }
+          } catch (err) {
+            setNotification({ type: 'error', message: 'QR code inválido' });
+          } finally {
+            setScanning(false);
           }
-        },
-        (error) => console.warn(error)
-      );
-    } catch (err) {
-      console.error('Erro ao iniciar scanner:', err);
-      setNotification({ type: 'error', message: 'Não foi possível acessar a câmera' });
-      setShowScanner(false);
-    }
-  }, [showScanner, scanning, participants, activeCheckinTarget, handleCheckin]);
+        }
+      },
+      (error) => console.warn(error)
+    );
+  } catch (err) {
+    console.error(err);
+    setNotification({ type: 'error', message: 'Não foi possível acessar a câmera' });
+    setShowScanner(false);
+  }
+}, [showScanner, scanning, participants, activeCheckinTarget, handleCheckin]);
 
   useEffect(() => {
     if (showScanner) {

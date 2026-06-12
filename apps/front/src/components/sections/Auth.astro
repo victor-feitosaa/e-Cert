@@ -1,54 +1,53 @@
 ---
+// src/components/sections/Auth.astro
 import Particles from "../Particles.jsx";
 import DotGrid from "../DotGrid";
-import { LoginForm } from "../login-form";
-import { AuthForm} from "../AuthForm";
+import AuthForm from "../AuthForm.jsx";
 ---
 
-<section class="dark bg-background min-h-screen w-full px-15 flex items-center justify-center overflow-hidden relative">
-    
-    <div class="absolute inset-0 w-full h-full z-0" style="height: 100vh;">
-        <div class="absolute inset-0 w-full h-full">
-            <Particles
-                client:load
-                particleCount={300}
-                particleSpread={8}
-                speed={0.05}
-                particleColors={["#8b5cf6", "#a78bfa", "#6d28d9"]}
-                particleBaseSize={80}
-                alphaParticles={true}
-                disableRotation={false}
-                className="w-full h-full"
-            />
-        </div>
-
-        <div class="absolute inset-0 w-full h-full">
-            <DotGrid
-                client:load
-                dotSize={3}
-                gap={28}
-                baseColor="#3d3860"
-                activeColor="#7c3aed"
-                proximity={0}
-                speedTrigger={80}
-                shockRadius={0}
-                shockStrength={4}
-                className="absolute inset-0"
-            />
-        </div>
+<section class="dark bg-background min-h-screen w-full flex items-center justify-center overflow-hidden relative">
+  <!-- Fundo com partículas e grid -->
+  <div class="absolute inset-0 w-full h-full z-0">
+    <div class="absolute inset-0 w-full h-full">
+      <Particles
+        client:load
+        particleCount={300}
+        particleSpread={8}
+        speed={0.05}
+        particleColors={["#8b5cf6", "#a78bfa", "#6d28d9"]}
+        particleBaseSize={80}
+        alphaParticles={true}
+        disableRotation={false}
+        class="w-full h-full"
+      />
     </div>
-    <nav class="absolute mb-6 top-0 z-50 h-14 w-full flex items-center justify-between px-6 bg-[#0a0a0f]/90 backdrop-blur-md border-b border-white/[0.06]">
-        <div class="flex items-center gap-2 w-32">
-          <a href="/" class="cursor-pointer text-[15px] font-black tracking-tight text-accent-foreground">
-            e-<span class="text-violet-400">cert</span>
-          </a>
-        </div>
-    </nav>
-
-    <div class="z-10 w-1/2 mt-10">
-        
-
-        <AuthForm client:load/>
+    <div class="absolute inset-0 w-full h-full">
+      <DotGrid
+        client:load
+        dotSize={3}
+        gap={28}
+        baseColor="#3d3860"
+        activeColor="#7c3aed"
+        proximity={0}
+        speedTrigger={80}
+        shockRadius={0}
+        shockStrength={4}
+        class="absolute inset-0"
+      />
     </div>
+  </div>
 
+  <!-- Navbar -->
+  <nav class="absolute top-0 z-50 h-14 w-full flex items-center justify-between px-4 md:px-6 bg-[#0a0a0f]/90 backdrop-blur-md border-b border-white/[0.06]">
+    <div class="flex items-center gap-2">
+      <a href="/" class="text-[15px] font-black tracking-tight text-accent-foreground">
+        e-<span class="text-violet-400">cert</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Formulário centralizado (responsivo) -->
+  <div class="relative z-10 w-full max-w-md mx-auto px-4 py-8 mt-14">
+    <AuthForm client:load />
+  </div>
 </section>
