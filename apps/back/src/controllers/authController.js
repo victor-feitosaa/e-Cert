@@ -7,7 +7,7 @@ import userService from "../services/userService.js";
 const register = async (req, res) => {
 
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, cpf } = req.body;
 
         if (
             typeof email !== "string" ||
@@ -20,7 +20,7 @@ const register = async (req, res) => {
             });
         }
 
-        const user = await userService.createAccount(name, email, password);
+        const user = await userService.createAccount(name, email, password, cpf);
 
         const token = generateToken(user.id, res)
 
@@ -31,6 +31,7 @@ const register = async (req, res) => {
                     id: user.id,
                     name,
                     email,
+                    cpf,
                 },
                 token,
             },

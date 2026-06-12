@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 
 class UserService {
 
-    async createAccount(name, email, password) {
+    async createAccount(name, email, password, cpf) {
         console.log(name, email, password);
 
         const userExists = await UserRepository.findByEmail(email);
@@ -15,13 +15,13 @@ class UserService {
         // Se o usuário não existe, cria um novo
         if (!userExists) {
             console.log("USER NÃO ENCONTRADO - Criando novo usuário");
-            const createdUser = await UserRepository.create(name, email, hashedPassword, 'ACTIVE');
+            const createdUser = await UserRepository.create(name, email, hashedPassword, cpf, 'ACTIVE');
             return createdUser;
         }
 
         // Se o usuário existe mas está com status PARCIAL, atualiza
         if (userExists.status === 'PARCIAL') {
-            const updatedUser = await UserRepository.update(name, email, hashedPassword, 'ACTIVE');
+            const updatedUser = await UserRepository.update(name, email, hashedPassword, cpf, 'ACTIVE');
             return updatedUser;
         }
 

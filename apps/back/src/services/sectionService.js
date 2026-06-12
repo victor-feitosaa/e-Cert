@@ -168,6 +168,10 @@ const sectionService = {
     return participant;
   },
 
+  async getEnrolledCount(sectionId) {
+    return await SectionRepository.countParticipants(sectionId)
+  },
+
   async leaveSection(sectionId, userId) {
     const participant = await SectionRepository.findParticipant(sectionId, userId)
     if (!participant) {
