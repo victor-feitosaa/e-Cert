@@ -8,15 +8,12 @@ import eventService from '../services/eventService.js'
 
 export const createSection = async (req, res) => {
   try {
-    
     const { subEventId } = req.params
-    const { title, date_start, date_end, location , capacity} = req.body
+    const { title, date_start, date_end, location, capacity } = req.body
     const userId = req.user.id
 
-    
     // Verificar se o subEvento existe
     const subEvent = await subEventService.findById(subEventId)
-    
     if (!subEvent) {
       return res.status(404).json({
         status: 'fail',
@@ -32,7 +29,7 @@ export const createSection = async (req, res) => {
       })
     }
 
-    // Validações
+    // Validações básicas
     if (!date_start) {
       return res.status(400).json({
         status: 'fail',
@@ -47,7 +44,7 @@ export const createSection = async (req, res) => {
       })
     }
 
-    // Validar datas
+    // Validar se data de início é anterior à data de término
     if (new Date(date_start) > new Date(date_end)) {
       return res.status(400).json({
         status: 'fail',
@@ -56,39 +53,49 @@ export const createSection = async (req, res) => {
     }
 
     // Validar se as datas estão dentro do período do evento principal
-    const event = await eventService.getById(subEvent.eventId);
-      if (!event) {
-        return res.status(404).json({
-          status: 'fail',
-          message: 'Evento principal não encontrado'
-        });
-      }
+    const event = await eventService.getById(subEvent.eventId)
+    if (!event) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Evento principal não encontrado'
+      })
+    }
 
+    if (!event.date_start || !event.date_end) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Evento principal não possui período definido. Defina as datas do evento primeiro.'
+      })
+    }
 
+    const eventStart = new Date(event.date_start)
+    const eventEnd = new Date(event.date_end)
+    const sectionStart = new Date(date_start)
+    const sectionEnd = new Date(date_end)
 
-      // Verificar se o evento possui datas definidas
-      if (!event.date_start || !event.date_end) {
-        return res.status(400).json({
-          status: 'fail',
-          message: 'Evento principal não possui período definido. Defina as datas do evento primeiro.'
-        });
-      }
-
-      const eventStart = new Date(event.date_start);
-      const eventEnd = new Date(event.date_end);
-      const sectionStart = new Date(date_start);
-      const sectionEnd = new Date(date_end);
-
-      
-    if (sectionStart < eventStart || sectionEnd > eventEnd) {
+    
+    if (sectionStart.getTime() < eventStart.getTime() || sectionEnd.getTime() > eventEnd.getTime()) {
       return res.status(400).json({
         status: 'fail',
         message: `As datas da seção devem estar entre ${eventStart.toLocaleDateString()} e ${eventEnd.toLocaleDateString()}`
-      });
+      })
     }
-    
 
+    // Validar capacidade 
+    if (capacity !== undefined && (isNaN(capacity) || capacity < 0)) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Capacidade deve ser um número inteiro positivo'
+      })
+    }
 
+    //capacity não pode ser maior que a do event
+    if (capacity !== undefined && event.capacity !== null && capacity > event.capacity) {
+      return res.status(400).json({
+        status: 'fail',
+        message: `Capacidade da seção não pode ser maior que a capacidade do evento principal (${event.capacity})`
+      })
+    }
 
     // Criar seção
     const section = await sectionService.create(
@@ -96,7 +103,7 @@ export const createSection = async (req, res) => {
       new Date(date_start),
       new Date(date_end),
       location,
-      capacity, 
+      capacity,
       subEventId
     )
 
@@ -117,7 +124,7 @@ export const createSection = async (req, res) => {
 export const getSections = async (req, res) => {
   try {
     const { subEventId } = req.params
-    const userId = req.user?.id  
+    const userId = req.user?.id
 
     const sections = await sectionService.getAllBySubEventId(subEventId, userId)
 
@@ -170,18 +177,15 @@ export const getSectionById = async (req, res) => {
   }
 }
 
-
-
 export const getPublicSections = async (req, res) => {
   try {
-    const { subEventId } = req.params;
-    
-    
+    const { subEventId } = req.params
+
     if (!subEventId) {
       return res.status(400).json({
         status: 'fail',
         message: 'subEventId é obrigatório'
-      });
+      })
     }
 
     const sections = await prisma.section.findMany({
@@ -192,9 +196,9 @@ export const getPublicSections = async (req, res) => {
           select: { participants: true }
         }
       }
-    });
+    })
 
-    console.log(`✅ Encontradas ${sections.length} seções`);
+    console.log(`✅ Encontradas ${sections.length} seções`)
 
     const publicSections = sections.map(section => ({
       id: section.id,
@@ -205,30 +209,29 @@ export const getPublicSections = async (req, res) => {
       capacity: section.capacity,
       enrolledCount: section._count.participants,
       availableSpots: section.capacity ? section.capacity - section._count.participants : null
-    }));
+    }))
 
     res.status(200).json({
       status: 'success',
       data: { sections: publicSections }
-    });
+    })
 
   } catch (error) {
-    console.error('❌ Erro ao buscar seções públicas:', error);
+    console.error('❌ Erro ao buscar seções públicas:', error)
     res.status(500).json({
       status: 'error',
       message: 'Erro ao buscar seções públicas'
-    });
+    })
   }
-};
-
+}
 
 export const getUserSectionStatus = async (req, res) => {
   try {
-    const { subEventId } = req.params;
-    const userId = req.user.id;
+    const { subEventId } = req.params
+    const userId = req.user.id
 
-    console.log("🔍 Buscando status do usuário para subevento:", subEventId);
-    console.log("👤 Usuário:", userId);
+    console.log("🔍 Buscando status do usuário para subevento:", subEventId)
+    console.log("👤 Usuário:", userId)
 
     const sections = await prisma.section.findMany({
       where: { subEventId },
@@ -238,26 +241,26 @@ export const getUserSectionStatus = async (req, res) => {
           select: { id: true }
         }
       }
-    });
+    })
 
     const enrolledSections = sections
       .filter(section => section.participants.length > 0)
-      .map(section => section.id);
+      .map(section => section.id)
 
-    console.log("✅ Seções inscritas:", enrolledSections);
+    console.log("✅ Seções inscritas:", enrolledSections)
 
     res.status(200).json({
       enrolledSections
-    });
+    })
 
   } catch (error) {
-    console.error('Erro ao buscar status das seções:', error);
-    res.status(500).json({ 
+    console.error('Erro ao buscar status das seções:', error)
+    res.status(500).json({
       enrolledSections: [],
-      error: error.message 
-    });
+      error: error.message
+    })
   }
-};
+}
 
 export const updateSection = async (req, res) => {
   try {
@@ -266,7 +269,7 @@ export const updateSection = async (req, res) => {
     const userId = req.user.id
 
     const existingSection = await sectionService.getById(id)
-    
+
     if (!existingSection) {
       return res.status(404).json({
         status: 'fail',
@@ -311,7 +314,7 @@ export const deleteSection = async (req, res) => {
     const userId = req.user.id
 
     const existingSection = await sectionService.getById(id)
-    
+
     if (!existingSection) {
       return res.status(404).json({
         status: 'fail',
@@ -382,10 +385,10 @@ export const deleteAllSectionsFromSubEvent = async (req, res) => {
 
 export const enrollInSection = async (req, res) => {
   try {
-    const { subEventId, id } = req.params  // id = sectionId
+    const { subEventId, id } = req.params // id = sectionId
     const userId = req.user.id
 
-    console.log("Inscrevendo usuário na seção:", { subEventId, sectionId: id, userId });
+    console.log("Inscrevendo usuário na seção:", { subEventId, sectionId: id, userId })
 
     // Verificar se o subEvento existe
     const subEvent = await subEventService.findById(subEventId)
@@ -396,36 +399,32 @@ export const enrollInSection = async (req, res) => {
       })
     }
 
-    console.log("SubEvento encontrado:", subEvent);
-    console.log("ID DO EVENTO PRINCIPAL:", subEvent.eventId);
+    console.log("SubEvento encontrado:", subEvent)
+    console.log("ID DO EVENTO PRINCIPAL:", subEvent.eventId)
 
-    // VERIFICAÇÃO CRÍTICA: se eventId existe
     if (!subEvent.eventId) {
       return res.status(400).json({
         status: 'fail',
         message: 'Subevento não está vinculado a nenhum evento principal'
-      });
+      })
     }
 
-    // Buscar o evento principal - CORREÇÃO: garantir que o ID seja uma string válida
-    const eventId = subEvent.eventId;
-    console.log("Buscando evento com ID:", eventId);
-    
-    const event = await eventService.getById(eventId);
-    
+    const eventId = subEvent.eventId
+    console.log("Buscando evento com ID:", eventId)
+
+    const event = await eventService.getById(eventId)
     if (!event) {
       return res.status(404).json({
         status: 'fail',
         message: 'Evento principal não encontrado'
-      });
+      })
     }
 
-    console.log("Evento principal encontrado:", event.id);
+    console.log("Evento principal encontrado:", event.id)
 
     // Verificar se o usuário está inscrito no EVENTO PRINCIPAL
-    const enrolledInEvent = await participantService.isEventParticipant(eventId, userId);
-
-    console.log("Inscrito no evento principal:", enrolledInEvent);
+    const enrolledInEvent = await participantService.isEventParticipant(eventId, userId)
+    console.log("Inscrito no evento principal:", enrolledInEvent)
 
     if (!enrolledInEvent) {
       return res.status(403).json({
@@ -435,38 +434,38 @@ export const enrollInSection = async (req, res) => {
     }
 
     // Verificar capacidade da seção
-    const section = await sectionService.getById(id);
+    const section = await sectionService.getById(id)
     if (!section) {
       return res.status(404).json({
         status: 'fail',
         message: 'Seção não encontrada'
-      });
+      })
     }
 
     if (section.capacity) {
-      const enrolledCount = await sectionService.getEnrolledCount(id);
+      const enrolledCount = await sectionService.getEnrolledCount(id)
       if (enrolledCount >= section.capacity) {
         return res.status(409).json({
           status: 'fail',
           message: 'Esta seção está lotada'
-        });
+        })
       }
     }
 
     // Verificar se já está inscrito
-    const alreadyEnrolled = await sectionService.checkEnrollment(id, userId);
+    const alreadyEnrolled = await sectionService.checkEnrollment(id, userId)
     if (alreadyEnrolled) {
       return res.status(409).json({
         status: 'fail',
         message: 'Usuário já está inscrito nesta seção'
-      });
+      })
     }
 
     // Inscrever na seção
     const participant = await sectionService.enrollInSection(id, userId)
 
     // Criar attendance (presença)
-    await sectionService.createAttendance(id, userId);
+    await sectionService.createAttendance(id, userId)
 
     res.status(201).json({
       status: 'success',
@@ -475,21 +474,21 @@ export const enrollInSection = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erro ao inscrever na seção:', error)
-    
+
     if (error.message === 'Esta seção está lotada') {
       return res.status(409).json({
         status: 'fail',
         message: error.message
       })
     }
-    
+
     if (error.message === 'Usuário já está inscrito nesta seção') {
       return res.status(409).json({
         status: 'fail',
         message: error.message
       })
     }
-    
+
     res.status(500).json({
       status: 'error',
       message: error.message || 'Erro ao inscrever na seção'
@@ -499,10 +498,10 @@ export const enrollInSection = async (req, res) => {
 
 export const confirmAttendance = async (req, res) => {
   try {
-    const { subEventId, id } = req.params 
+    const { subEventId, id } = req.params
     const userId = req.user.id
 
-    console.log("Confirmando presença na seção:", { subEventId, sectionId: id, userId });
+    console.log("Confirmando presença na seção:", { subEventId, sectionId: id, userId })
 
     const subEvent = await subEventService.findById(subEventId)
     if (!subEvent) {
@@ -519,8 +518,8 @@ export const confirmAttendance = async (req, res) => {
         message: 'Evento não encontrado'
       })
     }
-    
-    const isEnrolledInEvent = await participantService.isEventParticipant(event.id, userId);
+
+    const isEnrolledInEvent = await participantService.isEventParticipant(event.id, userId)
     if (!isEnrolledInEvent) {
       return res.status(403).json({
         status: 'fail',
@@ -528,19 +527,22 @@ export const confirmAttendance = async (req, res) => {
       })
     }
 
-
     if (!await sectionService.checkEnrollment(id, userId)) {
       return res.status(403).json({
         status: 'fail',
         message: 'Você precisa estar inscrito nesta seção para confirmar presença'
       })
     }
-    if (new Date() < new Date()) {
-      return res.status(400).json({
-        status: 'fail',
-        message: 'A confirmação de presença só pode ser feita durante ou após a seção'
-      })
-    }
+
+ 
+     const now = new Date();
+     const section = await sectionService.getById(id);
+     if (now < new Date(section.date_start) || now > new Date(section.date_end)) {
+       return res.status(400).json({
+         status: 'fail',
+         message: 'A confirmação de presença só pode ser feita durante ou após a seção'
+       });
+     }
 
     const attendance = await sectionService.confirmAttendance(id, userId)
 
@@ -558,10 +560,9 @@ export const confirmAttendance = async (req, res) => {
   }
 }
 
-
 export const leaveSection = async (req, res) => {
   try {
-    const { subEventId, id } = req.params  // id = sectionId
+    const { subEventId, id } = req.params // id = sectionId
     const userId = req.user.id
 
     await sectionService.leaveSection(id, userId)
@@ -579,7 +580,7 @@ export const leaveSection = async (req, res) => {
 
 export const checkSectionEnrollment = async (req, res) => {
   try {
-    const { subEventId, id } = req.params  // id = sectionId
+    const { subEventId, id } = req.params // id = sectionId
     const userId = req.user.id
 
     const isEnrolled = await sectionService.checkEnrollment(id, userId)
@@ -594,8 +595,9 @@ export const checkSectionEnrollment = async (req, res) => {
 
 export const getSectionParticipants = async (req, res) => {
   try {
-    const { subEventId, id } = req.params  // id = sectionId
+    const { subEventId, id } = req.params // id = sectionId
     const userId = req.user.id
+
     const participants = await sectionService.getParticipants(id, userId)
 
     res.status(200).json({
@@ -603,6 +605,7 @@ export const getSectionParticipants = async (req, res) => {
       results: participants.length,
       data: { participants }
     })
+
   } catch (error) {
     console.error('Erro ao buscar participantes da seção:', error)
     res.status(500).json({

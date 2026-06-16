@@ -25,6 +25,9 @@ export default function CheckinApp({ eventId }) {
   const [scanning, setScanning] = useState(false);
   const html5QrCodeRef = useRef(null);
   const isScannerRunning = useRef(false);
+  
+  // Estado para o papel do usuário no evento
+  const [userRole, setUserRole] = useState('member'); // 'organizer', 'moderator', 'member'
 
   // Verificar permissão do usuário
   useEffect(() => {
@@ -40,19 +43,41 @@ export default function CheckinApp({ eventId }) {
     if (eventId) checkPermission();
   }, [eventId]);
 
-  // Buscar dados do evento, participantes e presenças
+  // Buscar dados do evento, participantes, presenças e papel do usuário
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [eventRes, subRes, partsRes, attRes] = await Promise.all([
+      const [eventRes, subRes, partsRes, attRes, modRes, meRes] = await Promise.all([
         fetch(`/api/events/${eventId}`, { credentials: 'include' }),
         fetch(`/api/events/${eventId}/subevents`, { credentials: 'include' }),
         fetch(`/api/events/${eventId}/participants`, { credentials: 'include' }),
-        fetch(`/api/events/${eventId}/checkin/attendances`, { credentials: 'include' })
+        fetch(`/api/events/${eventId}/checkin/attendances`, { credentials: 'include' }),
+        fetch(`/api/events/${eventId}/moderators`, { credentials: 'include' }),
+        fetch(`/api/auth/me`, { credentials: 'include' })
       ]);
 
       const eventData = await eventRes.json();
-      setEvent(eventData.data?.event || eventData.event || eventData);
+      const ev = eventData.data?.event || eventData.event || eventData;
+      setEvent(ev);
+
+      // Determinar papel do usuário
+      let role = 'member';
+      // Verificar se é organizador
+      const meData = await meRes.json();
+      const userId = meData?.data?.user?.id || meData?.user?.id || meData?.id;
+      if (userId && ev.createdBy === userId) {
+        role = 'organizer';
+      } else {
+        // Verificar se é moderador
+        if (modRes.ok) {
+          const modData = await modRes.json();
+          const mods = modData?.data?.moderators || modData?.moderators || [];
+          if (mods.some(m => m.userId === userId)) {
+            role = 'moderator';
+          }
+        }
+      }
+      setUserRole(role);
 
       let subs = [];
       if (subRes.ok) {
@@ -261,6 +286,14 @@ export default function CheckinApp({ eventId }) {
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' }) : '—';
   const formatTime = (d) => d ? new Date(d).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }) : null;
 
+  // Determinar destino do botão "Voltar"
+  const getBackUrl = () => {
+    if (userRole === 'organizer' || userRole === 'moderator') {
+      return `/eventPageAdm?id=${eventId}`;
+    }
+    return '/userDashboard';
+  };
+
   // Permissão negada
   if (!permission) {
     return (
@@ -316,7 +349,11 @@ export default function CheckinApp({ eventId }) {
               <button onClick={() => setShowScanner(!showScanner)} className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-xl bg-purple-600/20 border border-purple-500/20 text-purple-400 hover:bg-purple-600/30 transition-all text-sm">
                 <Scan size={14} /> {showScanner ? 'Fechar' : 'Escanear QR'}
               </button>
-              <a href={`/eventPageAdm?id=${eventId}`} className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-xl bg-[#1a1629] border border-white/[0.06] text-[#6b6888] hover:text-white hover:border-purple-500/30 transition-all text-sm">
+              {/* Botão "Voltar" com redirecionamento dinâmico */}
+              <a 
+                href={getBackUrl()} 
+                className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-xl bg-[#1a1629] border border-white/[0.06] text-[#6b6888] hover:text-white hover:border-purple-500/30 transition-all text-sm"
+              >
                 <ArrowLeft size={14} /> Voltar
               </a>
             </div>

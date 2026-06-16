@@ -1,4 +1,5 @@
 ---
+// src/pages/eventPageAdm.astro
 import EventAnalytics from "@/components/sections/EventAnalytics.astro"
 import Layout from "../layouts/Layout.astro"
 
@@ -8,15 +9,15 @@ const id = Astro.url.searchParams.get("id");
 if (!id) return Astro.redirect("/userDashboard");
 
 const cookieHeader = Astro.request.headers.get("cookie") ?? "";
+const baseUrl = `${import.meta.env.VITE_API_URL ?? "http://localhost:5001"}`;
 
 let event = null;
 let fetchError = null;
+let user = null;
+let isOrganizerOrModerator = false;
 
-const baseUrl = `${import.meta.env.VITE_API_URL ?? "http://localhost:5001"}`
-
-
+// 1. Buscar evento
 try {
-
   const res = await fetch(`${baseUrl}/events/${id}`, {
     headers: { ...(cookieHeader ? { Cookie: cookieHeader } : {}) },
   });
@@ -25,28 +26,87 @@ try {
     const data = await res.json();
     event = data.data?.event ?? data;
   } else if (res.status === 404) {
-    // evento não existe de fato
     return Astro.redirect("/userDashboard");
   } else if (res.status === 403) {
-    // não redireciona — deixa o frontend lidar
     fetchError = 403;
   }
 } catch (err) {
   console.error("Erro ao buscar evento:", err);
 }
 
-// só redireciona se realmente não encontrou (não para 403)
+// Se não encontrou ou deu erro, redireciona
 if (!event && fetchError !== 403) {
   return Astro.redirect("/userDashboard");
+}
+
+// 2. Buscar usuário atual e verificar permissão
+if (event) {
+  try {
+    // Buscar dados do usuário logado
+    const meRes = await fetch(`${baseUrl}/auth/me`, {
+      headers: { Cookie: cookieHeader },
+    });
+    if (meRes.ok) {
+      const meData = await meRes.json();
+      user = meData.data?.user ?? meData.user ?? meData;
+      
+      // Verifica se é o criador do evento
+      if (user && user.id === event.createdBy) {
+        isOrganizerOrModerator = true;
+      } else if (user) {
+        // Buscar lista de moderadores
+        const modRes = await fetch(`${baseUrl}/events/${id}/moderators`, {
+          headers: { Cookie: cookieHeader },
+        });
+        if (modRes.ok) {
+          const modData = await modRes.json();
+          const moderators = modData.data?.moderators ?? modData.moderators ?? [];
+          if (moderators.some(m => m.userId === user.id)) {
+            isOrganizerOrModerator = true;
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Erro ao verificar permissões:", err);
+  }
+}
+
+// 3. Se não tem permissão, redireciona
+if (!isOrganizerOrModerator) {
+  // Se o usuário não está logado, manda para login
+  if (!user) {
+    return Astro.redirect(`/login?redirect=${encodeURIComponent(Astro.url.pathname + Astro.url.search)}`);
+  }
+  return Astro.redirect("/userDashboard");
+}
+
+// 4. Verifica permissão de check-in (opcional, mantido)
+let canCheckin = false;
+try {
+  const permissionRes = await fetch(`${baseUrl}/checkin/${id}/checkin/permission`, {
+    headers: { Cookie: cookieHeader },
+  });
+  if (permissionRes.ok) {
+    const permissionData = await permissionRes.json();
+    canCheckin = permissionData.allowed === true;
+  }
+} catch (err) {
+  console.error("Erro ao verificar permissão de check-in:", err);
 }
 ---
 
 <Layout>
-  {event ? (
-    <EventAnalytics event={event} />
-  ) : (
-    <div class="min-h-screen flex items-center justify-center">
-      <p class="text-red-400">Você não tem permissão para acessar este evento.</p>
+  <div class="dark bg-background min-h-screen w-full overflow-hidden relative p-6">
+    <div class="relative z-10">
+      <EventAnalytics 
+        event={event} 
+        apiURL={baseUrl} 
+        cookieHeader={cookieHeader} 
+        onBack="/userDashboard" 
+        canCheckin={canCheckin}
+        client:load 
+      />
     </div>
-  )}
+  </div>
 </Layout>

@@ -230,6 +230,7 @@ enum EventRole {
   ORGANIZER
   MODERATOR
   CHECKIN
+  MEMBER
   ATTENDEE
 }
 
