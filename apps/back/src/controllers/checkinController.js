@@ -61,6 +61,13 @@ export const doCheckin = async (req, res) => {
       if (!sectionEnrollment) {
         return res.status(404).json({ status: 'fail', message: 'Usuário não inscrito nesta seção' });
       }
+      //checkin na seção apenas se ja fez checkin no evento
+      const eventCheckin = await prisma.eventAttendance.findUnique({
+        where: { userId_eventId: { userId: targetUserId, eventId } }
+      });
+      if (!eventCheckin || !eventCheckin.attended) {
+        return res.status(400).json({ status: 'fail', message: 'Check-in na seção só pode ser realizado após check-in no evento' });
+       }
 
       // Registrar/atualizar presença na seção
       const attendance = await prisma.sectionAttendance.upsert({

@@ -31,7 +31,7 @@ class EventRoleService {
         let user = await UserRepository.findByEmail(email);
         if (!user) {
             const senhaTemp = Math.random().toString(36).slice(-10);
-            user = await UserRepository.create(null, email, senhaTemp, 'PARCIAL');
+            user = await UserRepository.create(null, email, senhaTemp, null, 'PARCIAL');
         }
         const isModerator = await this.isModerator(user.id, eventId);
         if (isModerator) return;
