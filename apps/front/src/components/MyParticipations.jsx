@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import {
   Calendar, MapPin, Clock, Award, Globe,
   ChevronRight, Search, X, Tag, Users,
-  CheckCircle2, CalendarClock, Ticket, Loader2
+  CheckCircle2, CalendarClock, Ticket, Loader2, Filter
 } from "lucide-react";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -34,27 +34,57 @@ function formatTime(dateStr) {
   }
 }
 
-function isUpcoming(dateStr) {
-  if (!dateStr) return false;
-  try {
-    const eventDate = new Date(dateStr);
-    if (isNaN(eventDate.getTime())) return false;
-    return eventDate > new Date();
-  } catch {
-    return false;
+/**
+ * Determina o status do evento com base em date_start e date_end.
+ * Retorna 'upcoming' (não começou), 'ongoing' (em andamento) ou 'past' (já encerrado).
+ */
+function getEventStatus(event) {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  const start = event.date_start ? new Date(event.date_start) : null;
+  const end = event.date_end ? new Date(event.date_end) : null;
+
+  // Se não tiver data definida, considera como concluído (fallback)
+  if (!start) return 'past';
+
+  const startDate = new Date(start);
+  startDate.setHours(0, 0, 0, 0);
+
+  if (end) {
+    const endDate = new Date(end);
+    endDate.setHours(0, 0, 0, 0);
+
+    if (endDate < now) return 'past';
+    if (startDate <= now && endDate >= now) return 'ongoing';
+    if (startDate > now) return 'upcoming';
+  } else {
+    // Se não tiver date_end, usa apenas date_start
+    if (startDate < now) return 'past';
+    if (startDate === now) return 'ongoing';
+    return 'upcoming';
   }
+
+  return 'past'; // fallback
 }
 
-function daysLeft(dateStr) {
-  if (!dateStr) return null;
-  try {
-    const eventDate = new Date(dateStr);
-    if (isNaN(eventDate.getTime())) return null;
-    const diff = eventDate - new Date();
-    return Math.ceil(diff / 86400000);
-  } catch {
-    return null;
-  }
+function isUpcoming(event) {
+  return getEventStatus(event) === 'upcoming';
+}
+
+function isOngoing(event) {
+  return getEventStatus(event) === 'ongoing';
+}
+
+function isPast(event) {
+  return getEventStatus(event) === 'past';
+}
+
+function daysLeft(event) {
+  const start = event.date_start ? new Date(event.date_start) : null;
+  if (!start) return null;
+  const diff = start - new Date();
+  return Math.ceil(diff / 86400000);
 }
 
 // ── empty state ───────────────────────────────────────────────────────────────
@@ -91,20 +121,46 @@ function Empty({ filtered, loading }) {
 // ── event card ────────────────────────────────────────────────────────────────
 
 function EventCard({ event }) {
-  // Prioriza date_start, depois date, depois createdAt
+  const status = getEventStatus(event);
   const dateStr = event.date_start || event.date || event.createdAt;
   const date = formatDate(dateStr);
   const time = formatTime(dateStr);
-  const upcoming = isUpcoming(dateStr);
   const online = event.location?.toLowerCase().includes("online");
-  const days = upcoming && dateStr ? daysLeft(dateStr) : null;
+  const days = status === 'upcoming' && dateStr ? daysLeft(event) : null;
+
+  // Badge de status
+  const StatusBadge = () => {
+    if (status === 'upcoming') {
+      return days !== null && days <= 7 ? (
+        <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 whitespace-nowrap">
+          {days === 0 ? "Hoje" : `${days}d`}
+        </span>
+      ) : (
+        <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 whitespace-nowrap">
+          Próximo
+        </span>
+      );
+    }
+    if (status === 'ongoing') {
+      return (
+        <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 whitespace-nowrap">
+          Em andamento
+        </span>
+      );
+    }
+    return (
+      <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[#6b6888] whitespace-nowrap">
+        Concluído
+      </span>
+    );
+  };
 
   return (
     <a
       href={`/eventPage?id=${event.id}`}
       className="group bg-[#13111e] border border-white/[0.07] hover:border-violet-500/25 rounded-2xl overflow-hidden flex flex-col transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
     >
-      <div className={`h-0.5 w-full ${upcoming ? "bg-violet-600/60" : "bg-white/[0.06]"}`} />
+      <div className={`h-0.5 w-full ${status === 'upcoming' ? 'bg-violet-600/60' : status === 'ongoing' ? 'bg-emerald-400/60' : 'bg-white/[0.06]'}`} />
       <div className="p-5 flex flex-col gap-4 flex-1">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1.5">
@@ -117,29 +173,7 @@ function EventCard({ event }) {
               {event.title}
             </h3>
           </div>
-          {upcoming ? (
-            days !== null && days <= 7 ? (
-              <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 whitespace-nowrap">
-                {days === 0 ? "Hoje" : `${days}d`}
-              </span>
-            ) : days !== null ? (
-              <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 whitespace-nowrap">
-                Próximo
-              </span>
-            ) : (
-              <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[#6b6888] whitespace-nowrap">
-                Data indefinida
-              </span>
-            )
-          ) : dateStr ? (
-            <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[#6b6888] whitespace-nowrap">
-              Concluído
-            </span>
-          ) : (
-            <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[#6b6888] whitespace-nowrap">
-              Sem data
-            </span>
-          )}
+          <StatusBadge />
         </div>
 
         <div className="flex flex-col gap-2">
@@ -172,7 +206,7 @@ function EventCard({ event }) {
             <span className="flex items-center gap-1 text-[11.5px] text-emerald-400 font-bold">
               <Award size={10} /> Certificado emitido
             </span>
-          ) : upcoming ? (
+          ) : status === 'upcoming' || status === 'ongoing' ? (
             <span className="flex items-center gap-1 text-[11.5px] text-[#3d3860]">
               <CalendarClock size={10} /> Cert. após o evento
             </span>
@@ -218,7 +252,8 @@ export default function MyParticipations() {
   const [participations, setParticipations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all"); // all | upcoming | ongoing | past
+  const [filterCategory, setFilterCategory] = useState("all"); // all | categoria específica
 
   // Buscar participações via proxy
   useEffect(() => {
@@ -231,7 +266,6 @@ export default function MyParticipations() {
         if (res.ok) {
           const data = await res.json();
           const events = data?.data?.events || data?.events || [];
-               
           setParticipations(events);
         } else {
           console.error("Erro na resposta:", res.status);
@@ -246,15 +280,35 @@ export default function MyParticipations() {
     fetchParticipations();
   }, []);
 
-  const upcoming = participations.filter((e) => isUpcoming(e.date_start || e.date));
-  const done = participations.filter((e) => !isUpcoming(e.date_start || e.date) && (e.date_start || e.date));
-  const noDate = participations.filter((e) => !e.date_start && !e.date);
-  const withCert = participations.filter((e) => e.certIssued);
+  // Extrair categorias únicas para o filtro
+  const categories = useMemo(() => {
+    const cats = new Set();
+    participations.forEach(e => {
+      if (e.category) cats.add(e.category);
+    });
+    return ['all', ...Array.from(cats)];
+  }, [participations]);
+
+  // Estatísticas com base no status real
+  const upcoming = participations.filter(e => isUpcoming(e));
+  const ongoing = participations.filter(e => isOngoing(e));
+  const past = participations.filter(e => isPast(e));
+  const withCert = participations.filter(e => e.certIssued);
 
   const filtered = useMemo(() => {
     let list = [...participations];
-    if (filter === "upcoming") list = list.filter((e) => isUpcoming(e.date_start || e.date));
-    if (filter === "done") list = list.filter((e) => !isUpcoming(e.date_start || e.date) && (e.date_start || e.date));
+
+    // Filtro por status
+    if (filterStatus === "upcoming") list = list.filter(e => isUpcoming(e));
+    else if (filterStatus === "ongoing") list = list.filter(e => isOngoing(e));
+    else if (filterStatus === "past") list = list.filter(e => isPast(e));
+
+    // Filtro por categoria
+    if (filterCategory !== "all") {
+      list = list.filter(e => e.category === filterCategory);
+    }
+
+    // Busca
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -265,10 +319,24 @@ export default function MyParticipations() {
           e.organizer?.name?.toLowerCase().includes(q)
       );
     }
-    return list;
-  }, [participations, filter, search]);
 
-  const hasFilter = search || filter !== "all";
+    // Ordenação: upcoming > ongoing > past (dentro de cada grupo, pela data mais próxima)
+    list.sort((a, b) => {
+      const aStatus = getEventStatus(a);
+      const bStatus = getEventStatus(b);
+      const order = { upcoming: 0, ongoing: 1, past: 2 };
+      if (order[aStatus] !== order[bStatus]) {
+        return order[aStatus] - order[bStatus];
+      }
+      const aDate = new Date(a.date_start || a.date || a.createdAt);
+      const bDate = new Date(b.date_start || b.date || b.createdAt);
+      return aDate - bDate;
+    });
+
+    return list;
+  }, [participations, filterStatus, filterCategory, search]);
+
+  const hasFilter = search || filterStatus !== "all" || filterCategory !== "all";
 
   if (loading) {
     return (
@@ -300,8 +368,9 @@ export default function MyParticipations() {
             <Stat value={withCert.length} label="Certificados emitidos" Icon={Award} />
           </div>
 
-          <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl p-4 flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[180px]">
+          <div className="bg-[#13111e] border border-white/[0.07] rounded-2xl p-4 space-y-3">
+            {/* Search row */}
+            <div className="relative flex-1">
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#3d3860] pointer-events-none" />
               <input
                 type="text"
@@ -320,29 +389,50 @@ export default function MyParticipations() {
               )}
             </div>
 
-            <div className="flex gap-1.5">
-              {[
-                { v: "all", l: "Todos" },
-                { v: "upcoming", l: "Próximos" },
-                { v: "done", l: "Concluídos" },
-              ].map(({ v, l }) => (
-                <button
-                  key={v}
-                  onClick={() => setFilter(v)}
-                  className={`text-[12px] font-bold px-3 py-1.5 rounded-lg border transition-all ${
-                    filter === v
-                      ? "bg-violet-600/10 border-violet-500/20 text-violet-400"
-                      : "bg-transparent border-white/[0.06] text-[#6b6888] hover:text-white hover:border-white/[0.14]"
-                  }`}
-                >
-                  {l}
-                </button>
-              ))}
-            </div>
+            {/* Filters row */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { v: "all", l: "Todos" },
+                  { v: "upcoming", l: "Próximos" },
+                  { v: "ongoing", l: "Em andamento" },
+                  { v: "past", l: "Concluídos" },
+                ].map(({ v, l }) => (
+                  <button
+                    key={v}
+                    onClick={() => setFilterStatus(v)}
+                    className={`text-[12px] font-bold px-3 py-1.5 rounded-lg border transition-all ${
+                      filterStatus === v
+                        ? "bg-violet-600/10 border-violet-500/20 text-violet-400"
+                        : "bg-transparent border-white/[0.06] text-[#6b6888] hover:text-white hover:border-white/[0.14]"
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
 
-            <span className="text-[12px] text-[#3d3860] font-semibold ml-auto">
-              {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
-            </span>
+              {/* Filtro de categoria */}
+              <div className="flex items-center gap-2">
+                <Filter size={11} className="text-[#3d3860]" />
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="bg-[#0f0d1a] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-[12px] text-[#6b6888] outline-none focus:border-violet-500/30"
+                >
+                  <option value="all">Todas categorias</option>
+                  {categories.filter(c => c !== 'all').map(cat => (
+                    <option key={cat} value={cat}>
+                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <span className="text-[12px] text-[#3d3860] font-semibold ml-auto">
+                {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

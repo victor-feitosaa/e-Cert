@@ -1,12 +1,13 @@
+// src/repository/CheckinRepository.js
 import { prisma } from '../config/db.js';
 
 class CheckinRepository {
   /**
-   * Busca permissão de check-in para um usuário em um evento.
-   * Permissão pode ser via EventPermission (role CHECKIN ou MODERATOR) ou ser o organizador.
+   * Verifica permissão de check-in para um usuário em um evento.
+   * Retorna { allowed: boolean, reason: string, role?: string }
    */
   async findCheckinPermission(userId, eventId) {
-    // Primeiro verifica se é organizador
+    // 1) É organizador?
     const event = await prisma.event.findUnique({
       where: { id: eventId },
       select: { createdBy: true }
@@ -15,7 +16,7 @@ class CheckinRepository {
       return { allowed: true, reason: 'organizer' };
     }
 
-    // Verifica permissão direta
+    // 2) Tem permissão direta (CHECKIN ou MODERATOR)
     const permission = await prisma.eventPermission.findFirst({
       where: {
         eventId,
@@ -26,12 +27,10 @@ class CheckinRepository {
     if (permission) {
       return { allowed: true, reason: 'permission', role: permission.role };
     }
+
     return { allowed: false };
   }
 
-  /**
-   * Busca os dados do evento (apenas para verificação)
-   */
   async findEventById(eventId) {
     return prisma.event.findUnique({
       where: { id: eventId },
@@ -39,9 +38,6 @@ class CheckinRepository {
     });
   }
 
-  /**
-   * Busca o participante (inscrição no evento) pelo ID do registro EventParticipant.
-   */
   async findEventParticipantById(participantId) {
     return prisma.eventParticipant.findUnique({
       where: { id: participantId },
@@ -49,9 +45,6 @@ class CheckinRepository {
     });
   }
 
-  /**
-   * Busca o participante pelo userId e eventId.
-   */
   async findEventParticipantByUserAndEvent(userId, eventId) {
     return prisma.eventParticipant.findFirst({
       where: { userId, eventId },
@@ -59,9 +52,6 @@ class CheckinRepository {
     });
   }
 
-  /**
-   * Cria ou atualiza o registro de attendance (check-in) no evento.
-   */
   async upsertEventAttendance(eventId, userId) {
     return prisma.eventAttendance.upsert({
       where: { userId_eventId: { userId, eventId } },
@@ -70,9 +60,6 @@ class CheckinRepository {
     });
   }
 
-  /**
-   * Cria ou atualiza o registro de attendance (check-in) em uma seção.
-   */
   async upsertSectionAttendance(sectionId, userId) {
     return prisma.sectionAttendance.upsert({
       where: { userId_sectionId: { userId, sectionId } },
@@ -81,43 +68,47 @@ class CheckinRepository {
     });
   }
 
-  /**
-   * Lista todas as presenças (attendances) de um evento.
-   */
   async findEventAttendances(eventId) {
     return prisma.eventAttendance.findMany({
       where: { eventId },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true, cpf: true }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
+      select: { userId: true, attended: true, updatedAt: true }
     });
   }
 
-  /**
-   * Lista todas as presenças de uma seção específica.
-   */
-  async findSectionAttendances(sectionId) {
+  async findSectionAttendancesByEvent(eventId) {
+    // Busca todas as seções do evento e suas presenças
+    const sections = await prisma.section.findMany({
+      where: { subEvent: { eventId } },
+      select: { id: true }
+    });
+    const sectionIds = sections.map(s => s.id);
+    if (sectionIds.length === 0) return [];
+
     return prisma.sectionAttendance.findMany({
-      where: { sectionId },
-      include: {
-        user: { select: { id: true, name: true, email: true, cpf: true } }
-      }
+      where: { sectionId: { in: sectionIds } },
+      select: { userId: true, sectionId: true, attended: true }
     });
   }
 
-  /**
-   * Obtém todos os participantes (inscritos) do evento, incluindo dados do usuário.
-   */
   async findEventParticipants(eventId) {
     return prisma.eventParticipant.findMany({
       where: { eventId },
-      include: {
-        user: { select: { id: true, name: true, email: true, cpf: true } }
-      },
+      include: { user: { select: { id: true, name: true, email: true, cpf: true } } },
       orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  // Verifica se o usuário já fez check-in no evento principal
+  async findEventAttendance(userId, eventId) {
+    return prisma.eventAttendance.findUnique({
+      where: { userId_eventId: { userId, eventId } }
+    });
+  }
+
+  // Verifica inscrição em seção
+  async findSectionEnrollment(userId, sectionId) {
+    return prisma.sectionParticipant.findUnique({
+      where: { userId_sectionId: { userId, sectionId } }
     });
   }
 }
