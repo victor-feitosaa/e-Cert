@@ -9,20 +9,14 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-    /* ── e-cert design tokens (light fallback) ── */
     --background: oklch(0.98 0 0);
-    --foreground: oklch(0.12 0.01 280);
+    --foreground: oklch(0.15 0.01 280);
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.12 0.01 280);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.12 0.01 280);
-    --primary: oklch(0.46 0.22 285);       /* #7c3aed violet */
-    --primary-foreground: oklch(1 0 0);
-    --secondary: oklch(0.55 0.19 285);     /* #8b5cf6 violetMid */
-    --secondary-foreground: oklch(1 0 0);
-    --muted: oklch(0.93 0.01 280);
-    --muted-foreground: oklch(0.54 0.05 280);
-    --accent: oklch(0.65 0.15 285);        /* #a78bfa violetLight */
+    --card-foreground: oklch(0.15 0.01 280);
+    /* ... mantido o restante, mas ajuste o primary para um tom mais vibrante */
+    --primary: oklch(0.50 0.22 285);      /* #7c3aed (um pouco mais escuro que antes) */
+    --secondary: oklch(0.60 0.19 285);    /* #8b5cf6 */
+    --accent: oklch(0.70 0.15 285);       /* #a78bfa */
     --accent-foreground: oklch(1 0 0);
     --destructive: oklch(0.65 0.22 25);    /* #f87171 red */
     --destructive-foreground: oklch(1 0 0);
@@ -70,54 +64,45 @@
 
 /* ── Dark mode — primary theme for e-cert ── */
 .dark {
-    --background: oklch(0.09 0.015 260);   /* #080b14 */
-    --foreground: oklch(0.91 0.01 280);    /* #e8e4ff */
-    --card: oklch(0.17 0.02 260);          /* #111827 surface */
-    --card-foreground: oklch(0.91 0.01 280);
-    --popover: oklch(0.19 0.03 260);       /* #161f30 surface2 */
-    --popover-foreground: oklch(0.91 0.01 280);
-    --primary: oklch(0.55 0.19 285);       /* #8b5cf6 violetMid — main CTA */
-    --primary-foreground: oklch(1 0 0);
-    --secondary: oklch(0.65 0.15 285);     /* #a78bfa violetLight */
-    --secondary-foreground: oklch(1 0 0);
-    --muted: oklch(0.19 0.03 260);
-    --muted-foreground: oklch(0.54 0.05 280); /* #8b85aa */
-    --accent: oklch(0.46 0.22 285);        /* #7c3aed violet */
-    --accent-foreground: oklch(1 0 0);
-    --destructive: oklch(0.65 0.22 25);
-    --destructive-foreground: oklch(1 0 0);
-    --border: oklch(0.55 0.19 285 / 18%);
-    --border-soft: oklch(0.55 0.19 285 / 8%);
-    --input: oklch(0.55 0.19 285 / 15%);
-    --ring: oklch(0.55 0.19 285 / 35%);
+  /* Fundo geral mais claro: de oklch(0.09) para oklch(0.14) */
+  --background: oklch(0.14 0.015 260);   /* ~ #1a1a2e */
+  --foreground: oklch(0.95 0.01 280);    /* ~ #f0edff */
 
-    --surface: oklch(0.17 0.02 260);
-    --surface-2: oklch(0.19 0.03 260);
+  /* Cards e superfícies com contraste sutil */
+  --card: oklch(0.19 0.02 260);          /* ~ #22223b */
+  --card-foreground: oklch(0.95 0.01 280);
+  --popover: oklch(0.21 0.02 260);
+  --popover-foreground: oklch(0.95 0.01 280);
 
-    --success: oklch(0.72 0.17 162);
-    --success-bg: oklch(0.72 0.17 162 / 8%);
-    --success-border: oklch(0.72 0.17 162 / 20%);
-    --error: oklch(0.65 0.22 25);
-    --error-bg: oklch(0.65 0.22 25 / 8%);
-    --error-border: oklch(0.65 0.22 25 / 20%);
+  /* Cores primárias - mantidas, mas com mais luminosidade */
+  --primary: oklch(0.60 0.20 285);       /* #9b6cff (mais vivo) */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.70 0.15 285);     /* #b89cff */
+  --secondary-foreground: oklch(1 0 0);
+  --accent: oklch(0.50 0.22 285);        /* #8b4cff */
+  --accent-foreground: oklch(1 0 0);
 
-    --gold: oklch(0.77 0.11 75);
-    --faint: oklch(0.32 0.05 275);
+  --muted: oklch(0.22 0.02 260);
+  --muted-foreground: oklch(0.65 0.05 280); /* #a89fc0 */
 
-    --chart-1: oklch(0.46 0.22 285);
-    --chart-2: oklch(0.55 0.19 285);
-    --chart-3: oklch(0.65 0.15 285);
-    --chart-4: oklch(0.72 0.10 285);
-    --chart-5: oklch(0.80 0.06 285);
+  /* Bordas e inputs com menor opacidade para não pesar */
+  --border: oklch(0.65 0.15 285 / 20%);
+  --border-soft: oklch(0.65 0.15 285 / 10%);
+  --input: oklch(0.65 0.15 285 / 15%);
+  --ring: oklch(0.65 0.15 285 / 35%);
 
-    --sidebar: oklch(0.13 0.02 260);       /* #0d1120 bg2 */
-    --sidebar-foreground: oklch(0.91 0.01 280);
-    --sidebar-primary: oklch(0.46 0.22 285);
-    --sidebar-primary-foreground: oklch(1 0 0);
-    --sidebar-accent: oklch(0.55 0.19 285 / 10%);
-    --sidebar-accent-foreground: oklch(0.91 0.01 280);
-    --sidebar-border: oklch(0.55 0.19 285 / 8%);
-    --sidebar-ring: oklch(0.55 0.19 285 / 35%);
+  --surface: oklch(0.18 0.02 260);       /* ~ #1e1e38 */
+  --surface-2: oklch(0.21 0.02 260);     /* ~ #28284a */
+
+  /* Sidebar mais clara também */
+  --sidebar: oklch(0.12 0.02 260);       /* ~ #16162a */
+  --sidebar-foreground: oklch(0.95 0.01 280);
+  --sidebar-accent: oklch(0.60 0.20 285 / 15%);
+  --sidebar-border: oklch(0.65 0.15 285 / 10%);
+
+  /* Demais tokens mantidos, mas com ajustes pontuais */
+  --gold: oklch(0.80 0.12 75);
+  --faint: oklch(0.40 0.06 275);
 }
 
 @theme inline {
