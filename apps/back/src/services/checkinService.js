@@ -1,5 +1,6 @@
 // src/services/CheckinService.js
 import CheckinRepository from '../repository/CheckinRepository.js';
+import jwt from 'jsonwebtoken';
 
 class CheckinService {
   async checkPermission(userId, eventId) {
@@ -103,7 +104,6 @@ class CheckinService {
    * Gera token JWT para QR Code de check-in.
    */
   generateCheckinToken(userId, eventId, sectionId = null) {
-    const jwt = require('jsonwebtoken');
     const payload = { userId, eventId };
     if (sectionId) payload.sectionId = sectionId;
     return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
