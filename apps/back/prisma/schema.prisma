@@ -191,25 +191,25 @@ model SectionAttendance {
 // ── Certificados ──────────────────────────────────────────────────────────────
 
 model Certificate {
-  id        String   @id @default(uuid())
-  name      String?
-  template  String?
-  job       String
+  id           String   @id @default(uuid())
+  userId       String
+  eventId      String?
+  subEventId   String?
+  participantId String? 
+  issueDate    DateTime @default(now())
+  workload     String   
+  type         String   @default("Participante") 
+  hash         String   @unique // JWT assinado
+  issued       Boolean  @default(false) // Controle de envio por e-mail
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // Relações
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  subEvent  SubEvent? @relation(fields: [subEventId], references: [id], onDelete: Cascade)
 
-  userId     String           
-  eventId    String?
-  subEventId String?
-
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event    Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  subEvent SubEvent? @relation(fields: [subEventId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([eventId])
-  @@index([subEventId])
+  // Garante que não haja duplicidade para o mesmo usuário/evento
+  @@unique([userId, eventId])
+  @@unique([userId, subEventId])
 }
 
 // ── Permissões ────────────────────────────────────────────────────────────────
