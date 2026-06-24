@@ -31,6 +31,26 @@ import Particles from "./Particles";
 
 const STEP_LABELS = ["Informações", "Equipe", "Subeventos", "Revisão"];
 
+// Limites de caracteres
+const CHAR_LIMITS = {
+  eventName: 100,
+  eventDescription: 500,
+  eventLocation: 150,
+  subeventName: 80,
+  subeventDescription: 300,
+  subeventLocation: 150,
+  job: 50,
+  sectionTitle: 80,
+  sectionLocation: 150,
+};
+
+// Componente contador de caracteres
+const CharCounter = ({ current, limit, className = "" }) => (
+  <span className={`text-xs ${current > limit ? "text-red-400" : "text-accent-foreground/40"} ${className}`}>
+    {current}/{limit}
+  </span>
+);
+
 // Funções auxiliares para badges de função (job)
 const TEAM_ROLES = [
   { value: "SPEAKER",    label: "Palestrante", color: "text-blue-400",  bg: "bg-blue-500/10",  border: "border-blue-500/20"  },
@@ -161,6 +181,10 @@ export default function CreateEvent({ onBack }) {
     }
     if (!newMemberJob.trim()) {
       setErrors((prev) => ({ ...prev, teamMemberJob: "Função é obrigatória" }));
+      return;
+    }
+    if (newMemberJob.length > CHAR_LIMITS.job) {
+      setErrors((prev) => ({ ...prev, teamMemberJob: `Máximo ${CHAR_LIMITS.job} caracteres` }));
       return;
     }
     if (teamMembers.some((m) => m.email === newMemberEmail.trim().toLowerCase())) {
@@ -326,6 +350,10 @@ export default function CreateEvent({ onBack }) {
       setErrors((prev) => ({ ...prev, subeventMemberJob: "Função é obrigatória" }));
       return;
     }
+    if (job.length > CHAR_LIMITS.job) {
+      setErrors((prev) => ({ ...prev, subeventMemberJob: `Máximo ${CHAR_LIMITS.job} caracteres` }));
+      return;
+    }
     if (newSubevent.teamMembers.some((m) => m.email === email)) {
       setErrors((prev) => ({ ...prev, subeventMemberEmail: "Membro já adicionado a este subevento" }));
       return;
@@ -370,7 +398,9 @@ export default function CreateEvent({ onBack }) {
   const saveSubevent = () => {
     const e = {};
     if (!newSubevent.name.trim()) e.subeventName = "Nome do subevento é obrigatório";
+    else if (newSubevent.name.length > CHAR_LIMITS.subeventName) e.subeventName = `Máximo ${CHAR_LIMITS.subeventName} caracteres`;
     if (!newSubevent.location.trim()) e.subeventLocation = "Local é obrigatório";
+    else if (newSubevent.location.length > CHAR_LIMITS.subeventLocation) e.subeventLocation = `Máximo ${CHAR_LIMITS.subeventLocation} caracteres`;
     if (newSubevent.sections.length === 0) e.subeventSections = "Adicione pelo menos uma seção";
 
     if (Object.keys(e).length > 0) {
@@ -398,16 +428,29 @@ export default function CreateEvent({ onBack }) {
     const e = {};
     if (s === 0) {
       if (!form.name.trim()) e.name = "Campo obrigatório";
+      else if (form.name.length > CHAR_LIMITS.eventName) e.name = `Máximo ${CHAR_LIMITS.eventName} caracteres`;
       if (!form.description.trim()) e.description = "Campo obrigatório";
+      else if (form.description.length > CHAR_LIMITS.eventDescription) e.description = `Máximo ${CHAR_LIMITS.eventDescription} caracteres`;
       if (!form.date_start) e.date_start = "Campo obrigatório";
       if (!form.date_end) e.date_end = "Campo obrigatório";
       if (!form.time_start) e.time_start = "Campo obrigatório";
       if (!form.time_end) e.time_end = "Campo obrigatório";
       if (!form.location.trim()) e.location = "Campo obrigatório";
+      else if (form.location.length > CHAR_LIMITS.eventLocation) e.location = `Máximo ${CHAR_LIMITS.eventLocation} caracteres`;
     }
     if (s === 2) {
       if (subevents.length === 0) {
         e.subevents = "Adicione pelo menos um subevento";
+      }
+      // Validação dos campos do subevento atual (se estiver sendo criado/editado)
+      if (newSubevent.name && newSubevent.name.length > CHAR_LIMITS.subeventName) {
+        e.subeventName = `Máximo ${CHAR_LIMITS.subeventName} caracteres`;
+      }
+      if (newSubevent.description && newSubevent.description.length > CHAR_LIMITS.subeventDescription) {
+        e.subeventDescription = `Máximo ${CHAR_LIMITS.subeventDescription} caracteres`;
+      }
+      if (newSubevent.location && newSubevent.location.length > CHAR_LIMITS.subeventLocation) {
+        e.subeventLocation = `Máximo ${CHAR_LIMITS.subeventLocation} caracteres`;
       }
     }
     setErrors(e);
@@ -611,13 +654,17 @@ export default function CreateEvent({ onBack }) {
                 <label className="block text-sm font-bold text-accent-foreground mb-1.5">
                   Nome do evento <span className="text-primary">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => set("name", e.target.value)}
-                  placeholder="ex: Tech Summit Brasil 2025"
-                  className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.name ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => set("name", e.target.value)}
+                    maxLength={CHAR_LIMITS.eventName}
+                    placeholder="ex: Tech Summit Brasil 2025"
+                    className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.name ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40 pr-16`}
+                  />
+                  <CharCounter current={form.name.length} limit={CHAR_LIMITS.eventName} className="absolute right-3 top-1/2 -translate-y-1/2" />
+                </div>
                 {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name}</p>}
               </div>
 
@@ -625,13 +672,17 @@ export default function CreateEvent({ onBack }) {
                 <label className="block text-sm font-bold text-accent-foreground mb-1.5">
                   Descrição <span className="text-primary">*</span>
                 </label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => set("description", e.target.value)}
-                  rows={4}
-                  placeholder="Descreva o evento, programação e público-alvo..."
-                  className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border resize-y ${errors.description ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
-                />
+                <div className="relative">
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => set("description", e.target.value)}
+                    maxLength={CHAR_LIMITS.eventDescription}
+                    rows={4}
+                    placeholder="Descreva o evento, programação e público-alvo..."
+                    className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border resize-y ${errors.description ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40 pr-16`}
+                  />
+                  <CharCounter current={form.description.length} limit={CHAR_LIMITS.eventDescription} className="absolute right-3 bottom-3" />
+                </div>
                 {errors.description && <p className="text-xs text-red-400 mt-1">{errors.description}</p>}
               </div>
 
@@ -683,13 +734,17 @@ export default function CreateEvent({ onBack }) {
 
               <div>
                 <label className="block text-sm font-bold text-accent-foreground mb-1.5">Local *</label>
-                <input
-                  type="text"
-                  value={form.location}
-                  onChange={(e) => set("location", e.target.value)}
-                  placeholder="ex: Centro de Convenções Frei Caneca, SP"
-                  className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.location ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={form.location}
+                    onChange={(e) => set("location", e.target.value)}
+                    maxLength={CHAR_LIMITS.eventLocation}
+                    placeholder="ex: Centro de Convenções Frei Caneca, SP"
+                    className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.location ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40 pr-16`}
+                  />
+                  <CharCounter current={form.location.length} limit={CHAR_LIMITS.eventLocation} className="absolute right-3 top-1/2 -translate-y-1/2" />
+                </div>
                 {errors.location && <p className="text-xs text-red-400 mt-1">{errors.location}</p>}
               </div>
 
@@ -818,13 +873,17 @@ export default function CreateEvent({ onBack }) {
                   {errors.teamMemberEmail && <p className="text-xs text-red-400 mt-1">{errors.teamMemberEmail}</p>}
 
                   <div className="grid grid-cols-2 gap-3">
-                    <input
-                      type="text"
-                      value={newMemberJob}
-                      onChange={(e) => { setNewMemberJob(e.target.value); setErrors((prev) => ({ ...prev, teamMemberJob: "" })); }}
-                      placeholder="Função (ex: Palestrante, Staff)"
-                      className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.teamMemberJob ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={newMemberJob}
+                        onChange={(e) => { setNewMemberJob(e.target.value); setErrors((prev) => ({ ...prev, teamMemberJob: "" })); }}
+                        maxLength={CHAR_LIMITS.job}
+                        placeholder="Função (ex: Palestrante, Staff)"
+                        className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.teamMemberJob ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40 pr-16`}
+                      />
+                      <CharCounter current={newMemberJob.length} limit={CHAR_LIMITS.job} className="absolute right-3 top-1/2 -translate-y-1/2" />
+                    </div>
                     <select
                       value={newMemberPermission}
                       onChange={(e) => setNewMemberPermission(e.target.value)}
@@ -907,31 +966,43 @@ export default function CreateEvent({ onBack }) {
                   </p>
 
                   <div className="space-y-3">
-                    <input
-                      type="text"
-                      value={newSubevent.name}
-                      onChange={(e) => setNewSubevent((prev) => ({ ...prev, name: e.target.value }))}
-                      placeholder="Nome do subevento *"
-                      className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.subeventName ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
-                    />
-                    {errors.subeventName && <p className="text-xs text-red-400">{errors.subeventName}</p>}
-
-                    <textarea
-                      value={newSubevent.description}
-                      onChange={(e) => setNewSubevent((prev) => ({ ...prev, description: e.target.value }))}
-                      placeholder="Descrição (opcional)"
-                      rows={2}
-                      className="w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border border-border focus:border-primary outline-none resize-y placeholder:text-accent-foreground/40"
-                    />
-
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="relative">
                       <input
                         type="text"
-                        value={newSubevent.location}
-                        onChange={(e) => setNewSubevent((prev) => ({ ...prev, location: e.target.value }))}
-                        placeholder="Local *"
-                        className={`px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.subeventLocation ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40`}
+                        value={newSubevent.name}
+                        onChange={(e) => setNewSubevent((prev) => ({ ...prev, name: e.target.value }))}
+                        maxLength={CHAR_LIMITS.subeventName}
+                        placeholder="Nome do subevento *"
+                        className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.subeventName ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40 pr-16`}
                       />
+                      <CharCounter current={newSubevent.name.length} limit={CHAR_LIMITS.subeventName} className="absolute right-3 top-1/2 -translate-y-1/2" />
+                    </div>
+                    {errors.subeventName && <p className="text-xs text-red-400">{errors.subeventName}</p>}
+
+                    <div className="relative">
+                      <textarea
+                        value={newSubevent.description}
+                        onChange={(e) => setNewSubevent((prev) => ({ ...prev, description: e.target.value }))}
+                        maxLength={CHAR_LIMITS.subeventDescription}
+                        placeholder="Descrição (opcional)"
+                        rows={2}
+                        className="w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border border-border focus:border-primary outline-none resize-y placeholder:text-accent-foreground/40 pr-16"
+                      />
+                      <CharCounter current={newSubevent.description.length} limit={CHAR_LIMITS.subeventDescription} className="absolute right-3 bottom-3" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="relative col-span-2">
+                        <input
+                          type="text"
+                          value={newSubevent.location}
+                          onChange={(e) => setNewSubevent((prev) => ({ ...prev, location: e.target.value }))}
+                          maxLength={CHAR_LIMITS.subeventLocation}
+                          placeholder="Local *"
+                          className={`w-full px-4 py-2.5 text-accent-foreground rounded-lg text-sm bg-[#11101B] border ${errors.subeventLocation ? "border-red-400/50" : "border-border"} focus:border-primary outline-none placeholder:text-accent-foreground/40 pr-16`}
+                        />
+                        <CharCounter current={newSubevent.location.length} limit={CHAR_LIMITS.subeventLocation} className="absolute right-3 top-1/2 -translate-y-1/2" />
+                      </div>
                     </div>
                     {(errors.subeventLocation) && <p className="text-xs text-red-400">{errors.subeventLocation}</p>}
 
@@ -957,13 +1028,17 @@ export default function CreateEvent({ onBack }) {
                         </div>
                       )}
                       <div className="grid grid-cols-2 gap-2 mb-2">
-                        <input
-                          type="text"
-                          value={newSection.title}
-                          onChange={(e) => setNewSection((prev) => ({ ...prev, title: e.target.value }))}
-                          placeholder="Título (opcional)"
-                          className="col-span-2 px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
-                        />
+                        <div className="relative col-span-2">
+                          <input
+                            type="text"
+                            value={newSection.title}
+                            onChange={(e) => setNewSection((prev) => ({ ...prev, title: e.target.value }))}
+                            maxLength={CHAR_LIMITS.sectionTitle}
+                            placeholder="Título (opcional)"
+                            className="w-full px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40 pr-12"
+                          />
+                          <CharCounter current={newSection.title.length} limit={CHAR_LIMITS.sectionTitle} className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px]" />
+                        </div>
                         <input
                           type="date"
                           value={newSection.date_start}
@@ -1000,6 +1075,7 @@ export default function CreateEvent({ onBack }) {
                           type="text"
                           value={newSection.location}
                           onChange={(e) => setNewSection((prev) => ({ ...prev, location: e.target.value }))}
+                          maxLength={CHAR_LIMITS.sectionLocation}
                           placeholder="Local específico (opcional)"
                           className="col-span-2 px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
                         />
@@ -1063,13 +1139,17 @@ export default function CreateEvent({ onBack }) {
                           placeholder="E-mail"
                           className="flex-1 px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
                         />
-                        <input
-                          type="text"
-                          value={newSubeventMember.job}
-                          onChange={(e) => setNewSubeventMember((prev) => ({ ...prev, job: e.target.value, fromExisting: false }))}
-                          placeholder="Função"
-                          className="flex-1 px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40"
-                        />
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            value={newSubeventMember.job}
+                            onChange={(e) => setNewSubeventMember((prev) => ({ ...prev, job: e.target.value, fromExisting: false }))}
+                            maxLength={CHAR_LIMITS.job}
+                            placeholder="Função"
+                            className="w-full px-3 py-1.5 text-accent-foreground rounded-lg text-xs bg-[#11101B] border border-border focus:border-primary outline-none placeholder:text-accent-foreground/40 pr-10"
+                          />
+                          <CharCounter current={newSubeventMember.job.length} limit={CHAR_LIMITS.job} className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px]" />
+                        </div>
                       </div>
                       <button
                         onClick={addMemberToSubevent}

@@ -2,6 +2,20 @@
 import { useState, useEffect } from "react";
 import { CalendarDays, ClipboardList, Cog, Globe, Lock, AlertTriangle, Save } from "lucide-react";
 
+// ========== LIMITES DE CARACTERES (mesmos padrões) ==========
+const CHAR_LIMITS = {
+  eventName: 100,
+  eventDescription: 500,
+  eventLocation: 150,
+};
+
+// ========== COMPONENTE CONTADOR ==========
+const CharCounter = ({ current, limit, className = "" }) => (
+  <span className={`text-xs ${current > limit ? "text-red-400" : "text-accent-foreground/40"} ${className}`}>
+    {current}/{limit}
+  </span>
+);
+
 export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted }) {
     const [loading, setLoading] = useState(true);
     const [form, setForm] = useState(null);
@@ -9,8 +23,8 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState("");
     const [deleting, setDeleting] = useState(false);
-    const [currentUserId, setCurrentUserId] = useState(null);  // ID do usuário logado
-    const [organizerId, setOrganizerId] = useState(null);      // ID do criador do evento
+    const [currentUserId, setCurrentUserId] = useState(null);
+    const [organizerId, setOrganizerId] = useState(null);
 
     const validateYear = (value) => {
         if (!value) return true;
@@ -44,7 +58,6 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
             setLoading(true);
             setError("");
 
-            // 1. Buscar dados do usuário logado
             const meRes = await fetch(`/api/auth/me`, {
                 method: "GET",
                 credentials: "include"
@@ -54,12 +67,10 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
                 throw new Error(errorMe.error || "Erro ao carregar dados do usuário");
             }
             const userData = await meRes.json();
-            
-            const loggedUserId = userData?.data.user?.id 
+            const loggedUserId = userData?.data.user?.id;
             if (!loggedUserId) throw new Error("ID do usuário não encontrado");
             setCurrentUserId(loggedUserId);
 
-            // 2. Buscar dados do evento
             const res = await fetch(`/api/events/${eventId}`, {
                 method: "GET",
                 credentials: "include",
@@ -72,7 +83,6 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
             const ev = response.data?.event || response.event || response.data;
             if (!ev) throw new Error("Dados do evento não encontrados");
 
-            // Armazenar ID do organizador
             const creatorId = ev.creator?.id || ev.createdBy;
             if (!creatorId) throw new Error("Organizador do evento não identificado");
             setOrganizerId(creatorId);
@@ -101,7 +111,14 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
         if (eventId) fetchEventData();
     }, [eventId]);
 
-    const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+    const set = (k) => (e) => {
+        const value = e.target.value;
+        // Validação de limite já é feita via maxLength no input, mas também podemos verificar aqui
+        setForm(f => ({ ...f, [k]: value }));
+        // Limpa erro ao digitar
+        if (error && error.includes(k)) setError("");
+    };
+
     const togglePublic = (val) => setForm(f => ({ ...f, isPublic: Boolean(val) }));
 
     const handleSubmit = async (e) => {
@@ -109,6 +126,23 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
         setSaving(true);
         setError("");
         setSuccess(false);
+
+        // Validações de limite (reforço)
+        if (form.title.length > CHAR_LIMITS.eventName) {
+            setError(`O título deve ter no máximo ${CHAR_LIMITS.eventName} caracteres.`);
+            setSaving(false);
+            return;
+        }
+        if (form.description.length > CHAR_LIMITS.eventDescription) {
+            setError(`A descrição deve ter no máximo ${CHAR_LIMITS.eventDescription} caracteres.`);
+            setSaving(false);
+            return;
+        }
+        if (form.location.length > CHAR_LIMITS.eventLocation) {
+            setError(`O local deve ter no máximo ${CHAR_LIMITS.eventLocation} caracteres.`);
+            setSaving(false);
+            return;
+        }
 
         if (form.date_start && !validateYear(form.date_start)) {
             setError("Ano da data de início não pode ter mais de 4 dígitos");
@@ -215,7 +249,6 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
 
     if (!form) return null;
 
-    // Verifica se o usuário logado é o organizador
     const isOrganizer = currentUserId && organizerId && currentUserId === organizerId;
 
     return (
@@ -230,17 +263,44 @@ export default function EditarEvent({ eventId, onEventUpdated, onEventDeleted })
 
                     <fieldset className="flex flex-col gap-1 p-4">
                         <label className="text-sm font-bold text-[#6b6888]">Nome do evento</label>
-                        <input type="text" className="p-3 border rounded-lg text-sm border-white/[0.06] bg-[#0f0d1a] text-white outline-none focus:border-purple-500/40 transition-colors" value={form.title} onChange={set("title")} required />
+                        <div className="relative">
+                            <input 
+                                type="text" 
+                                className="w-full p-3 border rounded-lg text-sm border-white/[0.06] bg-[#0f0d1a] text-white outline-none focus:border-purple-500/40 transition-colors pr-16" 
+                                value={form.title} 
+                                onChange={set("title")} 
+                                maxLength={CHAR_LIMITS.eventName}
+                                required 
+                            />
+                            <CharCounter current={form.title.length} limit={CHAR_LIMITS.eventName} className="absolute right-3 top-1/2 -translate-y-1/2" />
+                        </div>
                     </fieldset>
 
                     <fieldset className="flex flex-col gap-1 p-4">
                         <label className="text-sm font-bold text-[#6b6888]">Descrição</label>
-                        <textarea className="p-3 resize-none h-40 border rounded-lg text-sm border-white/[0.06] bg-[#0f0d1a] text-white outline-none focus:border-purple-500/40 transition-colors leading-relaxed" value={form.description} onChange={set("description")} />
+                        <div className="relative">
+                            <textarea 
+                                className="w-full p-3 resize-none h-40 border rounded-lg text-sm border-white/[0.06] bg-[#0f0d1a] text-white outline-none focus:border-purple-500/40 transition-colors leading-relaxed pr-16" 
+                                value={form.description} 
+                                onChange={set("description")} 
+                                maxLength={CHAR_LIMITS.eventDescription}
+                            />
+                            <CharCounter current={form.description.length} limit={CHAR_LIMITS.eventDescription} className="absolute right-3 bottom-3" />
+                        </div>
                     </fieldset>
 
                     <fieldset className="flex flex-col gap-1 p-4">
                         <label className="text-sm font-bold text-[#6b6888]">Local</label>
-                        <input type="text" className="p-3 border rounded-lg text-sm border-white/[0.06] bg-[#0f0d1a] text-white outline-none focus:border-purple-500/40 transition-colors" value={form.location} onChange={set("location")} />
+                        <div className="relative">
+                            <input 
+                                type="text" 
+                                className="w-full p-3 border rounded-lg text-sm border-white/[0.06] bg-[#0f0d1a] text-white outline-none focus:border-purple-500/40 transition-colors pr-16" 
+                                value={form.location} 
+                                onChange={set("location")} 
+                                maxLength={CHAR_LIMITS.eventLocation}
+                            />
+                            <CharCounter current={form.location.length} limit={CHAR_LIMITS.eventLocation} className="absolute right-3 top-1/2 -translate-y-1/2" />
+                        </div>
                     </fieldset>
 
                     <fieldset className="flex flex-col gap-1 p-4">
