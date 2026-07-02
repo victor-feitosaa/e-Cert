@@ -325,18 +325,7 @@ export const updateEvent = async (req, res) => {
     if (updates.capacity !== undefined) dataToUpdate.capacity = updates.capacity;
     if (updates.isPublic !== undefined) dataToUpdate.isPublic = Boolean(updates.isPublic);
     if (updates.maxAttendees !== undefined) dataToUpdate.maxAttendees = updates.maxAttendees ? parseInt(updates.maxAttendees) : null;
-    
-    // Tratamento especial para datas
-    if (updates.date_start) {
-      const newDate = new Date(updates.date_start);
-      if (newDate < new Date()) {
-        return res.status(400).json({
-          status: 'fail',
-          message: 'A data do evento não pode ser no passado',
-        });
-      }
-      dataToUpdate.date_start = newDate.toISOString();
-    }
+ 
 
     if (updates.date_end) {
       const newDate = new Date(updates.date_end);
@@ -577,32 +566,27 @@ export const inviteModerator = async (req, res) => {
 }
 
 export const deleteModerator = async (req, res) => {
-
     try {
-        const {id} = req.params;
-        const {moderatorId} = req.params;
-        const userId = req.user.id;
-        const existingEvent = await eventService.getById(id);
+        const { id, moderatorId } = req.params; // moderatorId = permissionId
 
-        if(!existingEvent){
-            return res.status(404).json({
-                status: 'fail',
-                message: 'Evento não encontrado'
-            })
+        // (opcional) Verifique se o evento existe e se o operador tem permissão
+        const event = await eventService.getById(id);
+        if (!event) {
+            return res.status(404).json({ status: 'fail', message: 'Evento não encontrado' });
         }
 
-        await EventRoleService.deleteModerator(id, moderatorId, userId);
+        // Deleta a permissão pelo ID
+        const deleted = await EventRoleService.deleteModerator(moderatorId);
+        if (!deleted) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'Moderador não encontrado'
+            });
+        }
 
-        res.status(200).json({
-            status: 'sucess',
-            message: `Moderador removido com sucesso`
-        })
-
+        res.status(200).json({ status: 'success', message: 'Moderador removido' });
     } catch (error) {
-        console.log("Erro ao deletar moderador ", error);
-        res.status(500).json({
-            status: 'fail',
-            message: 'Erro ao deletar moderador '
-        });
+        console.error('Erro ao deletar moderador:', error);
+        res.status(500).json({ status: 'fail', message: 'Erro interno' });
     }
-}
+};

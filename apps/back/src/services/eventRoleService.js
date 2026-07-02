@@ -39,9 +39,10 @@ class EventRoleService {
         await emailService.sendEmail(email, `Convite para moderador`, `Você foi convidado para ser moderador do evento ${response.event.title} !`)
     }
 
-    async deleteModerator(eventId, userId) {
-        return await EventRoleRepository.deleteByUserAndEvent(userId, eventId, 'MODERATOR');
-    };
+    // eventRoleService.js
+    async deleteModerator(permissionId) {
+        return await EventRoleRepository.deleteById(permissionId);
+    }
 
     // Verifica se o usuário é moderador OU qualquer tipo de membro da equipe
     async isModeratorOrMember(userId, eventId) {

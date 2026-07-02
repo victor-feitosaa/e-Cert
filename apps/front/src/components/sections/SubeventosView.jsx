@@ -286,7 +286,13 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
     }
   };
 
+  // ========== SALVAR COM VALIDAÇÃO DE SEÇÃO ==========
   const handleSave = () => {
+    const totalSections = existingSections.length + newSections.length;
+    if (totalSections === 0) {
+      setErrors(prev => ({ ...prev, sectionError: 'O subevento deve ter pelo menos uma seção' }));
+      return;
+    }
     if (validate()) {
       onSave({ 
         ...form, 
@@ -379,39 +385,44 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
             <div className="border-t border-border pt-4">
               <label className="block text-sm font-bold text-accent-foreground mb-1.5">Seções Existentes</label>
               <div className="space-y-3">
-                {existingSections.map((section, idx) => (
-                  <div key={section.id || idx} className="p-3 rounded-lg bg-background/50 border border-border">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 text-sm text-accent-foreground">
-                          <Calendar size={14} className="text-purple-400" />
-                          <span>
-                            {section.title && `${section.title} - `}
-                            {formatShortDate(section.date_start)} {formatShortTime(section.date_start)} → {formatShortDate(section.date_end)} {formatShortTime(section.date_end)}
-                          </span>
-                        </div>
-                        {section.location && (
-                          <div className="flex items-center gap-2 mt-1 text-xs text-accent-foreground/60">
-                            <MapPin size={12} />
-                            <span>{section.location}</span>
+                {existingSections.map((section, idx) => {
+                  const totalSections = existingSections.length + newSections.length;
+                  const isLast = totalSections <= 1;
+                  return (
+                    <div key={section.id || idx} className="p-3 rounded-lg bg-background/50 border border-border">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 text-sm text-accent-foreground">
+                            <Calendar size={14} className="text-purple-400" />
+                            <span>
+                              {section.title && `${section.title} - `}
+                              {formatShortDate(section.date_start)} {formatShortTime(section.date_start)} → {formatShortDate(section.date_end)} {formatShortTime(section.date_end)}
+                            </span>
                           </div>
-                        )}
-                        <div className="mt-2">
-                          <span className="text-xs font-semibold text-accent-foreground">Capacidade:</span>
-                          <span className="ml-2 text-sm text-accent-foreground">
-                            {section.capacity ? section.capacity : "Sem limite"}
-                          </span>
+                          {section.location && (
+                            <div className="flex items-center gap-2 mt-1 text-xs text-accent-foreground/60">
+                              <MapPin size={12} />
+                              <span>{section.location}</span>
+                            </div>
+                          )}
+                          <div className="mt-2">
+                            <span className="text-xs font-semibold text-accent-foreground">Capacidade:</span>
+                            <span className="ml-2 text-sm text-accent-foreground">
+                              {section.capacity ? section.capacity : "Sem limite"}
+                            </span>
+                          </div>
                         </div>
+                        <button
+                          onClick={() => removeExistingSection(idx)}
+                          disabled={isLast}
+                          className={`p-1.5 rounded-md border ${isLast ? 'opacity-30 cursor-not-allowed' : 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20'}`}
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => removeExistingSection(idx)}
-                        className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20"
-                      >
-                        <Trash2 size={14} />
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -421,29 +432,37 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
             <div className="border-t border-border pt-4">
               <label className="block text-sm font-bold text-accent-foreground mb-1.5">Novas Seções (serão adicionadas)</label>
               <div className="space-y-2">
-                {newSections.map((section, idx) => (
-                  <div key={section.id} className="flex items-center justify-between p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                    <div>
-                      <div className="flex items-center gap-2 text-sm text-accent-foreground">
-                        <Calendar size={14} className="text-emerald-400" />
-                        <span>
-                          {section.title && `${section.title} - `}
-                          {section.date_start} {section.time_start} → {section.date_end} {section.time_end}
-                        </span>
-                        <span className="text-xs text-emerald-400 ml-2">Cap: {section.capacity}</span>
-                      </div>
-                      {section.location && (
-                        <div className="flex items-center gap-2 mt-1 text-xs text-accent-foreground/60">
-                          <MapPin size={12} />
-                          <span>{section.location}</span>
+                {newSections.map((section, idx) => {
+                  const totalSections = existingSections.length + newSections.length;
+                  const isLast = totalSections <= 1;
+                  return (
+                    <div key={section.id} className="flex items-center justify-between p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                      <div>
+                        <div className="flex items-center gap-2 text-sm text-accent-foreground">
+                          <Calendar size={14} className="text-emerald-400" />
+                          <span>
+                            {section.title && `${section.title} - `}
+                            {section.date_start} {section.time_start} → {section.date_end} {section.time_end}
+                          </span>
+                          <span className="text-xs text-emerald-400 ml-2">Cap: {section.capacity}</span>
                         </div>
-                      )}
+                        {section.location && (
+                          <div className="flex items-center gap-2 mt-1 text-xs text-accent-foreground/60">
+                            <MapPin size={12} />
+                            <span>{section.location}</span>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => removeNewSection(idx)}
+                        disabled={isLast}
+                        className={`p-1.5 rounded-md border ${isLast ? 'opacity-30 cursor-not-allowed' : 'bg-red-500/10 text-red-400 hover:bg-red-500/20'}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
-                    <button onClick={() => removeNewSection(idx)} className="p-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -541,12 +560,14 @@ function SubeventoModal({ subevento, eventId, onClose, onSave, loading, apiError
               <div className="space-y-2 mb-4">
                 {existingTeam.map((member, idx) => {
                   const badge = getMemberBadgeStyle(member.job);
+                  // ✅ Exibe nome se disponível, senão e-mail
+                  const displayName = member.user?.name || member.name || member.email || member.user?.email;
                   return (
                     <div key={member.id || idx} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border">
                       <div className="flex items-center gap-3">
                         <Mail size={14} className="text-purple-400" />
                         <div>
-                          <p className="text-sm font-medium text-accent-foreground">{member.email || member.user?.email}</p>
+                          <p className="text-sm font-medium text-accent-foreground">{displayName}</p>
                           <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded ${badge.color} ${badge.bg} ${badge.border}`}>
                             {member.job}
                           </span>
@@ -765,10 +786,12 @@ function SubeventoCard({ subevento, onEdit, onDelete }) {
             {subevento.team.map((member, idx) => {
               const badge = getRoleFromJob(member.job);
               const roleConfig = TEAM_ROLES.find(r => r.value === badge) || TEAM_ROLES[4];
+              // ✅ Exibe nome se disponível, senão e-mail
+              const displayName = member.user?.name || member.name || member.email || member.user?.email;
               return (
                 <span key={idx} className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${roleConfig.color} ${roleConfig.bg} ${roleConfig.border}`}>
                   <Mail size={8} />
-                  {member.name || member.user?.name} - {member.job}
+                  {displayName} - {member.job}
                 </span>
               );
             })}

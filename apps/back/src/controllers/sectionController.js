@@ -315,6 +315,14 @@ export const deleteSection = async (req, res) => {
 
     const existingSection = await sectionService.getById(id)
 
+    const totalSections = await sectionService.getAllBySubEventId(subEventId, userId)
+    if (totalSections.length <= 1) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Não é possível deletar a última seção de um subevento, deve haver pelo menos uma seção'
+      })
+    };
+
     if (!existingSection) {
       return res.status(404).json({
         status: 'fail',

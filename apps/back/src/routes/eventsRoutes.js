@@ -60,7 +60,7 @@ router.get('/:id/eventParticipants', hasRole, getEventParticipants);
 // ──────────────────────────────────────────────
 router.get('/:id/moderators', hasRole, getModerators);
 router.post('/:id/invite/:email', isEventOwner, inviteModerator);
-router.delete('/:id/moderator/:userId', isEventOwner, deleteModerator);
+router.delete('/:id/moderator/:moderatorId', isEventOwner, deleteModerator);
 
 // ──────────────────────────────────────────────
 // MEMBROS DA EQUIPE

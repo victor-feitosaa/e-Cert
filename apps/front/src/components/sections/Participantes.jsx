@@ -693,8 +693,10 @@ export default function ParticipantesTab({ eventId, eventData }) {
     setActionLoading(true);
     try {
       const { member, type } = removeTarget;
+      const moderatorId = member.id;
+      console.log(member, moderatorId)
       const urlMap = {
-        moderator:   `/api/events/${eventId}/moderators/${member.id}`,
+        moderator:   `/api/events/${eventId}/moderators/${moderatorId}`,
         team:        `/api/events/${eventId}/team/${member.id}`,
         participant: `/api/events/${eventId}/participants/${member.id}`,
       };
@@ -702,7 +704,10 @@ export default function ParticipantesTab({ eventId, eventData }) {
       if (res.ok) {
         await (type === "moderator" ? fetchModerators() : fetchTeamAndParticipants());
         setRemoveTarget(null);
-      }
+      } else {
+          const error = await res.json();
+          alert(error.message || 'Erro ao remover');
+        }
     } catch (err) {
       console.error(err);
     } finally {

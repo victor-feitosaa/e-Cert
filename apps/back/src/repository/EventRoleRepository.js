@@ -57,13 +57,20 @@ class EventRoleRepository {
         });
     }
 
-    async deleteByUserAndEvent(userId, eventId, role) {
+    async deleteByUserAndEvent(eventId, userId, role) {
         return prisma.eventPermission.deleteMany({
             where: {
-                userId,
                 eventId,
+                userId,
                 role
             }
+        });
+    }
+
+ 
+    async deleteById(permissionId) {
+        return prisma.eventPermission.delete({
+            where: { id: permissionId }
         });
     }
 
