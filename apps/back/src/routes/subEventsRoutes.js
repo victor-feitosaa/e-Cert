@@ -4,6 +4,7 @@ import { protect } from '../middleware/authMiddleware.js';
 import { createSubMember, deleteSubMember, getMyTeam, inviteByEmail, updateSubMember } from '../controllers/subEventsTeamController.js';
 import { hasRole } from '../middleware/roleMiddleware.js';
 import { createSection, deleteSection, getSections, updateSection } from '../controllers/sectionController.js';
+import { generateSubEventCertificates } from '../controllers/certificateController.js';
 
 const router = express.Router();
 
@@ -29,6 +30,6 @@ router.get('/:subEventId/sections', getSections);
 router.put('/:subEventId/sections/:id', updateSection);
 router.delete('/:subEventId/sections/:id', deleteSection);
 
-
+router.post('/:subEventId/certificates/generate', protect,  generateSubEventCertificates);
 
 export default router;

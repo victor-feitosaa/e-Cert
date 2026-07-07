@@ -26,6 +26,7 @@ import {
 } from '../controllers/eventsTeamController.js';
 import { convidarMod } from '../controllers/testController.js';
 import { hasRole } from '../middleware/roleMiddleware.js';
+import * as certificateTemplateController from '../controllers/certificateTemplateController.js';
 
 const router = express.Router();
 
@@ -78,5 +79,26 @@ router.route('/:id/team/:memberId')
   .put(updateMember)                         // Atualizar membro
   .patch(updateMember)                       // Atualizar membro (parcial)
   .delete(deleteMember);                     // Remover membro
+
+// certificado
+import { 
+  listEventCertificates, 
+  generateEventCertificates 
+} from '../controllers/certificateController.js';
+
+// ... dentro do roteador, após o middleware de autenticação e permissão
+router.get('/:eventId/certificates', protect, hasRole, listEventCertificates);
+router.post('/:eventId/certificates/generate', protect, hasRole, generateEventCertificates);
+
+
+
+// Templates de certificado
+router.get('/:eventId/certificate-templates', protect, hasRole, certificateTemplateController.listTemplates);
+router.post('/:eventId/certificate-templates', protect,  certificateTemplateController.createTemplate);
+router.get('/:eventId/certificate-templates/:templateId', protect, hasRole, certificateTemplateController.getTemplate);
+router.put('/:eventId/certificate-templates/:templateId', protect, isEventOwner, certificateTemplateController.updateTemplate);
+router.delete('/:eventId/certificate-templates/:templateId', protect, isEventOwner, certificateTemplateController.deleteTemplate);
+router.post('/:eventId/certificate-templates/:templateId/generate', protect,  certificateTemplateController.generateCertificatesFromTemplate);
+
 
 export default router;

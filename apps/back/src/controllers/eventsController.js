@@ -44,7 +44,7 @@ export const createEvent = async (req, res) => {
 
 
     console.log("USER AQUI", req.user.id);
-    const { title, description, date_start, date_end, banner, category, capacity, location, isPublic } = req.body;
+    const { title, description, date_start, date_end, banner, category, capacity = null, location, isPublic } = req.body;
 
     // 2. VALIDAÇÕES
     if (!title?.trim()) {
@@ -86,12 +86,7 @@ export const createEvent = async (req, res) => {
       })
     }
 
-    if (!capacity) {
-      return res.status(400).json({
-        status: 'fail',
-        message: "Capacidade é obrigatoria"
-      })
-    }
+    
 
     // 4. CRIAR EVENTO 
   

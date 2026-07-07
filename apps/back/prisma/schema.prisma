@@ -56,6 +56,7 @@ model Event {
   eventPermissions EventPermission[]
   participants     EventParticipant[]
   certificates     Certificate[]
+  templates        CertificateTemplate[]
 }
 
 model SubEvent {
@@ -79,6 +80,7 @@ model SubEvent {
   team         SubEventTeam[]
   participants SubeventParticipant[]
   certificates Certificate[]
+  templates    CertificateTemplate[]
 }
 
 model Section {
@@ -190,24 +192,46 @@ model SectionAttendance {
 
 // ── Certificados ──────────────────────────────────────────────────────────────
 
+// Em schema.prisma
+
+model CertificateTemplate {
+  id          String   @id @default(uuid())
+  eventId     String
+  subEventId  String?   // opcional: se for específico de um subevento
+  title       String?   // título personalizado para o certificado
+  workload    String    // ex: "16h", "4h"
+  type        String    @default("Participante") // Participante, Palestrante, etc.
+  // design      Json?     // para futura personalização (cores, layout)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relações
+  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  subEvent  SubEvent? @relation(fields: [subEventId], references: [id], onDelete: Cascade)
+  certificates Certificate[]
+  // Para garantir que não haja dois templates com o mesmo título para o mesmo evento (opcional)
+  // @@unique([eventId, subEventId, title]) // se quiser
+}
+
 model Certificate {
   id           String   @id @default(uuid())
   userId       String
   eventId      String?
   subEventId   String?
   participantId String? 
+  templateId   String?   // referência opcional ao template usado
   issueDate    DateTime @default(now())
   workload     String   
   type         String   @default("Participante") 
   hash         String   @unique // JWT assinado
-  issued       Boolean  @default(false) // Controle de envio por e-mail
+  issued       Boolean  @default(false)
 
   // Relações
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   event     Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
   subEvent  SubEvent? @relation(fields: [subEventId], references: [id], onDelete: Cascade)
+  template  CertificateTemplate? @relation(fields: [templateId], references: [id])
 
-  // Garante que não haja duplicidade para o mesmo usuário/evento
   @@unique([userId, eventId])
   @@unique([userId, subEventId])
 }

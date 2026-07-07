@@ -64,6 +64,7 @@ export const protect = async (req, res, next) => {
 
     // 5. Salvar usuário na requisição
     req.user = user;
+    req.userId = user.id;
     next();
 
   } catch (error) {

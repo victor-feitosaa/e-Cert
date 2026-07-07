@@ -1,11 +1,14 @@
 
 import express from 'express';
-import * as certificateController from '../controllers/certificateController.js';
+import{downloadCertificate, listMyCertificates, sendCertificateEmail, verifyCertificate} from '../controllers/certificateController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.get('/my', protect, certificateController.listMyCertificates);
-router.get('/verify/:hash', certificateController.verifyCertificate);
+router.get('/my', protect, listMyCertificates);
+router.get('/verify/:hash',  verifyCertificate);
+router.get('/download/:hash', protect, downloadCertificate);
+router.post('/:id/send', protect, sendCertificateEmail);
+
 
 export default router;

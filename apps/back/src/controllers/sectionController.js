@@ -81,13 +81,7 @@ export const createSection = async (req, res) => {
       })
     }
 
-    // Validar capacidade 
-    if (capacity !== undefined && (isNaN(capacity) || capacity < 0)) {
-      return res.status(400).json({
-        status: 'fail',
-        message: 'Capacidade deve ser um número inteiro positivo'
-      })
-    }
+
 
     //capacity não pode ser maior que a do event
     if (capacity !== undefined && event.capacity !== null && capacity > event.capacity) {

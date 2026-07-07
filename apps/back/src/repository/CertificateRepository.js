@@ -104,6 +104,21 @@ class CertificateRepository {
       },
     });
   }
+
+  async findCertificateById(id) {
+    return prisma.certificate.findUnique({
+      where: { id },
+      include: {
+        user: true,
+        event: true,
+        subEvent: true,
+      },
+    });
+  }
+
+
 }
+
+
 
 export default new CertificateRepository();

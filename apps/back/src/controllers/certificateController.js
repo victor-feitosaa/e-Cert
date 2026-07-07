@@ -6,8 +6,9 @@ export const generateEventCertificates = async (req, res) => {
   try {
     const { eventId } = req.params;
     const operatorId = req.userId; 
+    const { workload, type, title } = req.body;
 
-    const result = await certificateService.generateCertificatesForEvent(eventId, operatorId);
+    const result = await certificateService.generateCertificatesForEvent(eventId, operatorId, { workload, type, title });
     res.status(200).json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -19,8 +20,9 @@ export const generateSubEventCertificates = async (req, res) => {
   try {
     const { subEventId } = req.params;
     const operatorId = req.userId;
+    const { workload, type, title } = req.body;
 
-    const result = await certificateService.generateCertificatesForSubEvent(subEventId, operatorId);
+    const result = await certificateService.generateCertificatesForSubEvent(subEventId, operatorId, { workload, type, title });
     res.status(200).json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -77,6 +79,40 @@ export const verifyCertificate = async (req, res) => {
         issuedAt: certificate.issueDate,
       }
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const downloadCertificate = async (req, res) => {
+  try {
+    const { hash } = req.params;
+    const certificate = await CertificateRepository.findCertificateByHash(hash);
+    if (!certificate) {
+      return res.status(404).json({ error: 'Certificado não encontrado' });
+    }
+
+    const pdfBuffer = await certificateService.generatePDF(certificate);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=certificado-${hash.slice(0,8)}.pdf`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Erro no download:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const sendCertificateEmail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const certificate = await CertificateRepository.findCertificateById(id);
+    if (!certificate) {
+      return res.status(404).json({ error: 'Certificado não encontrado' });
+    }
+
+    // Marca como enviado (issued = true)
+    await CertificateRepository.markAsIssued(id);
+    res.status(200).json({ message: 'Certificado enviado por e-mail com sucesso!' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

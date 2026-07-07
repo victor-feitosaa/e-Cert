@@ -2,6 +2,7 @@ import CertificateRepository from '../repository/CertificateRepository.js';
 import EventRepository from '../repository/EventRepository.js';
 import SubEventRepository from '../repository/SubEventRepository.js';
 import jwt from 'jsonwebtoken';
+import { generateCertificatePDF } from './pdfGenerator.js';
 
 class CertificateService {
   // Gera um hash único para o certificado usando JWT
@@ -27,9 +28,11 @@ class CertificateService {
   }
 
   // Gera certificados para um evento específico (para todos os participantes com check-in)
-  async generateCertificatesForEvent(eventId, operatorId) {
+  async generateCertificatesForEvent(eventId, operatorId, options = {}) {
     // 1. Verifica se o evento existe e se já terminou
-    const event = await EventRepository.getEventById(eventId);
+
+    const { workload, type, title } = options;
+    const event = await EventRepository.getById(eventId);
     if (!event) throw new Error('Evento não encontrado.');
     
     const now = new Date();
@@ -69,12 +72,13 @@ class CertificateService {
   }
 
   // Gera certificados para um subevento específico
-  async generateCertificatesForSubEvent(subEventId, operatorId) {
+  async generateCertificatesForSubEvent(subEventId, operatorId, options = {}) {
+    const { workload, type, title } = options;
     const subEvent = await SubEventRepository.findSubEventById(subEventId);
     if (!subEvent) throw new Error('Subevento não encontrado.');
 
     // Verifica se o evento pai já terminou
-    const event = await EventRepository.getEventById(subEvent.eventId);
+    const event = await EventRepository.getById(subEvent.eventId);
     if (event.date_end && new Date(event.date_end) > new Date()) {
       throw new Error('O evento principal ainda não terminou.');
     }
@@ -106,16 +110,52 @@ class CertificateService {
 
   // Envia certificados por e-mail (integração com Nodemailer)
   // Placeholder: Você pode chamar esta função após a geração ou em um job agendado.
-  async sendCertificatesByEmail(certificateId) {
-    // Busca o certificado com dados do usuário
-    const cert = await CertificateRepository.findCertificateByHash(hash); // adaptar
-    // Aqui você usaria o Nodemailer para enviar o PDF ou link de download.
-    // O e-Cert já tem emailService.js, então podemos reutilizar.
-    // Exemplo: await emailService.sendCertificate(cert.user.email, cert);
-    // Marcar como issued = true
+  async sendCertificateEmail(certificateId) {
+    const certificate = await CertificateRepository.findCertificateById(certificateId);
+    if (!certificate) throw new Error('Certificado não encontrado');
+
+    // Gera o PDF
+    const pdfBuffer = await this.generatePDF(certificate);
+
+    // Envia o e-mail com o PDF anexado
+    const user = certificate.user;
+    const eventTitle = certificate.event?.title || certificate.subEvent?.title || 'Evento';
+    
+    await EmailService.sendCertificate(
+      user.email,
+      user.name || 'Participante',
+      eventTitle,
+      certificate.hash,
+      pdfBuffer
+    );
+
+    // Marca como enviado
     await CertificateRepository.markAsIssued(certificateId);
-    return true;
+    return { message: 'E-mail enviado com sucesso', certificateId };
   }
+
+
+  async generatePDF(certificate) {
+  const user = certificate.user;
+  const eventTitle = certificate.event?.title || certificate.subEvent?.title || 'Evento';
+  const date = certificate.event?.date_start || certificate.subEvent?.date_start || new Date();
+  const dateFormatted = new Date(date).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+  
+  return generateCertificatePDF({
+    name: user.name || 'Participante',
+    event: eventTitle,
+    hours: certificate.workload || '—',
+    type: certificate.type || 'Participante',
+    date: dateFormatted,
+    hash: certificate.hash,
+  });
+}
+
+
 }
 
 export default new CertificateService();
