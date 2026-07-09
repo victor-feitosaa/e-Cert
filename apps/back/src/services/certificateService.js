@@ -1,6 +1,7 @@
 import CertificateRepository from '../repository/CertificateRepository.js';
 import EventRepository from '../repository/EventRepository.js';
 import SubEventRepository from '../repository/SubEventRepository.js';
+import emailService from "./emailService.js";
 import jwt from 'jsonwebtoken';
 import { generateCertificatePDF } from './pdfGenerator.js';
 
@@ -111,28 +112,28 @@ class CertificateService {
   // Envia certificados por e-mail (integração com Nodemailer)
   // Placeholder: Você pode chamar esta função após a geração ou em um job agendado.
   async sendCertificateEmail(certificateId) {
-    const certificate = await CertificateRepository.findCertificateById(certificateId);
-    if (!certificate) throw new Error('Certificado não encontrado');
+  const certificate = await CertificateRepository.findCertificateById(certificateId);
+  if (!certificate) throw new Error('Certificado não encontrado');
 
-    // Gera o PDF
-    const pdfBuffer = await this.generatePDF(certificate);
+  // Gera o PDF
+  const pdfBuffer = await this.generatePDF(certificate);
 
-    // Envia o e-mail com o PDF anexado
-    const user = certificate.user;
-    const eventTitle = certificate.event?.title || certificate.subEvent?.title || 'Evento';
-    
-    await EmailService.sendCertificate(
-      user.email,
-      user.name || 'Participante',
-      eventTitle,
-      certificate.hash,
-      pdfBuffer
-    );
+  // Envia o e-mail
+  const user = certificate.user;
+  const eventTitle = certificate.event?.title || certificate.subEvent?.title || 'Evento';
+  
+  await emailService.sendCertificate(
+    user.email,
+    user.name || 'Participante',
+    eventTitle,
+    certificate.hash,
+    pdfBuffer
+  );
 
-    // Marca como enviado
-    await CertificateRepository.markAsIssued(certificateId);
-    return { message: 'E-mail enviado com sucesso', certificateId };
-  }
+  // Marca como enviado
+  await CertificateRepository.markAsIssued(certificateId);
+  return { message: 'E-mail enviado com sucesso', certificateId };
+}
 
 
   async generatePDF(certificate) {

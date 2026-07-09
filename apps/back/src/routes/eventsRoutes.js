@@ -83,7 +83,8 @@ router.route('/:id/team/:memberId')
 // certificado
 import { 
   listEventCertificates, 
-  generateEventCertificates 
+  generateEventCertificates, 
+  getCertificateStats
 } from '../controllers/certificateController.js';
 
 // ... dentro do roteador, após o middleware de autenticação e permissão
@@ -99,6 +100,6 @@ router.get('/:eventId/certificate-templates/:templateId', protect, hasRole, cert
 router.put('/:eventId/certificate-templates/:templateId', protect, isEventOwner, certificateTemplateController.updateTemplate);
 router.delete('/:eventId/certificate-templates/:templateId', protect, isEventOwner, certificateTemplateController.deleteTemplate);
 router.post('/:eventId/certificate-templates/:templateId/generate', protect,  certificateTemplateController.generateCertificatesFromTemplate);
-
+router.get('/:eventId/certificates/stats', protect, getCertificateStats);
 
 export default router;

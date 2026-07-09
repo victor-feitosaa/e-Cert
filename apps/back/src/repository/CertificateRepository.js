@@ -117,8 +117,22 @@ class CertificateRepository {
   }
 
 
-}
+  async countEligibleParticipants(eventId) {
+    return prisma.eventAttendance.count({
+      where: {
+        eventId,
+        attended: true,
+      },
+    });
+  }
 
+  async countCertificatesByEvent(eventId) {
+    return prisma.certificate.count({
+      where: { eventId },
+    });
+  }
+
+}
 
 
 export default new CertificateRepository();

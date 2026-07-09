@@ -105,15 +105,35 @@ export const downloadCertificate = async (req, res) => {
 export const sendCertificateEmail = async (req, res) => {
   try {
     const { id } = req.params;
-    const certificate = await CertificateRepository.findCertificateById(id);
-    if (!certificate) {
-      return res.status(404).json({ error: 'Certificado não encontrado' });
-    }
-
-    // Marca como enviado (issued = true)
-    await CertificateRepository.markAsIssued(id);
-    res.status(200).json({ message: 'Certificado enviado por e-mail com sucesso!' });
+    // Chama o service que já faz tudo (gerar PDF, enviar, marcar como issued)
+    const result = await certificateService.sendCertificateEmail(id);
+    res.status(200).json(result);
   } catch (error) {
+    console.error('Erro no envio de e-mail:', error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+
+export const getCertificateStats = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    // Total de participantes com check-in
+    const eligible = await CertificateRepository.countEligibleParticipants(eventId);
+
+    // Total de certificados já gerados para este evento
+    const generated = await CertificateRepository.countCertificatesByEvent(eventId);
+
+    const pending = Math.max(0, eligible - generated);
+
+    res.status(200).json({
+      eligible,
+      generated,
+      pending,
+    });
+  } catch (error) {
+    console.error('Erro em getCertificateStats:', error);
     res.status(500).json({ error: error.message });
   }
 };
