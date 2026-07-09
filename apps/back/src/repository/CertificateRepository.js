@@ -43,27 +43,24 @@ class CertificateRepository {
 
   // Busca participantes com check-in confirmado em um subevento (seções)
   async findEligibleParticipantsForSubEvent(subEventId) {
-    // Para subeventos, verificamos se o usuário tem attendance em pelo menos uma seção
-    // (ou podemos exigir todas as seções – a regra fica a critério do negócio).
-    // Vamos considerar que se ele fez check-in em qualquer seção do subevento, está elegível.
-    return prisma.sectionAttendance.findMany({
-      where: {
-        section: {
-          subEventId,
-        },
-        attended: true,
+  return prisma.sectionAttendance.findMany({
+    where: {
+      section: {
+        subEventId,
       },
-      include: {
-        user: true,
-        section: {
-          include: {
-            subEvent: true,
-          },
+      attended: true,
+    },
+    include: {
+      user: true,
+      section: {
+        include: {
+          subEvent: true,
         },
       },
-      distinct: ['userId'], // Evita duplicar o mesmo usuário se ele tiver várias seções
-    });
-  }
+    },
+    distinct: ['userId'],
+  });
+}
 
   // Atualiza o campo 'issued' para true (após envio do e-mail)
   async markAsIssued(certificateId) {
@@ -88,8 +85,18 @@ class CertificateRepository {
   // Busca certificados de um evento (para listagem administrativa)
   async findCertificatesByEvent(eventId) {
     return prisma.certificate.findMany({
-      where: { eventId },
-      include: { user: true },
+      where: {
+        OR: [
+          { eventId: eventId },                         // diretos
+          { subEvent: { eventId: eventId } }            // indiretos via subevento
+        ]
+      },
+      include: {
+        user: true,
+        event: true,
+        subEvent: true,
+      },
+      orderBy: { issueDate: 'desc' },
     });
   }
 
@@ -131,6 +138,22 @@ class CertificateRepository {
       where: { eventId },
     });
   }
+
+  async findEligibleParticipantsForSection(sectionId) {
+  return prisma.sectionAttendance.findMany({
+    where: {
+      sectionId,
+      attended: true,
+    },
+    include: {
+      user: true,
+      section: true,
+    },
+    distinct: ['userId'],
+  });
+}
+
+
 
 }
 

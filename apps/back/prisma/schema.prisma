@@ -95,6 +95,7 @@ model Section {
 
   participants SectionParticipant[]
   attendances SectionAttendance[]
+  templates   CertificateTemplate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -197,20 +198,18 @@ model SectionAttendance {
 model CertificateTemplate {
   id          String   @id @default(uuid())
   eventId     String
-  subEventId  String?   // opcional: se for específico de um subevento
-  title       String?   // título personalizado para o certificado
-  workload    String    // ex: "16h", "4h"
-  type        String    @default("Participante") // Participante, Palestrante, etc.
-  // design      Json?     // para futura personalização (cores, layout)
+  subEventId  String?
+  sectionId   String?   // NOVO: se preenchido, gera certificados apenas para esta seção
+  title       String?
+  workload    String
+  type        String   @default("Participante")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Relações
-  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  subEvent  SubEvent? @relation(fields: [subEventId], references: [id], onDelete: Cascade)
+  event      Event     @relation(fields: [eventId], references: [id])
+  subEvent   SubEvent? @relation(fields: [subEventId], references: [id])
+  section    Section?  @relation(fields: [sectionId], references: [id])
   certificates Certificate[]
-  // Para garantir que não haja dois templates com o mesmo título para o mesmo evento (opcional)
-  // @@unique([eventId, subEventId, title]) // se quiser
 }
 
 model Certificate {

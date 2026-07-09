@@ -73,20 +73,30 @@ class CertificateService {
   }
 
   // Gera certificados para um subevento específico
-  async generateCertificatesForSubEvent(subEventId, operatorId, options = {}) {
-    const { workload, type, title } = options;
-    const subEvent = await SubEventRepository.findSubEventById(subEventId);
-    if (!subEvent) throw new Error('Subevento não encontrado.');
+  // src/services/certificateService.js
 
-    // Verifica se o evento pai já terminou
-    const event = await EventRepository.getById(subEvent.eventId);
+  async generateCertificatesForSubEvent(subEventId, operatorId, options = {}) {
+    const { workload, type, title, sectionId } = options;
+    const subEvent = await SubEventRepository.findById(subEventId);
+    if (!subEvent) throw new Error('Subevento não encontrado.');
+    
+    
+    const eventId = subEvent.eventId;
+
+    const event = await EventRepository.getById(eventId);
     if (event.date_end && new Date(event.date_end) > new Date()) {
       throw new Error('O evento principal ainda não terminou.');
     }
 
-    const attendances = await CertificateRepository.findEligibleParticipantsForSubEvent(subEventId);
+    let attendances;
+    if (sectionId) {
+      attendances = await CertificateRepository.findEligibleParticipantsForSection(sectionId);
+    } else {
+      attendances = await CertificateRepository.findEligibleParticipantsForSubEvent(subEventId);
+    }
+
     if (attendances.length === 0) {
-      return { message: 'Nenhum participante com check-in neste subevento.', generated: 0 };
+      return { message: 'Nenhum participante com check-in neste subevento/seção.', generated: 0 };
     }
 
     let generatedCount = 0;
@@ -98,9 +108,10 @@ class CertificateService {
       const hash = this.generateCertificateHash(user.id, null, subEventId);
       await CertificateRepository.createCertificate({
         userId: user.id,
+        eventId: eventId,              
         subEventId: subEventId,
-        workload: `${subEvent.totalHours || '4'}h`,
-        type: 'Participante',
+        workload: workload || `${subEvent.totalHours || '4'}h`,
+        type: type || 'Participante',
         hash: hash,
       });
       generatedCount++;

@@ -20,9 +20,13 @@ export const generateSubEventCertificates = async (req, res) => {
   try {
     const { subEventId } = req.params;
     const operatorId = req.userId;
-    const { workload, type, title } = req.body;
+    const { workload, type, title, sectionId } = req.body; // inclua sectionId
 
-    const result = await certificateService.generateCertificatesForSubEvent(subEventId, operatorId, { workload, type, title });
+    const result = await certificateService.generateCertificatesForSubEvent(
+      subEventId, 
+      operatorId, 
+      { workload, type, title, sectionId }
+    );
     res.status(200).json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });

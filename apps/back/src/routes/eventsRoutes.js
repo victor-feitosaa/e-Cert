@@ -98,7 +98,7 @@ router.get('/:eventId/certificate-templates', protect, hasRole, certificateTempl
 router.post('/:eventId/certificate-templates', protect,  certificateTemplateController.createTemplate);
 router.get('/:eventId/certificate-templates/:templateId', protect, hasRole, certificateTemplateController.getTemplate);
 router.put('/:eventId/certificate-templates/:templateId', protect, isEventOwner, certificateTemplateController.updateTemplate);
-router.delete('/:eventId/certificate-templates/:templateId', protect, isEventOwner, certificateTemplateController.deleteTemplate);
+router.delete('/:id/certificate-templates/:templateId', protect, isEventOwner, certificateTemplateController.deleteTemplate);
 router.post('/:eventId/certificate-templates/:templateId/generate', protect,  certificateTemplateController.generateCertificatesFromTemplate);
 router.get('/:eventId/certificates/stats', protect, getCertificateStats);
 

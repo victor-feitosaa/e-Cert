@@ -4,7 +4,7 @@ import {
   GraduationCap, FileText, Mail, Download, Eye, Plus,
   CalendarDays, Clock, Users, CheckCircle, XCircle, AlertCircle,
   RefreshCw, Loader2, Sparkles, Pen, Trash2, Settings, Layers, Copy, Save,
-  UserCheck, FileCheck, AlertTriangle
+  UserCheck, FileCheck, AlertTriangle, Tag
 } from "lucide-react";
 
 // ============================================================
@@ -26,6 +26,21 @@ const StatusBadge = ({ issued }) => {
   );
 };
 
+const OriginBadge = ({ isSubEvent }) => {
+  if (isSubEvent) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+        <Tag size={10} /> Subevento
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">
+      <Tag size={10} /> Evento Principal
+    </span>
+  );
+};
+
 const formatDate = (iso) => {
   if (!iso) return "";
   const d = new Date(iso);
@@ -33,16 +48,53 @@ const formatDate = (iso) => {
 };
 
 // ============================================================
-// MODAL PARA CRIAR/EDITAR TEMPLATE
+// MODAL PARA CRIAR/EDITAR TEMPLATE (COM SUPORTE A SEÇÃO)
 // ============================================================
-function TemplateModal({ template, eventId, subEvents, onClose, onSave, loading }) {
+function TemplateModal({ template, eventId, onClose, onSave, loading }) {
   const [title, setTitle] = useState(template?.title || "");
   const [workload, setWorkload] = useState(template?.workload || "");
   const [certType, setCertType] = useState(template?.type || "Participante");
   const [subEventId, setSubEventId] = useState(template?.subEventId || "");
+  const [sectionId, setSectionId] = useState(template?.sectionId || "");
+  const [subEvents, setSubEvents] = useState([]);
+  const [loadingSubEvents, setLoadingSubEvents] = useState(false);
   const [error, setError] = useState("");
 
   const isEditing = !!template;
+
+  // Buscar subeventos ao abrir o modal (já vêm com sections)
+  useEffect(() => {
+    const fetchSubEvents = async () => {
+      setLoadingSubEvents(true);
+      try {
+        const res = await fetch(`/api/events/${eventId}/subevents`, {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error(`Erro ${res.status}`);
+        const data = await res.json();
+        console.log('Subevents response:', data);
+        // Estrutura: { status, data: { subevents: [...] } }
+        const list = data?.data?.subevents || [];
+        setSubEvents(Array.isArray(list) ? list : []);
+      } catch (err) {
+        console.error(err);
+        setError("Erro ao carregar subeventos");
+        setSubEvents([]);
+      } finally {
+        setLoadingSubEvents(false);
+      }
+    };
+    fetchSubEvents();
+  }, [eventId]);
+
+  // Quando o subevento mudar, extrair as seções do subevento já carregado
+  const selectedSubEvent = subEvents.find(sub => sub.id === subEventId);
+  const sections = selectedSubEvent?.sections || [];
+
+  const handleSubEventChange = (value) => {
+    setSubEventId(value);
+    setSectionId("");
+  };
 
   const handleSubmit = () => {
     setError("");
@@ -55,6 +107,7 @@ function TemplateModal({ template, eventId, subEvents, onClose, onSave, loading 
       workload: workload.trim(),
       type: certType,
       subEventId: subEventId || null,
+      sectionId: sectionId || null,
     });
   };
 
@@ -70,6 +123,7 @@ function TemplateModal({ template, eventId, subEvents, onClose, onSave, loading 
         </p>
 
         <div className="space-y-4">
+          {/* Título do template */}
           <div>
             <label className="block text-xs font-semibold text-accent-foreground/80 mb-1">
               Título do Template (opcional)
@@ -83,6 +137,7 @@ function TemplateModal({ template, eventId, subEvents, onClose, onSave, loading 
             />
           </div>
 
+          {/* Carga horária */}
           <div>
             <label className="block text-xs font-semibold text-accent-foreground/80 mb-1">
               Carga Horária <span className="text-purple-400">*</span>
@@ -97,6 +152,7 @@ function TemplateModal({ template, eventId, subEvents, onClose, onSave, loading 
             />
           </div>
 
+          {/* Tipo de certificado */}
           <div>
             <label className="block text-xs font-semibold text-accent-foreground/80 mb-1">
               Tipo de Certificado
@@ -115,26 +171,58 @@ function TemplateModal({ template, eventId, subEvents, onClose, onSave, loading 
             </select>
           </div>
 
+          {/* Subevento (opcional) */}
           <div>
             <label className="block text-xs font-semibold text-accent-foreground/80 mb-1">
               Sub-evento (opcional)
             </label>
             <select
               value={subEventId}
-              onChange={(e) => setSubEventId(e.target.value)}
+              onChange={(e) => handleSubEventChange(e.target.value)}
               className="w-full px-4 py-2.5 rounded-lg text-sm bg-[#11101B] border border-border focus:border-primary outline-none text-accent-foreground"
+              disabled={loadingSubEvents}
             >
               <option value="">-- Geral (Evento Principal) --</option>
-              {subEvents?.map((sub) => (
+              {Array.isArray(subEvents) && subEvents.map((sub) => (
                 <option key={sub.id} value={sub.id}>
                   {sub.title}
                 </option>
               ))}
             </select>
+            {loadingSubEvents && (
+              <p className="text-xs text-accent-foreground/40 mt-1">Carregando subeventos...</p>
+            )}
             <p className="text-xs text-accent-foreground/40 mt-1">
               Selecione um sub-evento para vincular o template apenas a ele.
             </p>
           </div>
+
+          {/* Seção específica (aparece apenas se um subevento for selecionado) */}
+          {subEventId && (
+            <div>
+              <label className="block text-xs font-semibold text-accent-foreground/80 mb-1">
+                Seção específica (opcional)
+              </label>
+              <select
+                value={sectionId}
+                onChange={(e) => setSectionId(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg text-sm bg-[#11101B] border border-border focus:border-primary outline-none text-accent-foreground"
+              >
+                <option value="">-- Todas as seções --</option>
+                {Array.isArray(sections) && sections.map((sec) => (
+                  <option key={sec.id} value={sec.id}>
+                    {sec.title || `Seção ${new Date(sec.date_start).toLocaleDateString('pt-BR')}`}
+                  </option>
+                ))}
+              </select>
+              {(!sections || sections.length === 0) && (
+                <p className="text-xs text-amber-400 mt-1">Este subevento não possui seções.</p>
+              )}
+              <p className="text-xs text-accent-foreground/40 mt-1">
+                Selecione uma seção para gerar certificados apenas para quem fez check-in nela.
+              </p>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -170,7 +258,6 @@ function TemplateModal({ template, eventId, subEvents, onClose, onSave, loading 
 // ============================================================
 export default function CertificadosAnalytics({ eventData }) {
   const eventId = eventData.id;
-  const subEvents = eventData.subEvents || [];
 
   // Estado para templates
   const [templates, setTemplates] = useState([]);
@@ -253,25 +340,18 @@ export default function CertificadosAnalytics({ eventData }) {
 
   // ========== Gerar automaticamente ao abrir ==========
   const autoGenerateCertificates = useCallback(async () => {
-    // Evita gerar múltiplas vezes
     if (autoGenerated || generating) return;
     
-    // Busca estatísticas atualizadas
     const statsData = await fetchStats();
-    if (!statsData) return;
-    
-    // Se não há pendentes, não faz nada
-    if (statsData.pending === 0) return;
-
-    // Se não há templates, não faz nada
+    if (!statsData || statsData.pending === 0) return;
     if (templates.length === 0) return;
 
-    // Usa o primeiro template disponível (ou pode escolher o mais recente)
-    const template = templates[0];
+    // Usa o primeiro template que NÃO seja de subevento (prioriza evento principal)
+    const mainTemplate = templates.find(t => !t.subEventId) || templates[0];
     
     setGenerating(true);
     try {
-      const res = await fetch(`/api/events/${eventId}/certificate-templates/${template.id}/generate`, {
+      const res = await fetch(`/api/events/${eventId}/certificate-templates/${mainTemplate.id}/generate`, {
         method: "POST",
         credentials: "include",
       });
@@ -295,9 +375,7 @@ export default function CertificadosAnalytics({ eventData }) {
       await Promise.all([fetchTemplates(), fetchCertificates()]);
       const statsData = await fetchStats();
       
-      // Se há pendentes e templates disponíveis, gerar automaticamente
       if (statsData && statsData.pending > 0 && templates.length > 0) {
-        // Pequeno delay para evitar conflitos
         setTimeout(() => {
           autoGenerateCertificates();
         }, 500);
@@ -368,15 +446,34 @@ export default function CertificadosAnalytics({ eventData }) {
     }
   };
 
-  // ========== Gerar Certificados (manual) ==========
+  // ========== Gerar Certificados a partir de um Template (manual) ==========
   const handleGenerateFromTemplate = async (templateId) => {
-    if (!confirm("Gerar certificados para todos os participantes com check-in confirmado a partir deste template?")) return;
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    const targetLabel = template.subEventId ? "subevento" : "evento principal";
+    if (!confirm(`Gerar certificados para todos os participantes com check-in confirmado deste ${targetLabel}?`)) return;
+    
     setGenerating(true);
     setError(null);
     try {
-      const res = await fetch(`/api/events/${eventId}/certificate-templates/${templateId}/generate`, {
+      let url;
+      if (template.subEventId) {
+        url = `/api/events/${eventId}/subevents/${template.subEventId}/certificates/generate`;
+      } else {
+        url = `/api/events/${eventId}/certificates/generate`;
+      }
+
+      const res = await fetch(url, {
         method: "POST",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workload: template.workload,
+          type: template.type,
+          title: template.title,
+          sectionId: template.sectionId || null,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao gerar.");
@@ -396,19 +493,40 @@ export default function CertificadosAnalytics({ eventData }) {
       setError("Não há participantes pendentes para gerar certificados.");
       return;
     }
-    if (!confirm(`Gerar certificados para ${stats.pending} participante(s) pendente(s)?`)) return;
+    
+    // Tenta encontrar um template para evento principal
+    let template = templates.find(t => !t.subEventId);
+    // Se não houver, usa o primeiro
+    if (!template) template = templates[0];
+    
+    if (!template) {
+      setError("Crie um template primeiro.");
+      return;
+    }
+
+    const targetLabel = template.subEventId ? "subevento" : "evento principal";
+    if (!confirm(`Gerar certificados para ${stats.pending} participante(s) pendente(s) usando o template "${template.title || 'padrão'}" (${targetLabel})?`)) return;
     
     setGenerating(true);
     setError(null);
     try {
-      // Usa o primeiro template (ou você pode permitir escolher)
-      if (templates.length === 0) {
-        throw new Error("Crie um template primeiro.");
+      let url;
+      if (template.subEventId) {
+        url = `/api/events/${eventId}/subevents/${template.subEventId}/certificates/generate`;
+      } else {
+        url = `/api/events/${eventId}/certificates/generate`;
       }
-      const template = templates[0];
-      const res = await fetch(`/api/events/${eventId}/certificate-templates/${template.id}/generate`, {
+
+      const res = await fetch(url, {
         method: "POST",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workload: template.workload,
+          type: template.type,
+          title: template.title,
+          sectionId: template.sectionId || null,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao gerar.");
@@ -719,7 +837,8 @@ export default function CertificadosAnalytics({ eventData }) {
               <thead className="bg-[#13111e] border-b border-border">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold text-accent-foreground/60">Participante</th>
-                  <th className="px-4 py-3 text-left font-semibold text-accent-foreground/60">Evento</th>
+                  <th className="px-4 py-3 text-left font-semibold text-accent-foreground/60">Evento / Subevento</th>
+                  <th className="px-4 py-3 text-left font-semibold text-accent-foreground/60">Origem</th>
                   <th className="px-4 py-3 text-left font-semibold text-accent-foreground/60">Carga</th>
                   <th className="px-4 py-3 text-left font-semibold text-accent-foreground/60">Tipo</th>
                   <th className="px-4 py-3 text-left font-semibold text-accent-foreground/60">Emissão</th>
@@ -730,7 +849,8 @@ export default function CertificadosAnalytics({ eventData }) {
               <tbody className="divide-y divide-border">
                 {certificates.map((cert) => {
                   const participantName = cert.user?.name || "Participante";
-                  const eventTitle = cert.event?.title || cert.subEvent?.title || "Evento";
+                  const eventTitle = cert.event?.title || cert.subEvent?.title || 'Evento';
+                  const isSubEvent = !!cert.subEventId;
                   const workload = cert.workload || "—";
                   const type = cert.type || "Participante";
                   const issuedAt = formatDate(cert.issueDate);
@@ -738,6 +858,9 @@ export default function CertificadosAnalytics({ eventData }) {
                     <tr key={cert.id} className="hover:bg-white/[0.02] transition-colors">
                       <td className="px-4 py-3 text-accent-foreground font-medium">{participantName}</td>
                       <td className="px-4 py-3 text-accent-foreground/70">{eventTitle}</td>
+                      <td className="px-4 py-3">
+                        <OriginBadge isSubEvent={isSubEvent} />
+                      </td>
                       <td className="px-4 py-3 text-accent-foreground/70">{workload}</td>
                       <td className="px-4 py-3 text-accent-foreground/70">{type}</td>
                       <td className="px-4 py-3 text-accent-foreground/70">{issuedAt}</td>
@@ -776,7 +899,6 @@ export default function CertificadosAnalytics({ eventData }) {
         <TemplateModal
           template={editingTemplate}
           eventId={eventId}
-          subEvents={subEvents}
           onClose={() => {
             setShowTemplateModal(false);
             setEditingTemplate(null);

@@ -120,6 +120,8 @@ export const getSections = async (req, res) => {
     const { subEventId } = req.params
     const userId = req.user?.id
 
+    console.log("🔍 Buscando seções para subevento:", subEventId)
+
     const sections = await sectionService.getAllBySubEventId(subEventId, userId)
 
     res.status(200).json({
