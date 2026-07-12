@@ -12,6 +12,8 @@ export default function CheckinApp({ eventId }) {
   const [event, setEvent] = useState(null);
   const [subEvents, setSubEvents] = useState([]);
   const [participants, setParticipants] = useState([]);
+  const [sectionParticipants, setSectionParticipants] = useState([]);
+  const [sectionParticipantsLoading, setSectionParticipantsLoading] = useState(false);
   const [allSections, setAllSections] = useState([]);
   const [activeCheckinTarget, setActiveCheckinTarget] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,7 +29,7 @@ export default function CheckinApp({ eventId }) {
   const isScannerRunning = useRef(false);
   
   // Estado para o papel do usuário no evento
-  const [userRole, setUserRole] = useState('member'); // 'organizer', 'moderator', 'member'
+  const [userRole, setUserRole] = useState('member');
 
   // Verificar permissão do usuário
   useEffect(() => {
@@ -62,13 +64,11 @@ export default function CheckinApp({ eventId }) {
 
       // Determinar papel do usuário
       let role = 'member';
-      // Verificar se é organizador
       const meData = await meRes.json();
       const userId = meData?.data?.user?.id || meData?.user?.id || meData?.id;
       if (userId && ev.createdBy === userId) {
         role = 'organizer';
       } else {
-        // Verificar se é moderador
         if (modRes.ok) {
           const modData = await modRes.json();
           const mods = modData?.data?.moderators || modData?.moderators || [];
@@ -117,7 +117,7 @@ export default function CheckinApp({ eventId }) {
         attList.forEach(a => {
           map[a.userId] = {
             event: a.attended,
-            sectionIds: a.sectionCheckins || []   // array de IDs das seções com check-in
+            sectionIds: a.sectionCheckins || []
           };
         });
         setCheckins(map);
@@ -136,48 +136,86 @@ export default function CheckinApp({ eventId }) {
     if (eventId && permission) fetchData();
   }, [eventId, permission, fetchData]);
 
+  
+  const fetchSectionParticipants = useCallback(async (target) => {
+    if (target.type !== 'section') return;
+    setSectionParticipantsLoading(true);
+    try {
+      const url = `/api/events/${eventId}/subevents/${target.subEventId}/sections/${target.id}/participants`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setSectionParticipants(data.data?.participants || data.participants || []);
+      } else {
+        setSectionParticipants([]);
+      }
+    } catch {
+      setSectionParticipants([]);
+    } finally {
+      setSectionParticipantsLoading(false);
+    }
+  }, [eventId]);
+
+  // Quando o target mudar para uma seção, buscar os participantes da seção
+  useEffect(() => {
+    if (activeCheckinTarget?.type === 'section') {
+      fetchSectionParticipants(activeCheckinTarget);
+    } else {
+      setSectionParticipants([]);
+    }
+  }, [activeCheckinTarget, fetchSectionParticipants]);
+
   // Função de check-in (evento ou seção)
   const handleCheckin = useCallback(async (participant, target) => {
-    if (!participant || checking) return;
-    setChecking(true);
-    setNotification(null);
-    try {
-      const payload = { participantId: participant.id };
-      if (target.type === 'section') payload.sectionId = target.id;
-      const res = await fetch(`/api/events/${eventId}/checkin/checkin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Erro ao registrar check-in');
-      
-      setNotification({ type: 'success', message: `Check-in realizado para ${participant.user?.name}` });
-      
-      // Atualizar estado local corretamente
-      setCheckins(prev => {
-        const current = prev[participant.userId] || { event: false, sectionIds: [] };
-        let newSectionIds = [...current.sectionIds];
-        if (target.type === 'section' && !newSectionIds.includes(target.id)) {
-          newSectionIds.push(target.id);
-        }
-        return {
-          ...prev,
-          [participant.userId]: {
-            event: target.type === 'event' ? true : current.event,
-            sectionIds: newSectionIds
-          }
-        };
-      });
-      setSearchTerm('');
-    } catch (err) {
-      setNotification({ type: 'error', message: err.message });
-    } finally {
-      setChecking(false);
-      setTimeout(() => setNotification(null), 3000);
+  if (!participant || checking) return;
+  setChecking(true);
+  setNotification(null);
+  try {
+    // Monta o payload de acordo com o tipo de target
+    const payload = {};
+    if (target.type === 'section') {
+      // Para seção: envia userId (do participante) e sectionId
+      payload.userId = participant.userId;
+      payload.sectionId = target.id;
+    } else {
+      // Para evento principal: envia participantId (EventParticipant)
+      payload.participantId = participant.id;
     }
-  }, [eventId, checking]);
+
+    const res = await fetch(`/api/events/${eventId}/checkin/checkin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Erro ao registrar check-in');
+    
+    setNotification({ type: 'success', message: `Check-in realizado para ${participant.user?.name}` });
+    
+    // Atualizar estado local
+    setCheckins(prev => {
+      const current = prev[participant.userId] || { event: false, sectionIds: [] };
+      let newSectionIds = [...current.sectionIds];
+      if (target.type === 'section' && !newSectionIds.includes(target.id)) {
+        newSectionIds.push(target.id);
+      }
+      return {
+        ...prev,
+        [participant.userId]: {
+          event: target.type === 'event' ? true : current.event,
+          sectionIds: newSectionIds
+        }
+      };
+    });
+    setSearchTerm('');
+  } catch (err) {
+    setNotification({ type: 'error', message: err.message });
+  } finally {
+    setChecking(false);
+    setTimeout(() => setNotification(null), 3000);
+  }
+}, [eventId, checking]);
 
   // Callback chamado quando um QR code é lido
   const handleQRScan = useCallback((decodedText) => {
@@ -188,7 +226,6 @@ export default function CheckinApp({ eventId }) {
       try {
         decoded = jwtDecode(decodedText);
       } catch (e) {
-        // Fallback para formatos antigos
         if (decodedText.startsWith('{')) {
           decoded = JSON.parse(decodedText);
         } else if (decodedText.includes(':')) {
@@ -205,7 +242,14 @@ export default function CheckinApp({ eventId }) {
         return;
       }
 
-      const participant = participants.find(p => p.userId === userId);
+      // Buscar o participante na lista correta (evento ou seção)
+      let participant;
+      if (activeCheckinTarget?.type === 'section') {
+        participant = sectionParticipants.find(p => p.userId === userId);
+      } else {
+        participant = participants.find(p => p.userId === userId);
+      }
+
       if (participant) {
         const target = sectionId
           ? { type: 'section', id: sectionId }
@@ -221,7 +265,7 @@ export default function CheckinApp({ eventId }) {
     } finally {
       setScanning(false);
     }
-  }, [scanning, participants, activeCheckinTarget, handleCheckin, eventId]);
+  }, [scanning, participants, sectionParticipants, activeCheckinTarget, handleCheckin, eventId]);
 
   // Iniciar / parar o scanner
   const startScanner = useCallback(async () => {
@@ -272,8 +316,11 @@ export default function CheckinApp({ eventId }) {
     };
   }, [showScanner, startScanner]);
 
-  // Filtro de participantes
-  const filteredParticipants = participants.filter(p => {
+  // Filtro de participantes (usando a lista correta)
+  const currentParticipants = activeCheckinTarget?.type === 'section' ? sectionParticipants : participants;
+  const currentLoading = activeCheckinTarget?.type === 'section' ? sectionParticipantsLoading : loading;
+
+  const filteredParticipants = currentParticipants.filter(p => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     const user = p.user || {};
@@ -322,6 +369,7 @@ export default function CheckinApp({ eventId }) {
     ...allSections.map(sec => ({
       type: 'section',
       id: sec.id,
+      subEventId: sec.subEventId,   // <-- ADICIONAR
       title: sec.title || `Seção ${formatDate(sec.date_start)} ${formatTime(sec.date_start)}`,
       subTitle: sec.subEventTitle,
       date: sec.date_start,
@@ -349,7 +397,6 @@ export default function CheckinApp({ eventId }) {
               <button onClick={() => setShowScanner(!showScanner)} className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-xl bg-purple-600/20 border border-purple-500/20 text-purple-400 hover:bg-purple-600/30 transition-all text-sm">
                 <Scan size={14} /> {showScanner ? 'Fechar' : 'Escanear QR'}
               </button>
-              {/* Botão "Voltar" com redirecionamento dinâmico */}
               <a 
                 href={getBackUrl()} 
                 className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-xl bg-[#1a1629] border border-white/[0.06] text-[#6b6888] hover:text-white hover:border-purple-500/30 transition-all text-sm"
@@ -455,9 +502,16 @@ export default function CheckinApp({ eventId }) {
           )}
 
           <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-2">
-            {filteredParticipants.length === 0 ? (
+            {currentLoading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="animate-spin text-purple-400" size={24} />
+              </div>
+            ) : filteredParticipants.length === 0 ? (
               <div className="text-center py-10 text-[#3d3860]">
-                {searchTerm ? 'Nenhum participante encontrado' : 'Nenhum participante inscrito ainda'}
+                {searchTerm ? 'Nenhum participante encontrado' : 
+                  activeCheckinTarget?.type === 'section' 
+                    ? 'Nenhum participante inscrito nesta seção' 
+                    : 'Nenhum participante inscrito ainda'}
               </div>
             ) : (
               filteredParticipants.map(p => {

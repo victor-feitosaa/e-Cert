@@ -2,14 +2,18 @@ import {prisma} from '../config/db.js';
 
 class CertificateRepository {
   // Busca um certificado já existente para evitar duplicidade
+  // CertificateRepository.js
+
   async findCertificate(userId, eventId, subEventId) {
-    return prisma.certificate.findFirst({
-      where: {
-        userId,
-        eventId: eventId || undefined,
-        subEventId: subEventId || undefined,
-      },
-    });
+    const where = { userId };
+    if (eventId) where.eventId = eventId;
+    if (subEventId !== undefined && subEventId !== null) {
+      where.subEventId = subEventId;
+    } else if (subEventId === null) {
+      where.subEventId = null;
+    }
+    // Se subEventId for undefined, não incluir no where (comportamento original)
+    return prisma.certificate.findFirst({ where });
   }
 
   // Cria um novo certificado
@@ -28,17 +32,39 @@ class CertificateRepository {
   }
 
   // Busca participantes com check-in confirmado no evento
+
   async findEligibleParticipantsForEvent(eventId) {
-    // Considera como elegível quem tem registro de attendance com 'attended: true'
-    return prisma.eventAttendance.findMany({
+    // 1. Participantes com check-in no evento principal
+    const eventAttendances = await prisma.eventAttendance.findMany({
+      where: { eventId, attended: true },
+      include: { user: true },
+      distinct: ['userId'],
+    });
+
+    // 2. Participantes com check-in em seções do evento
+    const sectionAttendances = await prisma.sectionAttendance.findMany({
       where: {
-        eventId,
+        section: { subEvent: { eventId } },
         attended: true,
       },
-      include: {
-        user: true, // traz nome, email, etc.
-      },
+      include: { user: true },
+      distinct: ['userId'],
     });
+
+    // Combinar e remover duplicatas (um usuário pode ter check-in em ambos)
+    const allMap = new Map();
+    [...eventAttendances, ...sectionAttendances].forEach(att => {
+      if (!allMap.has(att.userId)) {
+        allMap.set(att.userId, att);
+      }
+    });
+
+    // Retornar no formato que o service espera (array com { id, userId, user })
+    return Array.from(allMap.values()).map(att => ({
+      id: att.id,          // pode ser ID do EventAttendance ou SectionAttendance
+      userId: att.userId,
+      user: att.user,
+    }));
   }
 
   // Busca participantes com check-in confirmado em um subevento (seções)
@@ -153,6 +179,43 @@ class CertificateRepository {
   });
 }
 
+async countEligibleAll(eventId) {
+  // Buscar IDs de usuários com check-in no evento principal
+  const eventAttendances = await prisma.eventAttendance.findMany({
+    where: { eventId, attended: true },
+    select: { userId: true },
+    distinct: ['userId'],
+  });
+
+  // Buscar IDs de usuários com check-in em seções do evento
+  const sectionAttendances = await prisma.sectionAttendance.findMany({
+    where: {
+      section: { subEvent: { eventId } },
+      attended: true,
+    },
+    select: { userId: true },
+    distinct: ['userId'],
+  });
+
+  // Combinar e contar únicos
+  const allUserIds = new Set([
+    ...eventAttendances.map(a => a.userId),
+    ...sectionAttendances.map(a => a.userId),
+  ]);
+  return allUserIds.size;
+}
+
+// Contar certificados únicos por evento (já existe, mas com OR)
+async countCertificatesByEvent(eventId) {
+  return prisma.certificate.count({
+    where: {
+      OR: [
+        { eventId: eventId },
+        { subEvent: { eventId: eventId } }
+      ]
+    }
+  });
+}
 
 
 }

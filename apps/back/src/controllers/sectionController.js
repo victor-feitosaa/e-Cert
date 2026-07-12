@@ -68,12 +68,17 @@ export const createSection = async (req, res) => {
       })
     }
 
+    // Normaliza os limites do evento para cobrir o dia inteiro (evita rejeitar
+    // seções que começam/terminam no mesmo dia do evento, mas em horário diferente)
     const eventStart = new Date(event.date_start)
+    eventStart.setHours(0, 0, 0, 0)
+
     const eventEnd = new Date(event.date_end)
+    eventEnd.setHours(23, 59, 59, 999)
+
     const sectionStart = new Date(date_start)
     const sectionEnd = new Date(date_end)
 
-    
     if (sectionStart.getTime() < eventStart.getTime() || sectionEnd.getTime() > eventEnd.getTime()) {
       return res.status(400).json({
         status: 'fail',
@@ -81,9 +86,7 @@ export const createSection = async (req, res) => {
       })
     }
 
-
-
-    //capacity não pode ser maior que a do event
+    // capacity não pode ser maior que a do event
     if (capacity !== undefined && event.capacity !== null && capacity > event.capacity) {
       return res.status(400).json({
         status: 'fail',
@@ -220,6 +223,27 @@ export const getPublicSections = async (req, res) => {
     })
   }
 }
+
+export const getSectionParticipants = async (req, res) => {
+  try {
+    const { id: sectionId } = req.params; // renomeia id para sectionId
+    const userId = req.user.id;
+
+    const participants = await sectionService.getSectionParticipants(sectionId);
+
+    res.status(200).json({
+      status: 'success',
+      results: participants.length,
+      data: { participants }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar participantes da seção:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Erro ao buscar participantes da seção'
+    });
+  }
+};
 
 export const getUserSectionStatus = async (req, res) => {
   try {
@@ -597,24 +621,3 @@ export const checkSectionEnrollment = async (req, res) => {
   }
 }
 
-export const getSectionParticipants = async (req, res) => {
-  try {
-    const { subEventId, id } = req.params // id = sectionId
-    const userId = req.user.id
-
-    const participants = await sectionService.getParticipants(id, userId)
-
-    res.status(200).json({
-      status: 'success',
-      results: participants.length,
-      data: { participants }
-    })
-
-  } catch (error) {
-    console.error('Erro ao buscar participantes da seção:', error)
-    res.status(500).json({
-      status: 'error',
-      message: 'Erro ao buscar participantes da seção'
-    })
-  }
-}

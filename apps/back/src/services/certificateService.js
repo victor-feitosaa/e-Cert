@@ -29,19 +29,20 @@ class CertificateService {
   }
 
   // Gera certificados para um evento específico (para todos os participantes com check-in)
+  
+ 
   async generateCertificatesForEvent(eventId, operatorId, options = {}) {
-    // 1. Verifica se o evento existe e se já terminou
-
     const { workload, type, title } = options;
     const event = await EventRepository.getById(eventId);
     if (!event) throw new Error('Evento não encontrado.');
-    
-    const now = new Date();
-    if (event.date_end && new Date(event.date_end) > now) {
-      throw new Error('O evento ainda não terminou. Certificados só podem ser gerados após o término.');
-    }
 
-    // 2. Busca todos os participantes com check-in confirmado
+    // (opcional) Remova a validação de data se quiser gerar a qualquer momento
+    // const now = new Date();
+    // if (event.date_end && new Date(event.date_end) > now) {
+    //   throw new Error('O evento ainda não terminou.');
+    // }
+
+    // Busca elegíveis (check-in no evento OU em seções)
     const attendances = await CertificateRepository.findEligibleParticipantsForEvent(eventId);
     if (attendances.length === 0) {
       return { message: 'Nenhum participante com check-in encontrado.', generated: 0 };
@@ -50,21 +51,17 @@ class CertificateService {
     let generatedCount = 0;
     for (const attendance of attendances) {
       const user = attendance.user;
-      // Evita duplicidade
       const existing = await CertificateRepository.findCertificate(user.id, eventId, null);
       if (existing) continue;
 
-      // Gera o hash
       const hash = this.generateCertificateHash(user.id, eventId, null);
-      
-      // Cria o registro no banco
       await CertificateRepository.createCertificate({
         userId: user.id,
         eventId: eventId,
-        workload: `${event.totalHours || '8'}h`, // Pode vir do evento ou calcular dinamicamente
-        type: 'Participante',
+        workload: workload || `${event.totalHours || '8'}h`,
+        type: type || 'Participante',
         hash: hash,
-        participantId: attendance.id, // link com o EventParticipant
+        participantId: attendance.id, // pode ser ID de EventAttendance ou SectionAttendance
       });
       generatedCount++;
     }

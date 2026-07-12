@@ -13,7 +13,8 @@ import {
   checkSectionEnrollment,
   getPublicSections,
   getUserSectionStatus,
-  confirmAttendance
+  confirmAttendance,
+  getSectionParticipants
 } from '../controllers/sectionController.js'
 
 const router = express.Router({ mergeParams: true })
@@ -35,5 +36,6 @@ router.delete('/:id/leave', leaveSection)
 router.get('/:id/check', checkSectionEnrollment)
 router.get('/user-status', getUserSectionStatus)
 router.post('/:id/confirmAttendance', confirmAttendance)
+router.get('/:id/participants', protect, getSectionParticipants)
 
 export default router

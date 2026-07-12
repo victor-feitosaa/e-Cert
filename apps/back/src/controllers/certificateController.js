@@ -119,14 +119,15 @@ export const sendCertificateEmail = async (req, res) => {
 };
 
 
+
 export const getCertificateStats = async (req, res) => {
   try {
     const { eventId } = req.params;
 
-    // Total de participantes com check-in
-    const eligible = await CertificateRepository.countEligibleParticipants(eventId);
+    // Total de participantes elegíveis (check-in no evento ou em seções)
+    const eligible = await CertificateRepository.countEligibleAll(eventId);
 
-    // Total de certificados já gerados para este evento
+    // Total de certificados já gerados (evento principal + subeventos)
     const generated = await CertificateRepository.countCertificatesByEvent(eventId);
 
     const pending = Math.max(0, eligible - generated);

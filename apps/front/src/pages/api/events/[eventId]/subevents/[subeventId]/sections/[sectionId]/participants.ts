@@ -2,9 +2,10 @@ export const prerender = false;
 import type { APIRoute } from "astro";
 
 export const GET: APIRoute = async ({ params, request }) => {
-  const { eventId, subEventId } = params;
+  const { eventId, subeventId, sectionId } = params;
+  const id = sectionId
   const baseUrl = import.meta.env.API_URL || "http://localhost:5001";
-  const url = `${baseUrl}/events/${eventId}/subevents/${subEventId}/sections`;
+  const url = `${baseUrl}/events/${eventId}/subevents/${subeventId}/sections/${id}/participants`;
   const cookie = request.headers.get("cookie") || "";
 
   try {
@@ -17,8 +18,7 @@ export const GET: APIRoute = async ({ params, request }) => {
       status: response.status,
       headers: { "Content-Type": "application/json" },
     });
-  } catch (error) {
-    console.error('Erro no proxy sections:', error);
-    return new Response(JSON.stringify({ error: "Erro ao carregar seções" }), { status: 500 });
+  } catch {
+    return new Response(JSON.stringify({ error: "Erro ao carregar participantes" }), { status: 500 });
   }
 };

@@ -48,7 +48,7 @@ const formatDate = (iso) => {
 };
 
 // ============================================================
-// MODAL PARA CRIAR/EDITAR TEMPLATE (COM SUPORTE A SEÇÃO)
+// MODAL PARA CRIAR/EDITAR TEMPLATE (COM VALIDAÇÃO OBRIGATÓRIA)
 // ============================================================
 function TemplateModal({ template, eventId, onClose, onSave, loading }) {
   const [title, setTitle] = useState(template?.title || "");
@@ -72,8 +72,6 @@ function TemplateModal({ template, eventId, onClose, onSave, loading }) {
         });
         if (!res.ok) throw new Error(`Erro ${res.status}`);
         const data = await res.json();
-        console.log('Subevents response:', data);
-        // Estrutura: { status, data: { subevents: [...] } }
         const list = data?.data?.subevents || [];
         setSubEvents(Array.isArray(list) ? list : []);
       } catch (err) {
@@ -87,7 +85,6 @@ function TemplateModal({ template, eventId, onClose, onSave, loading }) {
     fetchSubEvents();
   }, [eventId]);
 
-  // Quando o subevento mudar, extrair as seções do subevento já carregado
   const selectedSubEvent = subEvents.find(sub => sub.id === subEventId);
   const sections = selectedSubEvent?.sections || [];
 
@@ -98,12 +95,27 @@ function TemplateModal({ template, eventId, onClose, onSave, loading }) {
 
   const handleSubmit = () => {
     setError("");
+
+    // Validação: título obrigatório
+    if (!title.trim()) {
+      setError("Título do template é obrigatório.");
+      return;
+    }
+
+    // Validação: carga horária obrigatória
     if (!workload.trim()) {
       setError("Carga horária é obrigatória.");
       return;
     }
+
+    // Se selecionou sub-evento, seção é obrigatória
+    if (subEventId && !sectionId) {
+      setError("Se você selecionou um sub-evento, deve escolher uma seção específica.");
+      return;
+    }
+
     onSave({
-      title: title.trim() || null,
+      title: title.trim(),
       workload: workload.trim(),
       type: certType,
       subEventId: subEventId || null,
@@ -119,14 +131,14 @@ function TemplateModal({ template, eventId, onClose, onSave, loading }) {
           {isEditing ? "Editar Template" : "Novo Template"}
         </h2>
         <p className="text-sm text-accent-foreground/60 mb-6">
-          Crie um modelo de certificado para gerar certificados em lote após o evento.
+          Crie um modelo de certificado. Todos os campos são obrigatórios.
         </p>
 
         <div className="space-y-4">
-          {/* Título do template */}
+          {/* Título do template - agora obrigatório */}
           <div>
             <label className="block text-xs font-semibold text-accent-foreground/80 mb-1">
-              Título do Template (opcional)
+              Título do Template <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
@@ -137,10 +149,10 @@ function TemplateModal({ template, eventId, onClose, onSave, loading }) {
             />
           </div>
 
-          {/* Carga horária */}
+          {/* Carga horária - obrigatório */}
           <div>
             <label className="block text-xs font-semibold text-accent-foreground/80 mb-1">
-              Carga Horária <span className="text-purple-400">*</span>
+              Carga Horária <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
@@ -152,10 +164,10 @@ function TemplateModal({ template, eventId, onClose, onSave, loading }) {
             />
           </div>
 
-          {/* Tipo de certificado */}
+          {/* Tipo de certificado - obrigatório (já selecionado) */}
           <div>
             <label className="block text-xs font-semibold text-accent-foreground/80 mb-1">
-              Tipo de Certificado
+              Tipo de Certificado <span className="text-red-400">*</span>
             </label>
             <select
               value={certType}
@@ -174,7 +186,7 @@ function TemplateModal({ template, eventId, onClose, onSave, loading }) {
           {/* Subevento (opcional) */}
           <div>
             <label className="block text-xs font-semibold text-accent-foreground/80 mb-1">
-              Sub-evento (opcional)
+              Sub-evento <span className="text-xs text-accent-foreground/40">(opcional)</span>
             </label>
             <select
               value={subEventId}
@@ -193,22 +205,22 @@ function TemplateModal({ template, eventId, onClose, onSave, loading }) {
               <p className="text-xs text-accent-foreground/40 mt-1">Carregando subeventos...</p>
             )}
             <p className="text-xs text-accent-foreground/40 mt-1">
-              Selecione um sub-evento para vincular o template apenas a ele.
+              Selecione um sub-evento para vincular o template a ele.
             </p>
           </div>
 
-          {/* Seção específica (aparece apenas se um subevento for selecionado) */}
+          {/* Seção específica (obrigatória se subevento for selecionado) */}
           {subEventId && (
             <div>
               <label className="block text-xs font-semibold text-accent-foreground/80 mb-1">
-                Seção específica (opcional)
+                Seção específica <span className="text-red-400">*</span>
               </label>
               <select
                 value={sectionId}
                 onChange={(e) => setSectionId(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-lg text-sm bg-[#11101B] border border-border focus:border-primary outline-none text-accent-foreground"
               >
-                <option value="">-- Todas as seções --</option>
+                <option value="">-- Selecione uma seção --</option>
                 {Array.isArray(sections) && sections.map((sec) => (
                   <option key={sec.id} value={sec.id}>
                     {sec.title || `Seção ${new Date(sec.date_start).toLocaleDateString('pt-BR')}`}
@@ -219,7 +231,7 @@ function TemplateModal({ template, eventId, onClose, onSave, loading }) {
                 <p className="text-xs text-amber-400 mt-1">Este subevento não possui seções.</p>
               )}
               <p className="text-xs text-accent-foreground/40 mt-1">
-                Selecione uma seção para gerar certificados apenas para quem fez check-in nela.
+                Ao vincular a uma seção, os certificados serão gerados apenas para participantes com check-in nesta seção.
               </p>
             </div>
           )}
@@ -241,7 +253,7 @@ function TemplateModal({ template, eventId, onClose, onSave, loading }) {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={loading || !workload.trim()}
+            disabled={loading}
             className="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-gradient-to-br from-[#8b5cf6] to-[#9333ea] rounded-lg shadow-[0_4px_14px_rgba(124,58,237,0.4)] hover:opacity-90 disabled:opacity-50 transition-all"
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -340,35 +352,62 @@ export default function CertificadosAnalytics({ eventData }) {
 
   // ========== Gerar automaticamente ao abrir ==========
   const autoGenerateCertificates = useCallback(async () => {
-    if (autoGenerated || generating) return;
-    
-    const statsData = await fetchStats();
-    if (!statsData || statsData.pending === 0) return;
-    if (templates.length === 0) return;
+  if (autoGenerated || generating) return;
+  
+  const statsData = await fetchStats();
+  if (!statsData || statsData.pending === 0) return;
+  if (templates.length === 0) return;
 
-    // Usa o primeiro template que NÃO seja de subevento (prioriza evento principal)
-    const mainTemplate = templates.find(t => !t.subEventId) || templates[0];
-    
-    setGenerating(true);
-    try {
-      const res = await fetch(`/api/events/${eventId}/certificate-templates/${mainTemplate.id}/generate`, {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erro ao gerar automaticamente.");
-      
-      setSuccessMessage(`Certificados gerados automaticamente (${data.generated || 0} gerados).`);
-      await fetchCertificates();
-      await fetchStats();
-      setAutoGenerated(true);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setGenerating(false);
+  setGenerating(true);
+  let totalGenerated = 0;
+  let errors = [];
+
+  try {
+    for (const template of templates) {
+      try {
+        let url;
+        if (template.subEventId) {
+          url = `/api/events/${eventId}/subevents/${template.subEventId}/certificates/generate`;
+        } else {
+          url = `/api/events/${eventId}/certificates/generate`;
+        }
+
+        const res = await fetch(url, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workload: template.workload,
+            type: template.type,
+            title: template.title,
+            sectionId: template.sectionId || null,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errors.push(`Template "${template.title || 'sem título'}": ${data.error || 'Erro'}`);
+        } else {
+          totalGenerated += data.generated || 0;
+        }
+      } catch (err) {
+        errors.push(`Template "${template.title || 'sem título'}": ${err.message}`);
+      }
     }
-  }, [eventId, templates, fetchStats, fetchCertificates, autoGenerated, generating]);
 
+    if (errors.length > 0) {
+      setError(`Alguns templates falharam: ${errors.join('; ')}`);
+    } else {
+      setSuccessMessage(`Certificados gerados automaticamente (${totalGenerated} gerados).`);
+    }
+    await fetchCertificates();
+    await fetchStats();
+    setAutoGenerated(true);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setGenerating(false);
+  }
+}, [eventId, templates, fetchStats, fetchCertificates, autoGenerated, generating]);
   // ========== Carregar dados iniciais ==========
   useEffect(() => {
     const loadData = async () => {
@@ -487,54 +526,68 @@ export default function CertificadosAnalytics({ eventData }) {
     }
   };
 
-  // ========== Gerar todos os pendentes (automático) ==========
+  // ========== Gerar todos os pendentes (agora para TODOS os templates) ==========
   const handleGenerateAllPending = async () => {
     if (stats.pending === 0) {
       setError("Não há participantes pendentes para gerar certificados.");
       return;
     }
-    
-    // Tenta encontrar um template para evento principal
-    let template = templates.find(t => !t.subEventId);
-    // Se não houver, usa o primeiro
-    if (!template) template = templates[0];
-    
-    if (!template) {
-      setError("Crie um template primeiro.");
+
+    if (templates.length === 0) {
+      setError("Crie pelo menos um template primeiro.");
       return;
     }
 
-    const targetLabel = template.subEventId ? "subevento" : "evento principal";
-    if (!confirm(`Gerar certificados para ${stats.pending} participante(s) pendente(s) usando o template "${template.title || 'padrão'}" (${targetLabel})?`)) return;
-    
+    // Confirmação
+    if (!confirm(`Gerar certificados para os ${stats.pending} participantes pendentes usando todos os templates disponíveis?`)) return;
+
     setGenerating(true);
     setError(null);
+    let totalGenerated = 0;
+    let errors = [];
+
     try {
-      let url;
-      if (template.subEventId) {
-        url = `/api/events/${eventId}/subevents/${template.subEventId}/certificates/generate`;
-      } else {
-        url = `/api/events/${eventId}/certificates/generate`;
+      // Itera sobre todos os templates e chama a geração para cada um
+      for (const template of templates) {
+        try {
+          let url;
+          if (template.subEventId) {
+            url = `/api/events/${eventId}/subevents/${template.subEventId}/certificates/generate`;
+          } else {
+            url = `/api/events/${eventId}/certificates/generate`;
+          }
+
+          const res = await fetch(url, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              workload: template.workload,
+              type: template.type,
+              title: template.title,
+              sectionId: template.sectionId || null,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            errors.push(`Template "${template.title || 'sem título'}": ${data.error || 'Erro'}`);
+          } else {
+            totalGenerated += data.generated || 0;
+          }
+        } catch (err) {
+          errors.push(`Template "${template.title || 'sem título'}": ${err.message}`);
+        }
       }
 
-      const res = await fetch(url, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workload: template.workload,
-          type: template.type,
-          title: template.title,
-          sectionId: template.sectionId || null,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erro ao gerar.");
-      setSuccessMessage(`Certificados gerados! (${data.generated || 0} gerados)`);
+      if (errors.length > 0) {
+        setError(`Alguns templates falharam: ${errors.join('; ')}`);
+      } else {
+        setSuccessMessage(`Certificados gerados com sucesso! Total: ${totalGenerated} gerados.`);
+      }
       await fetchCertificates();
       await fetchStats();
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Erro ao gerar certificados.");
     } finally {
       setGenerating(false);
     }
@@ -718,6 +771,11 @@ export default function CertificadosAnalytics({ eventData }) {
                       {tmpl.subEventId && (
                         <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
                           Sub-evento
+                        </span>
+                      )}
+                      {tmpl.sectionId && (
+                        <span className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                          Seção
                         </span>
                       )}
                     </div>
