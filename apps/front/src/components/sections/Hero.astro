@@ -2,82 +2,84 @@
 import GradientText from "../GradientText";
 import Particles from "../Particles.jsx";
 import DotGrid from "../DotGrid";
-import { ArrowRight } from "@lucide/astro";
+import { ArrowRight, ShieldCheck } from "@lucide/astro";
 ---
 
 <section
     class="dark relative min-h-screen w-full px-5 flex items-center bg-background justify-center overflow-hidden"
 >
-
-
-
-
-    
-    
-
-    <div class="absolute inset-0 w-full h-full z-0" style="height: 100vh;">
-        <div class="absolute inset-0 w-full h-full">
-            <Particles
-                client:load
-                particleCount={150}
-                particleSpread={8}
-                speed={0.05}
-                particleColors={["#8b5cf6", "#a78bfa", "#6d28d9"]}
-                particleBaseSize={80}
-                alphaParticles={true}
-                disableRotation={false}
-                className="w-full h-full"
-            />
-        </div>
-
-        <div class="absolute inset-0 w-full h-full">
-            <DotGrid
-                client:load
-                dotSize={3}
-                gap={28}
-                baseColor="#3d3860"
-                activeColor="#7c3aed"
-                proximity={100}
-                speedTrigger={80}
-                shockRadius={200}
-                shockStrength={4}
-                className="absolute inset-0"
-            />
-        </div>
+  <!-- Partículas e grid de pontos (mantido) -->
+  <div class="absolute inset-0 w-full h-full z-0" style="height: 100vh;">
+    <div class="absolute inset-0 w-full h-full">
+      <Particles
+        client:load
+        particleCount={150}
+        particleSpread={8}
+        speed={0.05}
+        particleColors={["#8b5cf6", "#a78bfa", "#6d28d9"]}
+        particleBaseSize={80}
+        alphaParticles={true}
+        disableRotation={false}
+        className="w-full h-full"
+      />
     </div>
-
-    <div
-        class="w-full flex flex-col gap-5 text-center items-center py-6 justify-center h-full relative z-10"
-    >
-        <h1 class="text-6xl leading-20 font-extrabold text-foreground">
-            Seu evento merece <br />
-            <span class="font-extrabold">
-                <GradientText client:load>
-                    um certificado perfeito.
-                </GradientText>
-            </span>
-        </h1>
-        <p class="text-accent-foreground">
-            Crie eventos, gere certificados personalizados para participantes e
-            palestrantes,<br /> e compartilhe com um link verificável — tudo em minutos.
-        </p>
-
-        <div class="pt-10 flex">
-
-            <a
-                href="/login"
-                class="bg-red-500 font-bold text-white bg-linear-to-br from-[#8b5cf6] to-[#9333ea]
-                        border-none px-6 py-3 rounded-lg
-                        inline-flex items-center gap-2
-                        shadow-[0_4px_8px_rgba(124,58,237,0.4)]
-                        transition-transform duration-200
-                        hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(124,58,237,0.55)]
-                        cursor-pointer no-underline"
-            >
-                Criar meu primeiro evento <ArrowRight />
-            </a>
-        </div>
+    <div class="absolute inset-0 w-full h-full">
+      <DotGrid
+        client:load
+        dotSize={3}
+        gap={28}
+        baseColor="#3d3860"
+        activeColor="#7c3aed"
+        proximity={100}
+        speedTrigger={80}
+        shockRadius={200}
+        shockStrength={4}
+        className="absolute inset-0"
+      />
     </div>
+  </div>
 
-    <div class=""></div>
+  <div
+    class="w-full flex flex-col gap-5 text-center items-center py-6 justify-center h-full relative z-10"
+  >
+    <h1 class="text-6xl leading-20 font-extrabold text-foreground">
+      Seu evento merece <br />
+      <span class="font-extrabold">
+        <GradientText client:load>
+          um certificado perfeito.
+        </GradientText>
+      </span>
+    </h1>
+    <p class="text-accent-foreground">
+      Crie eventos, gere certificados personalizados para participantes e
+      palestrantes,<br /> e compartilhe com um link verificável — tudo em minutos.
+    </p>
+
+    <div class="pt-10 flex flex-wrap gap-4 justify-center">
+      <!-- Botão principal -->
+      <a
+        href="/login"
+        class="font-bold text-white bg-linear-to-br from-[#8b5cf6] to-[#9333ea]
+                border-none px-6 py-3 rounded-lg
+                inline-flex items-center gap-2
+                shadow-[0_4px_8px_rgba(124,58,237,0.4)]
+                transition-transform duration-200
+                hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(124,58,237,0.55)]
+                cursor-pointer no-underline"
+      >
+        Criar meu primeiro evento <ArrowRight />
+      </a>
+
+      <!-- Botão secundário - Verificar certificado -->
+      <a
+        href="/verify"
+        class="font-semibold text-[#6b6888] border border-white/[0.08] px-6 py-3 rounded-lg
+                inline-flex items-center gap-2
+                hover:bg-white/[0.05] hover:text-white transition-all
+                cursor-pointer no-underline"
+      >
+        <ShieldCheck size={16} /> Verificar certificado
+      </a>
+    </div>
+  </div>
 </section>

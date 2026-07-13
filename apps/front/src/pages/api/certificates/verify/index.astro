@@ -1,0 +1,10 @@
+---
+import Layout from "../../../../layouts/Layout.astro";
+import CertificateVerify from "@/components/CertificateVerify.jsx";
+
+export const prerender = false;
+---
+
+<Layout title="Verificar Certificado — e-cert">
+  <CertificateVerify client:load initialResult={null} hash={null} />
+</Layout>

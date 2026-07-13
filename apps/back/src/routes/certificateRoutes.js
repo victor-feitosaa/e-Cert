@@ -5,8 +5,8 @@ import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
+router.get('/verify/:hash', verifyCertificate);
 router.get('/my', protect, listMyCertificates);
-router.get('/verify/:hash',  verifyCertificate);
 router.get('/download/:hash', protect, downloadCertificate);
 router.post('/:id/send', protect, sendCertificateEmail);
 

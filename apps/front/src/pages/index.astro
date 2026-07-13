@@ -1,11 +1,10 @@
 ---
-
 import Layout from '../layouts/Layout.astro';
 import '../styles/global.css' 
 import Hero from "@/components/sections/Hero.astro"
 import Certificate from '@/components/sections/Certificate.astro';
 import ExploreEvents from '@/components/sections/ExploreEvents';
-import { LogIn } from 'lucide-react';
+import { LogIn, ShieldCheck } from '@lucide/astro';
 import UserMenu from '@/components/UserMenu.jsx';
 
 // Buscar usuário logado (se existir)
@@ -28,28 +27,38 @@ if (jwt) {
 }
 ---
 
-<Layout >
-	<nav class="sticky top-0 z-50 w-full h-14 flex items-center justify-between px-6 bg-[#0a0a0f] text-accent-foreground backdrop-blur-md border-b border-white/[0.06]">
-        <div class="flex items-center gap-2 w-full">
-          <span class="text-[15px] font-black tracking-tight w-full">
-            e-<span class="text-violet-400">cert</span>
-          </span>
+<Layout>
+  <!-- Navbar -->
+  <nav class="sticky top-0 z-50 w-full h-14 flex items-center justify-between px-6 bg-[#0a0a0f] text-accent-foreground backdrop-blur-md border-b border-white/[0.06]">
+    <div class="flex items-center gap-2 w-full">
+      <span class="text-[15px] font-black tracking-tight w-full">
+        e-<span class="text-violet-400">cert</span>
+      </span>
 
-		  <div class="flex items-center justify-end gap-2 w-full">
-          {user ? (
-            <UserMenu user={user} />
-          ) : (
-            <a
-              href="/login"
-              class="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 rounded-full transition-all"
-            >
-              <LogIn size={11} /> Entrar
-            </a>
-          )}
-        </div>
-    </div>	
-</nav>
-	<Hero />
-	<Certificate />
-	<ExploreEvents client:load />
+      <div class="flex items-center justify-end gap-2 w-full">
+        <!-- Link para verificar certificado -->
+        <a
+          href="/verify"
+          class="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 rounded-full transition-all"
+        >
+          <ShieldCheck size={11} /> Verificar Certificado
+        </a>
+
+        {user ? (
+          <UserMenu user={user} />
+        ) : (
+          <a
+            href="/login"
+            class="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-[#6b6888] hover:text-white border border-white/[0.08] hover:border-white/20 rounded-full transition-all"
+          >
+            <LogIn size={11} /> Entrar
+          </a>
+        )}
+      </div>
+    </div>
+  </nav>
+
+  <Hero />
+  <Certificate />
+  <ExploreEvents client:load />
 </Layout>

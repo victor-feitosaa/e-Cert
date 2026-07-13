@@ -55,38 +55,7 @@ export const listEventCertificates = async (req, res) => {
   }
 };
 
-// Endpoint PÚBLICO para verificar autenticidade do certificado via hash
-export const verifyCertificate = async (req, res) => {
-  try {
-    const { hash } = req.params;
-    // 1. Verifica a assinatura do JWT
-    const decoded = certificateService.verifyCertificateHash(hash);
-    if (!decoded) {
-      return res.status(404).json({ valid: false, message: 'Certificado inválido ou adulterado.' });
-    }
 
-    // 2. Busca no banco para garantir que existe (e evitar hashes aleatórios válidos)
-    const certificate = await CertificateRepository.findCertificateByHash(hash);
-    if (!certificate) {
-      return res.status(404).json({ valid: false, message: 'Certificado não encontrado.' });
-    }
-
-    // 3. Retorna os dados para exibição (pode renderizar o CertCard com esses dados)
-    res.status(200).json({
-      valid: true,
-      certificate: {
-        name: certificate.user.name,
-        event: certificate.event?.title || certificate.subEvent?.title || 'Evento',
-        date: certificate.event?.date_start || certificate.subEvent?.date_start,
-        workload: certificate.workload,
-        type: certificate.type,
-        issuedAt: certificate.issueDate,
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
 
 export const downloadCertificate = async (req, res) => {
   try {
@@ -140,5 +109,42 @@ export const getCertificateStats = async (req, res) => {
   } catch (error) {
     console.error('Erro em getCertificateStats:', error);
     res.status(500).json({ error: error.message });
+  }
+};
+
+
+export const verifyCertificate = async (req, res) => {
+  try {
+    const { hash } = req.params;
+    if (!hash) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Código do certificado é obrigatório'
+      });
+    }
+
+    console.log(`Verificando certificado com hash: ${hash}`);
+
+    const result = await certificateService.verifyCertificate(hash);
+
+    // Se for inválido, retorna com o motivo
+    if (!result.valid) {
+      return res.status(200).json({
+        status: 'success',
+        data: { valid: false, reason: result.reason }
+      });
+    }
+
+    // Válido
+    res.status(200).json({
+      status: 'success',
+      data: { valid: true, certificate: result.certificate }
+    });
+  } catch (error) {
+    console.error('Erro ao verificar certificado:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Erro interno ao verificar certificado'
+    });
   }
 };

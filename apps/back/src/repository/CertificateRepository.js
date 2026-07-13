@@ -218,6 +218,18 @@ async countCertificatesByEvent(eventId) {
 }
 
 
+
+async findByHash(hash) {
+  return prisma.certificate.findUnique({
+    where: { hash },
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      event: { select: { id: true, title: true, date_start: true, date_end: true, location: true, creator: { select: { name: true } } } },
+      subEvent: { select: { id: true, title: true, date_start: true, date_end: true, location: true } },
+    }
+  });
+}
+
 }
 
 

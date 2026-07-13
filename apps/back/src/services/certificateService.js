@@ -164,6 +164,39 @@ class CertificateService {
   });
 }
 
+  async verifyCertificate(hash) {
+  const payload = this.verifyCertificateHash(hash);
+  if (!payload) {
+    return { valid: false, reason: 'invalid' };
+  }
+
+  const certificate = await CertificateRepository.findByHash(hash);
+  if (!certificate) {
+    return { valid: false, reason: 'not_found' };
+  }
+
+  // Confere se os dados batem
+  const eventMatch = (certificate.eventId || null) === (payload.eventId || null);
+  const subEventMatch = (certificate.subEventId || null) === (payload.subEventId || null);
+  if (certificate.userId !== payload.userId || !eventMatch || !subEventMatch) {
+    return { valid: false, reason: 'mismatch' };
+  }
+
+  return {
+    valid: true,
+    certificate: {
+      id: certificate.id,
+      workload: certificate.workload,
+      type: certificate.type,
+      issueDate: certificate.issueDate,
+      issued: certificate.issued,
+      hash: certificate.hash,
+      user: certificate.user,
+      event: certificate.event,
+      subEvent: certificate.subEvent,
+    }
+  };
+}
 
 }
 
